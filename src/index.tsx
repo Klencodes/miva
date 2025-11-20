@@ -1,19 +1,57 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
-root.render(
+import App from "./App";
+import "./index.css";
+import { ThemeProvider } from "./core/contexts/ThemeProvider";
+import { ErrorBoundary } from "./app/pages/error/ErrorBoundary";
+import { ToastProvider } from "./core/hooks/useToast";
+import { LayoutProvider } from "./core/contexts/LayoutProvider";
+import { StoreProvider } from "./core/contexts/StoreProvider";
+import { ModalProvider } from "./core/hooks/useModal";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
+
+const rootElement = document.getElementById("root");
+if (!rootElement) throw new Error("Failed to find the root element");
+
+// Add modal root if it doesn't exist
+if (!document.getElementById('modal-root')) {
+  const modalRoot = document.createElement('div');
+  modalRoot.id = 'modal-root';
+  document.body.appendChild(modalRoot);
+}
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <ThemeProvider>
+              <StoreProvider>
+                <LayoutProvider>
+                  <ModalProvider>
+                    <App />
+                  </ModalProvider>
+                </LayoutProvider>
+              </StoreProvider>
+            </ThemeProvider>
+          </ToastProvider>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 );
-
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();

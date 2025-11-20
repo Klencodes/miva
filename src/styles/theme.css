@@ -1,0 +1,213 @@
+.primary { background-color: var(--primary-color); }
+.secondary { background-color: var(--secondary-color); }
+.danger { background-color: var(--danger-color); }
+.info { background-color: var(--info-color); }
+.success { background-color: var(--success-color); }
+
+/* Primary Color Opacity */
+.bg-primary { background-color: var(--primary-color); }
+.bg-primary-90 { background-color: color-mix(in srgb, var(--primary-color) 90%, transparent); }
+.bg-primary-80 { background-color: color-mix(in srgb, var(--primary-color) 80%, transparent); }
+.bg-primary-70 { background-color: color-mix(in srgb, var(--primary-color) 70%, transparent); }
+.bg-primary-60 { background-color: color-mix(in srgb, var(--primary-color) 60%, transparent); }
+.bg-primary-50 { background-color: color-mix(in srgb, var(--primary-color) 50%, transparent); }
+.bg-primary-40 { background-color: color-mix(in srgb, var(--primary-color) 40%, transparent); }
+.bg-primary-30 { background-color: color-mix(in srgb, var(--primary-color) 30%, transparent); }
+.bg-primary-20 { background-color: color-mix(in srgb, var(--primary-color) 20%, transparent); }
+.bg-primary-10 { background-color: color-mix(in srgb, var(--primary-color) 10%, transparent); }
+.bg-primary-5 { background-color: color-mix(in srgb, var(--primary-color) 5%, transparent); }
+
+/* Secondary Color Opacities */
+.bg-secondary { background-color: var(--secondary-color); }
+.bg-secondary-90 { background-color: color-mix(in srgb, var(--secondary-color) 90%, transparent); }
+.bg-secondary-80 { background-color: color-mix(in srgb, var(--secondary-color) 80%, transparent); }
+.bg-secondary-70 { background-color: color-mix(in srgb, var(--secondary-color) 70%, transparent); }
+.bg-secondary-60 { background-color: color-mix(in srgb, var(--secondary-color) 60%, transparent); }
+.bg-secondary-50 { background-color: color-mix(in srgb, var(--secondary-color) 50%, transparent); }
+.bg-secondary-40 { background-color: color-mix(in srgb, var(--secondary-color) 40%, transparent); }
+.bg-secondary-30 { background-color: color-mix(in srgb, var(--secondary-color) 30%, transparent); }
+.bg-secondary-20 { background-color: color-mix(in srgb, var(--secondary-color) 20%, transparent); }
+.bg-secondary-10 { background-color: color-mix(in srgb, var(--secondary-color) 10%, transparent); }
+.bg-secondary-5 { background-color: color-mix(in srgb, var(--secondary-color) 5%, transparent); }
+
+/* Danger Color Opacities */
+.bg-danger { background-color: var(--danger-color); }
+.bg-danger-90 { background-color: color-mix(in srgb, var(--danger-color) 90%, transparent); }
+.bg-danger-80 { background-color: color-mix(in srgb, var(--danger-color) 80%, transparent); }
+.bg-danger-70 { background-color: color-mix(in srgb, var(--danger-color) 70%, transparent); }
+.bg-danger-60 { background-color: color-mix(in srgb, var(--danger-color) 60%, transparent); }
+.bg-danger-50 { background-color: color-mix(in srgb, var(--danger-color) 50%, transparent); }
+.bg-danger-40 { background-color: color-mix(in srgb, var(--danger-color) 40%, transparent); }
+.bg-danger-30 { background-color: color-mix(in srgb, var(--danger-color) 30%, transparent); }
+.bg-danger-20 { background-color: color-mix(in srgb, var(--danger-color) 20%, transparent); }
+.bg-danger-10 { background-color: color-mix(in srgb, var(--danger-color) 10%, transparent); }
+.bg-danger-5 { background-color: color-mix(in srgb, var(--danger-color) 5%, transparent); }
+
+/* info Color Opacities */
+.bg-info { background-color: var(--info-color); }
+.bg-info-90 { background-color:  color-mix(in srgb, var(--info-color) 90%, transparent); }
+.bg-info-80 { background-color: color-mix(in srgb, var(--info-color) 80%, transparent); }
+.bg-info-70 { background-color: color-mix(in srgb, var(--info-color) 70%, transparent); }
+.bg-info-60 { background-color: color-mix(in srgb, var(--info-color) 60%, transparent); }
+.bg-info-50 { background-color: color-mix(in srgb, var(--info-color) 50%, transparent); }
+.bg-info-40 { background-color: color-mix(in srgb, var(--info-color) 40%, transparent); }
+.bg-info-30 { background-color: color-mix(in srgb, var(--info-color) 30%, transparent); }
+.bg-info-20 { background-color: color-mix(in srgb, var(--info-color) 20%, transparent); }
+.bg-info-10 { background-color: color-mix(in srgb, var(--info-color) 10%, transparent); }
+.bg-info-5 { background-color: color-mix(in srgb, var(--info-color) 5%, transparent); }
+
+/* Success Color Opacities */
+.bg-success { background-color: var(--success-color); }
+.bg-success-90 { background-color: color-mix(in srgb, var(--success-color) 90%, transparent); }
+.bg-success-80 { background-color: color-mix(in srgb, var(--success-color) 80%, transparent); }
+.bg-success-70 { background-color: color-mix(in srgb, var(--success-color) 70%, transparent); }
+.bg-success-60 { background-color: color-mix(in srgb, var(--success-color) 60%, transparent); }
+.bg-success-50 { background-color: color-mix(in srgb, var(--success-color) 50%, transparent); }
+.bg-success-40 { background-color: color-mix(in srgb, var(--success-color) 40%, transparent); }
+.bg-success-30 { background-color: color-mix(in srgb, var(--success-color) 30%, transparent); }
+.bg-success-20 { background-color: color-mix(in srgb, var(--success-color) 20%, transparent); }
+.bg-success-10 { background-color: color-mix(in srgb, var(--success-color) 10%, transparent); }
+.bg-success-5 { background-color: color-mix(in srgb, var(--success-color) 5%, transparent); }
+
+/* Text Color Opacities */
+.text-primary { color: var(--primary-color) !important; }
+.text-primary-90 { color: color-mix(in srgb, var(--primary-color) 90%, transparent); }
+.text-primary-80 { color: color-mix(in srgb, var(--primary-color) 80%, transparent); }
+.text-primary-70 { color: color-mix(in srgb, var(--primary-color) 70%, transparent); }
+.text-primary-60 { color: color-mix(in srgb, var(--primary-color) 60%, transparent); }
+.text-primary-50 { color: color-mix(in srgb, var(--primary-color) 50%, transparent); }
+.text-primary-40 { color: color-mix(in srgb, var(--primary-color) 40%, transparent); }
+.text-primary-30 { color: color-mix(in srgb, var(--primary-color) 30%, transparent); }
+.text-primary-20 { color: color-mix(in srgb, var(--primary-color) 20%, transparent); }
+.text-primary-10 { color: color-mix(in srgb, var(--primary-color) 10%, transparent); }
+.text-primary-5 { color: color-mix(in srgb, var(--primary-color) 5%, transparent); }
+
+.text-secondary { color: var(--secondary-color); }
+.text-secondary-90 { color: color-mix(in srgb, var(--secondary-color) 90%, transparent); }
+.text-secondary-80 { color: color-mix(in srgb, var(--secondary-color) 80%, transparent); }
+.text-secondary-70 { color: color-mix(in srgb, var(--secondary-color) 70%, transparent); }
+.text-secondary-60 { color: color-mix(in srgb, var(--secondary-color) 60%, transparent); }
+.text-secondary-50 { color: color-mix(in srgb, var(--secondary-color) 50%, transparent); }
+.text-secondary-40 { color: color-mix(in srgb, var(--secondary-color) 40%, transparent); }
+.text-secondary-30 { color: color-mix(in srgb, var(--secondary-color) 30%, transparent); }
+.text-secondary-20 { color: color-mix(in srgb, var(--secondary-color) 20%, transparent); }
+.text-secondary-10 { color: color-mix(in srgb, var(--secondary-color) 10%, transparent); }
+.text-secondary-5 { color: color-mix(in srgb, var(--secondary-color) 5%, transparent); }
+
+.text-danger { color: var(--danger-color); }
+.text-danger-90 { color: color-mix(in srgb, var(--danger-color) 90%, transparent); }
+.text-danger-80 { color: color-mix(in srgb, var(--danger-color) 80%, transparent); }
+.text-danger-70 { color: color-mix(in srgb, var(--danger-color) 70%, transparent); }
+.text-danger-60 { color: color-mix(in srgb, var(--danger-color) 60%, transparent); }
+.text-danger-50 { color: color-mix(in srgb, var(--danger-color) 50%, transparent); }
+.text-danger-40 { color: color-mix(in srgb, var(--danger-color) 40%, transparent); }
+.text-danger-30 { color: color-mix(in srgb, var(--danger-color) 30%, transparent); }
+.text-danger-20 { color: color-mix(in srgb, var(--danger-color) 20%, transparent); }
+.text-danger-10 { color: color-mix(in srgb, var(--danger-color) 10%, transparent); }
+.text-danger-5 { color: color-mix(in srgb, var(--danger-color) 5%, transparent); }
+
+.text-info { color: var(--info-color); }
+.text-info-90 { color: color-mix(in srgb, var(--info-color) 90%, transparent); }
+.text-info-80 { color: color-mix(in srgb, var(--info-color) 80%, transparent); }
+.text-info-70 { color: color-mix(in srgb, var(--info-color) 70%, transparent); }
+.text-info-60 { color: color-mix(in srgb, var(--info-color) 60%, transparent); }
+.text-info-50 { color: color-mix(in srgb, var(--info-color) 50%, transparent); }
+.text-info-40 { color: color-mix(in srgb, var(--info-color) 40%, transparent); }
+.text-info-30 { color: color-mix(in srgb, var(--info-color) 30%, transparent); }
+.text-info-20 { color: color-mix(in srgb, var(--info-color) 20%, transparent); }
+.text-info-10 { color: color-mix(in srgb, var(--info-color) 10%, transparent); }
+.text-info-5 { color: color-mix(in srgb, var(--info-color) 5%, transparent); }
+
+.text-success { color: var(--success-color); }
+.text-success-90 { color: color-mix(in srgb, var(--success-color) 90%, transparent); }
+.text-success-80 { color: color-mix(in srgb, var(--success-color) 80%, transparent); }
+.text-success-70 { color: color-mix(in srgb, var(--success-color) 70%, transparent); }
+.text-success-60 { color: color-mix(in srgb, var(--success-color) 60%, transparent); }
+.text-success-50 { color: color-mix(in srgb, var(--success-color) 50%, transparent); }
+.text-success-40 { color: color-mix(in srgb, var(--success-color) 40%, transparent); }
+.text-success-30 { color: color-mix(in srgb, var(--success-color) 30%, transparent); }
+.text-success-20 { color: color-mix(in srgb, var(--success-color) 20%, transparent); }
+.text-success-10 { color: color-mix(in srgb, var(--success-color) 10%, transparent); }
+.text-success-5 { color: color-mix(in srgb, var(--success-color) 5%, transparent); }
+
+.text-card { color: var(--card-color); }
+.text-card-90 { color: color-mix(in srgb, var(--card-color) 90%, transparent); }
+.text-card-80 { color: color-mix(in srgb, var(--card-color) 80%, transparent); }
+.text-card-70 { color: color-mix(in srgb, var(--card-color) 70%, transparent); }
+.text-card-60 { color: color-mix(in srgb, var(--card-color) 60%, transparent); }
+.text-card-50 { color: color-mix(in srgb, var(--card-color) 50%, transparent); }
+.text-card-40 { color: color-mix(in srgb, var(--card-color) 40%, transparent); }
+.text-card-30 { color: color-mix(in srgb, var(--card-color) 30%, transparent); }
+.text-card-20 { color: color-mix(in srgb, var(--card-color) 20%, transparent); }
+.text-card-10 { color: color-mix(in srgb, var(--card-color) 10%, transparent); }
+.text-card-5 { color: color-mix(in srgb, var(--card-color) 5%, transparent); }
+
+/* Solid Border Colors */
+.border-primary { border-color: var(--primary-color)!important; }
+.border-secondary { border-color: var(--secondary-color) !important; }
+.border-danger { border-color: var(--danger-color) !important; }
+.border-info { border-color: var(--info-color) !important; }
+.border-success { border-color: var(--success-color) !important; }
+.border-background { border-color: var(--background-color) !important; }
+.border-card { border-color: var(--card-color) !important; }
+.border-border { border-color: var(--border-color); }
+.border-text { border-color: var(--text-color) !important; }
+.border-text-light { border-color: var(--text-light-color) !important; }
+.border-disabled { border-color: var(--disabled) !important; }
+.border-white { border-color: white; }
+.border-black { border-color: black; }
+
+.border-primary-90 { border-color: color-mix(in srgb, var(--primary-color) 90%, transparent) !important; }
+.border-primary-80 { border-color: color-mix(in srgb, var(--primary-color) 80%, transparent) !important; }
+.border-primary-70 { border-color: color-mix(in srgb, var(--primary-color) 70%, transparent) !important; }
+.border-primary-60 { border-color: color-mix(in srgb, var(--primary-color) 60%, transparent) !important; }
+.border-primary-50 { border-color: color-mix(in srgb, var(--primary-color) 50%, transparent) !important; }
+.border-primary-40 { border-color: color-mix(in srgb, var(--primary-color) 40%, transparent) !important; }
+.border-primary-30 { border-color: color-mix(in srgb, var(--primary-color) 30%, transparent) !important; }
+.border-primary-20 { border-color: color-mix(in srgb, var(--primary-color) 20%, transparent) !important; }
+.border-primary-10 { border-color: color-mix(in srgb, var(--primary-color) 10%, transparent) !important; }
+.border-primary-5 { border-color: color-mix(in srgb, var(--primary-color) 5%, transparent) !important; }
+
+.border-secondary-90 { border-color: color-mix(in srgb, var(--secondary-color) 90%, transparent) !important; }
+.border-secondary-80 { border-color: color-mix(in srgb, var(--secondary-color) 80%, transparent) !important; }
+.border-secondary-70 { border-color: color-mix(in srgb, var(--secondary-color) 70%, transparent) !important; }
+.border-secondary-60 { border-color: color-mix(in srgb, var(--secondary-color) 60%, transparent) !important; }
+.border-secondary-50 { border-color: color-mix(in srgb, var(--secondary-color) 50%, transparent) !important; }
+.border-secondary-40 { border-color: color-mix(in srgb, var(--secondary-color) 40%, transparent) !important; }
+.border-secondary-30 { border-color: color-mix(in srgb, var(--secondary-color) 30%, transparent) !important; }
+.border-secondary-20 { border-color: color-mix(in srgb, var(--secondary-color) 20%, transparent) !important; }
+.border-secondary-10 { border-color: color-mix(in srgb, var(--secondary-color) 10%, transparent) !important; }
+.border-secondary-5 { border-color: color-mix(in srgb, var(--secondary-color) 5%, transparent) !important; }
+
+.border-danger-90 { border-color: color-mix(in srgb, var(--danger-color) 90%, transparent) !important; }
+.border-danger-80 { border-color: color-mix(in srgb, var(--danger-color) 80%, transparent) !important; }
+.border-danger-70 { border-color: color-mix(in srgb, var(--danger-color) 70%, transparent) !important; }
+.border-danger-60 { border-color: color-mix(in srgb, var(--danger-color) 60%, transparent) !important; }
+.border-danger-50 { border-color: color-mix(in srgb, var(--danger-color) 50%, transparent) !important; }
+.border-danger-40 { border-color: color-mix(in srgb, var(--danger-color) 40%, transparent) !important; }
+.border-danger-30 { border-color: color-mix(in srgb, var(--danger-color) 30%, transparent) !important; }
+.border-danger-20 { border-color: color-mix(in srgb, var(--danger-color) 20%, transparent) !important; }
+.border-danger-10 { border-color: color-mix(in srgb, var(--danger-color) 10%, transparent) !important; }
+.border-danger-5 { border-color: color-mix(in srgb, var(--secondary-color) 5%, transparent) !important; }
+
+.border-info-90 { border-color: color-mix(in srgb, var(--info-color) 90%, transparent) !important; }
+.border-info-80 { border-color: color-mix(in srgb, var(--info-color) 80%, transparent) !important; }
+.border-info-70 { border-color: color-mix(in srgb, var(--info-color) 70%, transparent) !important; }
+.border-info-60 { border-color: color-mix(in srgb, var(--info-color) 60%, transparent) !important; }
+.border-info-50 { border-color: color-mix(in srgb, var(--info-color) 50%, transparent) !important; }
+.border-info-40 { border-color: color-mix(in srgb, var(--info-color) 40%, transparent) !important; }
+.border-info-30 { border-color: color-mix(in srgb, var(--info-color) 30%, transparent) !important; }
+.border-info-20 { border-color: color-mix(in srgb, var(--info-color) 20%, transparent) !important; }
+.border-info-10 { border-color: color-mix(in srgb, var(--info-color) 10%, transparent) !important; }
+.border-info-5 { border-color: color-mix(in srgb, var(--info-color) 5%, transparent) !important; }
+
+.border-success-90 { border-color: color-mix(in srgb, var(--success-color) 90%, transparent) !important; }
+.border-success-80 { border-color: color-mix(in srgb, var(--success-color) 80%, transparent) !important; }
+.border-success-70 { border-color: color-mix(in srgb, var(--success-color) 70%, transparent) !important; }
+.border-success-60 { border-color: color-mix(in srgb, var(--success-color) 60%, transparent) !important; }
+.border-success-50 { border-color: color-mix(in srgb, var(--success-color) 50%, transparent) !important; }
+.border-success-40 { border-color: color-mix(in srgb, var(--success-color) 40%, transparent) !important; }
+.border-success-30 { border-color: color-mix(in srgb, var(--success-color) 30%, transparent) !important; }
+.border-success-20 { border-color: color-mix(in srgb, var(--success-color) 20%, transparent) !important; }
+.border-success-10 { border-color: color-mix(in srgb, var(--success-color) 10%, transparent) !important; }
+.border-success-5 { border-color: color-mix(in srgb, var(--success-color) 5%, transparent) !important; }

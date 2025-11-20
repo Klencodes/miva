@@ -1,0 +1,150 @@
+@import 'theme.css';
+@import 'animate.css';
+@import 'remixicon/fonts/remixicon.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+* {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+:root {
+  /* Colors */
+  --primary-color: #08872e;
+  --secondary-color: #000000;
+  --background-color: #f5f4f4;
+  --card-color: #ffffff;
+  --text-color: #1C1C1E;
+  --text-light-color: #6A6A6A;
+  --border-color: #d2e0ed;
+  --disabled-color: #e9ecef;
+  --danger-color: #FF453A;
+  --info-color: #e08e00;
+  --success-color: #34C759;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border radius */
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+[data-theme="dark"] {
+  --primary-color: #08872e;
+  --secondary-color: #121212;
+  --background-color: #0a0a0a;
+  --card-color: #171717;
+  --text-color: #EAEAEA;
+  --text-light-color: #A7A9AB;
+  --border-color: #404040;
+  --disabled-color: #343a40;
+  --danger-color: #FF453A;
+  --info-color: #e08e00;
+  --success-color: #34C759;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.border-color {
+  border-color: var(--border-color);
+}
+
+
+/* Layout */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.bg-background {
+  background-color: var(--background-color);
+}
+
+.bg-card {
+  background-color: var(--card-color);
+}
+
+.text-text {
+  color: var(--text-color);
+}
+
+.text-text-light {
+  color: var(--text-light-color);
+}
+
+.text-white {
+  color: white;
+}
+
+/* Borders and rounded */
+.rounded-xs {
+  border-radius: var(--radius-xs);
+}
+
+.rounded-sm {
+  border-radius: var(--radius-sm);
+}
+
+.rounded-md {
+  border-radius: var(--radius-md);
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}
+
+.border {
+  border: 1px solid var(--border-color);
+}
+
+.border-2 {
+  border: 2px solid var(--border-color);
+}
+
+.border-3 {
+  border: 3px solid var(--border-color);
+}
+
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--card-color);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+  box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Body state when modal is open */
+body.modal-open {
+  overflow: hidden;
+}
+
+.isolate-parts {
+  /* border-radius: 1rem;
+  margin: 0.5rem;
+  border: 1px solid var(--border-color); */
+}
