@@ -1,6 +1,6 @@
 export interface IResponse {
   results: any;
-  response: boolean;
+  success: boolean;
   message: string;
   next?: string | null;
   count?: number | null;

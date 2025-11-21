@@ -51,7 +51,7 @@ const TargetChart: FC<TargetChartProps> = ({ salesOverview, view }) => {
         {
           name: 'Orders',
           data: chartData.orders,
-          color: '#00AAFF',
+          color: '#34C759',
         },
       ],
       chart: {

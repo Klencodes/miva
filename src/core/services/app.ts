@@ -56,69 +56,22 @@ export class AppService {
 
 
   /**
-   * Create Station
+   * Get products
    */
-  async createStation(payload: any): Promise<any> {
-    try {
-      return await apiService.post<IResponse>(apiValues.ADD_STATION_ENDPOINT, payload);
-    } catch (error: any) {
-      throw new Error(handleError(error));
-    }
-  }
-
-  /**
-   * Update Station
-   */
-  async updateStation(payload: any): Promise<any> {
-    const url = `${apiValues.UPDATE_STATION_ENDPOINT}${payload.id}/`;
-    delete payload.id;
-    try {
-      return await apiService.put<IResponse>(url, payload);
-    } catch (error: any) {
-      throw new Error(handleError(error));
-    }
-  }
-
-/**
- * Get Stations
- */
-async getStations(page: number, search: string, status: string): Promise<any> {
+ async getProducts(payload: any): Promise<any> {
   try {
-   const params: Record<string, string> = {
-        page: page.toString(),
-      };
-      if (search) {
-        params.search = search;
-      }
-      if (status && status.toLowerCase() !== 'all') {
-        params.status = status;
-      }
-      const queryParams = new URLSearchParams(params).toString();
-    return await apiService.get<IResponse>(`${apiValues.STATIONS_ENDPOINT}?${queryParams}`);
-  } catch (error: any) {
-    throw new Error(handleError(error));
-  }
-}
-
-   /**
-   * Get Station By Id
-   */
-  async getStationById(stationId: string): Promise<any> {
-    try {
-    return await apiService.get<IResponse>(`${apiValues.BUSINESS_ENTITIES_ENDPOINT}${stationId}/`);
-    } catch (error: any) {
-      throw new Error(handleError(error));
+     const params: Record<string, string> = {
+      page: payload?.page.toString(),
+    };
+    if (payload?.search) {
+      params.search = payload?.search;
     }
-  }
-  /**
-   * Get Sessions
-   */
- async getSessions(page: number, search: string, status: string): Promise<any> {
-  try {
-    const queryParams = new URLSearchParams({
-      page: page.toString(), ...search ? { search } : {}, ...status ? { status } : {}
-    }).toString();
-    return await apiService.get<IResponse>(`${apiValues.SESSIONS_ENDPOINT}?${queryParams}`);
+    if (payload?.category && payload?.category.toLowerCase() !== 'all') {
+      params.category = payload?.category;
+    }
+   
+    const queryParams = new URLSearchParams(params).toString();
+    return await apiService.get<IResponse>(`${apiValues.GET_PRODUCTS_ENDPOINT}?${queryParams}`);
   } catch (error: any) {
     throw new Error(handleError(error));
   }

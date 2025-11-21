@@ -159,7 +159,7 @@ export const ToastDisplay: React.FC = () => {
     success: { backgroundColor: 'var(--bg-success, #66BB6A)' },
     error: { backgroundColor: 'var(--bg-danger, #FF453A)' },
     info: { backgroundColor: 'var(--bg-info, #e08e00)' },
-    default: { backgroundColor: 'var(--bg-primary, #08872e)' },
+    default: { backgroundColor: 'var(--bg-primary, #ff6b57)' },
   };
 
   // Group toasts by position to allow stacking in the correct corner/side

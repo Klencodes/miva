@@ -1,6 +1,6 @@
 export const enum Roles {
   SUPER_ADMIN = 'super_admin',
-  MERCHANT = 'merchant',
+  ADMIN = 'admin',
   CONSUMER = 'consumer',
 }
 

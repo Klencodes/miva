@@ -26,7 +26,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 
 const defaultThemes: AppThemes = {
   light: {
-    primary: '#08872e',
+    primary: '#ff6b57',
     secondary: '#6c757d',
     background: '#f8f9fa',
     card: '#ffffff',
@@ -39,7 +39,7 @@ const defaultThemes: AppThemes = {
     success: '#34C759',
   },
   dark: {
-    primary: '#08872e',
+    primary: '#ff6b57',
     secondary: '#6c757d',
     background: '#0a0a0a',
     card: '#171717',
