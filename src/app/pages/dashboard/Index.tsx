@@ -6,6 +6,8 @@ import TargetChart from "./TargetChart";
 import { usePageTitle } from "../../../core/hooks/usePageTitle";
 import { appService } from "../../../core/services/app";
 import { IOverviewData, IChartData, IDashboardData } from "../../../core/interfaces/IDashboard";
+import { eventService } from "../../../core/services/events";
+import { Button } from "../../../ui";
 
 
 const Dashboard: FC = () => {
@@ -24,15 +26,13 @@ const Dashboard: FC = () => {
     return "Good evening";
   }, []);
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
+   const fetchAnalytics = async () => {
       const payload = {
         view: sellingTab // daily, weekly, monthly
       };
       try {
         const res: any = await appService.getDashboardAnalytics(payload);
-        console.log(res, "RESULT GOTTEN>>>>>>>>");
-        
+          console.log(res.results, "RESULTS>>>>>>>>>>>>>>>")
         if (res.success && res.results) {
           setDashboardData(res.results);
         } else {
@@ -43,7 +43,8 @@ const Dashboard: FC = () => {
         setDashboardData(null);
       }
     };
-    
+
+  useEffect(() => { 
     fetchAnalytics();
   }, [sellingTab]);
 
@@ -72,10 +73,20 @@ const Dashboard: FC = () => {
     }
   }, [dashboardData, sellingTab]);
 
-  const handleTabChange = (tab: string) => {
+  const handleTabClick = (tab: string) => {
     setSellingTab(tab);
   };
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchAnalytics();
+    };
 
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, []);
   return (
     <div className="h-full">
       <div className="grid grid-cols-1 gap-6">
@@ -87,6 +98,40 @@ const Dashboard: FC = () => {
           <p className="text-sm text-text-light">Business overview</p>
         </div>
 
+        <div className="flex items-center justify-end w-full">
+          <ul className="flex items-center mb-0 gap-x-2">
+            <li>
+              <Button
+                type="button"
+                size="sm"
+                variant={sellingTab === 'daily' ? "primary" : "ghost"}
+                onClick={() => handleTabClick('daily')}
+              >
+                Today
+              </Button>
+            </li>
+            <li>
+              <Button
+                type="button"
+                size="sm"
+                variant={sellingTab === 'weekly' ? "primary" : "ghost"}
+                onClick={() => handleTabClick('weekly')}
+              >
+                Week
+              </Button>
+            </li>
+            <li>
+              <Button
+                type="button"
+                size="sm"
+                variant={sellingTab === 'monthly' ? "primary" : "ghost"}
+                onClick={() => handleTabClick('monthly')}
+              >
+                Month
+              </Button>
+            </li>
+          </ul>
+        </div>
         {/* Overview List */}
         <div className="w-full">
           {showContent && salesOverview ? (
@@ -127,7 +172,6 @@ const Dashboard: FC = () => {
               <SalesRevenue 
                 chartData={chartData} 
                 view={sellingTab} 
-                onTabChange={handleTabChange} 
               />
             ) : (
               <div className="bg-card rounded-sm p-8 pt-4 animate-pulse h-80">

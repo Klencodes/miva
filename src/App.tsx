@@ -7,7 +7,7 @@ import { Loader } from "./ui";
 import { toast, Toaster } from "sonner";
 
 function App() {
-  const appTitle = "EV3 Admin";
+  const appTitle = "GodDid Mart";
   const location = useLocation();
   const { initializeTheme } = useTheme();
   const { checkAuthStatus, initializationComplete } = useStore();

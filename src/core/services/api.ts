@@ -38,14 +38,7 @@ class ApiService {
 
   private noEntityContextEndpoints: string[] = [
     apiValues.BUSINESS_ENTITIES_ENDPOINT,
-    apiValues.CONNECTOR_TYPES_ENDPOINT,
-    apiValues.SUPER_ADMIN_DASHBOARD_ANALYTICS_ENDPOINT,
-    apiValues.PLATFORM_CONFIG_DATA_ENDPOINT,
-    apiValues.GET_PENDING_APPROVAL_ENTITIES_ENDPOINT,
-    apiValues.UPDATE_PENDING_ENTITY_STATUS_ENDPOINT,
-    apiValues.ADMIN_PAYOUTS_ENDPOINT,
-    apiValues.APPROVE_REQUEST_ENDPOINT,
-    apiValues.UPDATE_USER_STATE_ENDPOINT,
+    apiValues.GET_CUSTOMERS_ENDPOINT
   ];
 
 
@@ -75,7 +68,7 @@ class ApiService {
         }
         
         if (cleanToken) {
-          config.headers.Authorization = `Token ${cleanToken}`;
+          config.headers.Authorization = `Bearer ${cleanToken}`;
         }
 
         const shouldSkipEntityContext = this.noEntityContextEndpoints.some((endpoint: string) => config.url?.includes(endpoint));
@@ -89,12 +82,12 @@ class ApiService {
         } else {
           delete config.headers["X-Entity-Context"];
         }
-        // this._logRequest(
-        //     config.method ? config.method.toUpperCase() : 'UNKNOWN', 
-        //     config.url || 'UNKNOWN_URL', 
-        //     config.data, 
-        //     config.headers 
-        // );
+        this._logRequest(
+            config.method ? config.method.toUpperCase() : 'UNKNOWN', 
+            config.url || 'UNKNOWN_URL', 
+            config.data, 
+            config.headers 
+        );
 
         return config;
       },

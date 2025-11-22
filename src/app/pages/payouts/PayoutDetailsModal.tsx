@@ -61,7 +61,7 @@ export const PayoutDetailsModal: React.FC = () => {
         const payload = {
             payout_id: payout?.id
         }
-        const res = await appService.approveRequest(payload);
+        const res = await appService.addNewUser(payload);
 
         if (res.success) {
             show("Success", "Payout request approved successfully", "success");

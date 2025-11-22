@@ -117,7 +117,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
             value={selectedSort}
             onChange={handleSortChange}
             selectOptions={[
-              { label: 'Select sort...', value: '' },
+              // { label: 'Select sort...', value: '' },
               ...sortOptions
             ]}
           />
@@ -133,7 +133,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
             value={selectedFilter}
             onChange={handleFilterChange}
             selectOptions={[
-              { label: 'Select filter...', value: '' },
+              // { label: 'Select filter...', value: '' },
               ...filterOptions
             ]}
           />

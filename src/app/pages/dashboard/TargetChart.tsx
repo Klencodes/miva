@@ -29,12 +29,12 @@ const TargetChart: FC<TargetChartProps> = ({ salesOverview, view }) => {
 
   // Generate comparison chart data
   const chartData = useMemo(() => {
-    const { overview_data, overview_data_previous, period } = salesOverview;
+    const { overview_data, overview_data_previous, period, comparison } = salesOverview;
     
     return {
       categories: [period.previous_label, period.current_label],
-      sales: [overview_data_previous.total_sales, overview_data.total_sales],
-      orders: [overview_data_previous.total_orders, overview_data.total_orders],
+      sales: [overview_data_previous.total_sales, comparison.sales_change_value],
+      orders: [overview_data_previous.total_orders, comparison.orders_change_value],
     };
   }, [salesOverview]);
 
@@ -56,7 +56,7 @@ const TargetChart: FC<TargetChartProps> = ({ salesOverview, view }) => {
       ],
       chart: {
         height: 311,
-        type: 'bar',
+        type: 'line',
         parentHeightOffset: 0,
         toolbar: {
           show: false,

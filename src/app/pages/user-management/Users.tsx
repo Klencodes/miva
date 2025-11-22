@@ -196,7 +196,7 @@ const Users = () => {
 
   const handleStateToggle = async (item: IEntity) => {
     try {
-      const res = await appService.updateSystemUserState({
+      const res = await appService.addNewUser({
         user_id: item.user.id,
         is_active: !item.user.is_active,
       });

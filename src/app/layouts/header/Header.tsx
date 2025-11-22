@@ -422,7 +422,8 @@ const Header: React.FC<HeaderProps> = ({
                 role="listbox"
               >
                 {/* 1. Add Entity Button (Now at the Top) */}
-                <div className="px-1 py-1 w-full">
+                {user?.role === Roles.SUPER_ADMIN && (
+                  <div className="px-1 py-1 w-full">
                   <Button
                     size="sm"
                     fullWidth
@@ -432,6 +433,7 @@ const Header: React.FC<HeaderProps> = ({
                     {!isOnline ? "Offline - Cannot Add" : "Add Entity"}
                   </Button>
                 </div>
+                )}
 
                 {/* 2. Separator */}
                 <div className="h-px border-border border-b my-1"></div>

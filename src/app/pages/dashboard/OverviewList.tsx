@@ -46,7 +46,7 @@ const OverviewList: FC<OverviewListProps> = ({ salesOverview }) => {
       {
         id: 2,
         type: 'success',
-        icon: 'money',
+        icon: 'money-dollar-circle',
         label: 'Total Sales',
         total: overview_data.total_sales,
         statusRate: comparison.sales_change,
@@ -59,7 +59,7 @@ const OverviewList: FC<OverviewListProps> = ({ salesOverview }) => {
       {
         id: 3,
         type: 'info',
-        icon: 'box',
+        icon: 'box-3',
         label: 'Total Products',
         total: overview_data.total_products,
         statusRate: '0',
@@ -70,10 +70,10 @@ const OverviewList: FC<OverviewListProps> = ({ salesOverview }) => {
       {
         id: 4,
         type: 'danger',
-        icon: 'percentage',
+        icon: 'percent',
         label: 'Total Discount',
         total: overview_data.total_discount,
-        statusRate: `GHC ${overview_data.total_discount.toFixed(2)}`,
+        statusRate: `GHC ${overview_data.total_discount?.toFixed(2)}`,
         dataPeriod: `Discount ${period.current_label}`,
         statusColor: 'success',
         totalSales: 'true',
@@ -98,7 +98,7 @@ const OverviewList: FC<OverviewListProps> = ({ salesOverview }) => {
                 <span>
                   {overview.totalSales === 'true' && <span>GHC </span>}
                   {typeof overview.total === 'number' 
-                    ? overview.total.toFixed(2).toLocaleString()
+                    ? overview.total?.toFixed(2).toLocaleString()
                     : overview.total
                   }
                 </span>

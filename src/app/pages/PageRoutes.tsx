@@ -7,16 +7,20 @@ const SettingsRoutes = React.lazy(() => import('./settings/SettingsRoutes'));
 const PayoutRoutes = React.lazy(() => import('./payouts/PayoutRoutes'));
 const UserManagementRoutes = React.lazy(() => import('./user-management/UserManagementRoutes'));
 const StoreRoutes = React.lazy(() => import('./store/StoreRoutes'));
+const OrdersRoutes = React.lazy(() => import('./orders/OrdersRoutes'));
+const ProductsRoutes = React.lazy(() => import('./products/ProductsRoutes'));
 
 export const PagesRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Root path redirects to dashboard */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/store" replace />} />
       
       {/* Individual pages */}
       <Route path="/store" element={<StoreRoutes />} />
-      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/orders" element={<OrdersRoutes />} />
+      <Route path="/products" element={<ProductsRoutes />} />
+      <Route path="/reports" element={<Dashboard />} />
       
       {/* Modules with nested routes */}
       <Route path="/settings/*" element={<SettingsRoutes />} />
@@ -24,7 +28,7 @@ export const PagesRoutes: React.FC = () => {
       <Route path="/accounts/*" element={<UserManagementRoutes />} />
 
       {/* Catch all route for protected pages */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/store" replace />} />
     </Routes>
   );
 };

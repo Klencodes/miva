@@ -8,11 +8,9 @@ import { IChartData } from "../../../core/interfaces/IDashboard";
 interface SalesRevenueProps {
   chartData: IChartData;
   view: string;
-  onTabChange: (tab: string) => void;
 }
 
-const SalesRevenue: FC<SalesRevenueProps> = ({ chartData, view, onTabChange }) => {
-  const { user } = useStore();
+const SalesRevenue: FC<SalesRevenueProps> = ({ chartData, view }) => {
   const [sellingTab, setSellingTab] = useState(view);
   
   const [chartOptions, setChartOptions] = useState<ApexOptions>({
@@ -128,10 +126,6 @@ const SalesRevenue: FC<SalesRevenueProps> = ({ chartData, view, onTabChange }) =
     setChartOptions(options);
   }, [chartData, view]);
 
-  const handleTabClick = (tab: string) => {
-    setSellingTab(tab);
-    onTabChange(tab);
-  };
 
   if (!chartData.series || chartData.series.length === 0) {
     return (
@@ -154,40 +148,6 @@ const SalesRevenue: FC<SalesRevenueProps> = ({ chartData, view, onTabChange }) =
         <h1 className="mb-0 inline-flex items-center py-4 overflow-hidden whitespace-nowrap text-ellipsis text-lg font-semibold">
           Sales Revenue
         </h1>
-        <div className="py-4">
-          <ul className="flex items-center mb-0 gap-x-2">
-            <li>
-              <Button
-                type="button"
-                size="sm"
-                variant={sellingTab === 'daily' ? "primary" : "ghost"}
-                onClick={() => handleTabClick('daily')}
-              >
-                Today
-              </Button>
-            </li>
-            <li>
-              <Button
-                type="button"
-                size="sm"
-                variant={sellingTab === 'weekly' ? "primary" : "ghost"}
-                onClick={() => handleTabClick('weekly')}
-              >
-                Week
-              </Button>
-            </li>
-            <li>
-              <Button
-                type="button"
-                size="sm"
-                variant={sellingTab === 'monthly' ? "primary" : "ghost"}
-                onClick={() => handleTabClick('monthly')}
-              >
-                Month
-              </Button>
-            </li>
-          </ul>
-        </div>
       </div>
       <div className="p-6 pt-0">
         <div id="chartLine">
