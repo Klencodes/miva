@@ -2,10 +2,10 @@
 import { useModal } from "../../../core/hooks/useModal";
 import { Button } from "../../../ui";
 import { DateFormatEnums, dateUtils } from "../../../core/utils/date-format";
-import { IEntity } from "../../../core/interfaces/IEntity"
+import { IUser } from "../../../core/interfaces/IUser";
 export const StaffDetailsModal = () => {
   const { modalRef, modalData } = useModal();
-  const userData: IEntity = modalData;
+  const userData: IUser = modalData;
 
 
   const formatUserType = (userType: string) => {
@@ -21,7 +21,7 @@ export const StaffDetailsModal = () => {
   };
 
   return (
-    <div className="flex flex-col h-[80vh] w-full mx-auto p-3">
+    <div className="flex flex-col h-full w-full mx-auto px-2">
       {/* Header */}
       <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 bh-16 z-10">
         <div className="flex flex-col">
@@ -54,7 +54,7 @@ export const StaffDetailsModal = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-6">
+      <div className="flex-1 overflow-y-auto space-y-6 pb-4">
         {/* User Profile Section */}
         <div className="border border-border rounded-sm p-4">
           <div className="flex items-center mb-4">
@@ -64,15 +64,15 @@ export const StaffDetailsModal = () => {
           
           <div className="flex items-start gap-4 mb-4">
             <img 
-              src={userData.user.profile_picture || ''} 
-              alt={`${userData.user.first_name} ${userData.user.last_name}`}
+              src={userData?.image_url || ''} 
+              alt={`${userData.first_name} ${userData.last_name}`}
               className="w-16 h-16 rounded-full object-cover border border-border"
             />
             <div>
               <h4 className="font-bold text-lg text-text">
-                {userData.user.first_name} {userData.user.last_name}
+                {userData.first_name} {userData.last_name}
               </h4>
-              <p className="text-text-light">{userData.user.email}</p>
+              <p className="text-text-light">{userData.email}</p>
              
             </div>
           </div>
@@ -80,21 +80,21 @@ export const StaffDetailsModal = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-text-light mb-1">Phone Number</p>
-              <p className="font-medium text-text">{`${userData.user.phone_code || '+233'}${userData.user.phone_number}` || 'Not provided'}</p>
+              <p className="font-medium text-text">{`${'+233'}${userData.phone_number}` || 'Not provided'}</p>
             </div>
             <div>
               <p className="text-sm text-text-light mb-1">Gender</p>
               <p className="font-medium text-text capitalize">
-                {userData.user.gender || 'Not specified'}
+                {userData.gender || 'Not specified'}
               </p>
             </div>
             <div>
               <p className="text-sm text-text-light mb-1">Username</p>
-              <p className="font-medium text-text">{userData.user.username || 'Not set'}</p>
+              <p className="font-medium text-text">{userData?.username || 'Not set'}</p>
             </div>
             {/* <div>
               <p className="text-sm text-text-light mb-1">Referral Code</p>
-              <p className="font-medium text-text">{userData.user.referral_code || 'None'}</p>
+              <p className="font-medium text-text">{userData.referral_code || 'None'}</p>
             </div> */}
           </div>
         </div>
@@ -106,11 +106,11 @@ export const StaffDetailsModal = () => {
               <i className="ri-shield-check-line text-text-light mr-2"></i>
               <h3 className="font-semibold text-text">Account Status</h3>
             </div>
-            <p className={`text-lg font-bold ${getStatusColor(userData.user.is_active)}`}>
-              {userData.user.is_active ? 'Active' : 'Inactive'}
+            <p className={`text-lg font-bold ${getStatusColor(userData.deactivated)}`}>
+              {!userData.deactivated ? 'Active' : 'Inactive'}
             </p>
             <p className="text-sm text-text-light mt-1">
-              {userData.user.is_active ? 'Account is active and accessible' : 'Account is deactivated'}
+              {!userData.deactivated ? 'Account is active and accessible' : 'Account is deactivated'}
             </p>
           </div>
 
@@ -119,11 +119,11 @@ export const StaffDetailsModal = () => {
               <i className="ri-verified-badge-line text-text-light mr-2"></i>
               <h3 className="font-semibold text-text">Verification</h3>
             </div>
-            <p className={`text-lg font-bold ${getVerificationColor(userData.user.verified)}`}>
-              {userData.user.verified ? 'Verified' : 'Pending'}
+            <p className={`text-lg font-bold ${getVerificationColor(userData.verified)}`}>
+              {userData.verified ? 'Verified' : 'Pending'}
             </p>
             <p className="text-sm text-text-light mt-1">
-              {userData.user.verified ? 'Email verification completed' : 'Awaiting email verification'}
+              {userData.verified ? 'Email verification completed' : 'Awaiting email verification'}
             </p>
           </div>
         </div>
@@ -143,7 +143,7 @@ export const StaffDetailsModal = () => {
            
             <div>
               <p className="text-sm text-text-light mb-1">User Since</p>
-              <p className="font-medium text-text">{dateUtils.formatDate(userData.user.signup_date, DateFormatEnums.DATE_TIME_SHORT)}</p>
+              <p className="font-medium text-text">{dateUtils.formatDate(userData.last_login, DateFormatEnums.DATE_TIME_SHORT)}</p>
             </div>
           </div>
         </div>
@@ -152,7 +152,7 @@ export const StaffDetailsModal = () => {
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end items-center pt-4 h-14 border-t border-border mt-auto">
+      <div className="flex justify-end items-center pt-4 h-14 border-t border-border mt-auto sticky bottom-0 z-10 bg-card">
         <Button
           onClick={() => modalRef!.dismiss()}
           variant="ghost"

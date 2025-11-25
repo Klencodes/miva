@@ -4,8 +4,6 @@ import { appService } from "../../../core/services/app";
 import { CustomAction, TableColumn } from "../../../core/interfaces/table";
 import { useDebounce } from "../../../core/hooks/useDebounce";
 import { eventService } from "../../../core/services/events";
-import { useToast } from "../../../core/hooks/useToast";
-import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import { Breadcrumb, DataTable } from "../../../ui";
 import {
   IBreadcrumbItem,
@@ -14,8 +12,11 @@ import {
 import { convertToCSV, downloadCSV } from "../../../core/utils/fileFormators";
 import { useModal } from "../../../core/hooks/useModal";
 import { IProduct } from "../../../core/interfaces/IProduct";
-// import { ProductDetailsModal } from "./ProductDetails"; // Placeholder for future use
-// import { ProductFormModal } from "./ProductForm"; // Placeholder for future use
+import { toast } from "sonner";
+import AddProductModal from "./AddProductModal";
+import { SelectOption } from "../../../core/interfaces/ISelectOption";
+import UpdateStockModal from "./UpdateStockModal";
+import UpdateAvailabilityModal from "./UpdateAvailabilityModal";
 
 export default function ProductsList() {
   // 1. STATE ADJUSTMENTS: Use IProduct interface
@@ -28,7 +29,8 @@ export default function ProductsList() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
-  const { show } = useToast();
+  const [productExtraData, setProductExtraData] = useState<any>();
+  const [categories, setCategories] = useState<SelectOption[]>([]);
 
   // 2. PAGE TITLE: Update title
   usePageTitle("Inventory Products");
@@ -39,22 +41,13 @@ export default function ProductsList() {
     { label: "Products", url: "/products", isActive: true },
   ];
 
-  // 4. FILTER OPTIONS: Change to category filter (hardcoded options for now)
-  // NOTE: In a real app, you would fetch categories from the API.
-  const categoryOptions: SelectOption[] = [
-    { value: "all", label: "All Categories" },
-    { value: "Stationery", label: "Stationery" },
-    { value: "Groceries", label: "Groceries" },
-    { value: "Hygiene", label: "Hygiene" },
-    { value: "Beverages", label: "Beverages" },
-    { value: "Electronics", label: "Electronics" },
-  ];
+
 
   // 5. COLUMNS: Define columns for Products data
   const columns: TableColumn[] = [
     {
       header: "Product Name",
-      value: (item: IProduct) => item.name,
+      value: (item: IProduct) => item.short_name,
       type: "column",
       bold: true,
     },
@@ -64,13 +57,10 @@ export default function ProductsList() {
       type: "column",
     },
     {
-      header: "Unit Price (GHS)",
+      header: "Unit Price",
       // Assuming a currency (e.g., GHS) for display
       value: (item: IProduct) =>
-        `${item.price.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`,
+        `GHS${parseFloat(item.price.toString()).toFixed(2)}`,
       type: "column",
     },
     {
@@ -88,7 +78,7 @@ export default function ProductsList() {
       statusClasses: (item: IProduct) => {
         return item.is_available
           ? "bg-success-10 text-success"
-          : "bg-error-10 text-error";
+          : "bg-danger-10 text-danger";
       },
     },
     {
@@ -101,7 +91,7 @@ export default function ProductsList() {
       header: "Last Updated",
       value: (item: IProduct) => item.updated_at,
       type: "date",
-      format: "short_date_time", // Placeholder format
+      format: "short_date_time", 
     },
   ];
 
@@ -110,7 +100,7 @@ export default function ProductsList() {
     {
       label: "Add Product",
       action: () => handleAddProduct(),
-      icon: "add-circle-line",
+      icon: "add",
       size: "sm",
       variant: "primary",
     },
@@ -131,6 +121,18 @@ export default function ProductsList() {
       handler: () => handleEditProduct(item),
       icon: "edit-line",
       classes: "",
+    },
+    {
+        title: "Update Stock", 
+        handler: () => handleUpdateStock(item),
+        icon: "truck-line",
+        classes: "",
+    },
+    {
+        title: item.is_available ? "Mark Unavailable" : "Mark Available", 
+        handler: () => handleUpdateAvailability(item),
+        icon: item.is_available ? "forbid-line" : "check-double-line",
+        classes: item.is_available ? "text-warning" : "text-success",
     },
     {
       title: "View Details",
@@ -180,6 +182,21 @@ export default function ProductsList() {
     []
   );
 
+  useEffect(()=> {
+    const getProductExttraData = async () => {
+      try {
+        const res = await appService.getProductExtraInfo();
+        if (res.success) {
+          setProductExtraData(res.results);
+          setCategories([{ label: "All", value: "all" }, ...res.results?.categories?.map((category: any)=> category)]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch product categories:", error);
+      }
+    };
+    getProductExttraData();
+  }, [])
+
   // 9. EFFECT HOOKS: Adjust dependencies for category filter
   useEffect(() => {
     setCurrentPage(1);
@@ -224,26 +241,13 @@ export default function ProductsList() {
     setSelectedCategory(filterValue);
   };
 
-  const handleAddProduct = () => {
-    // openModal(ProductFormModal, { data: { title: "Add New Product" } });
-    console.log("Open Add Product Modal");
-    show("Coming Soon", "Add Product functionality is coming soon.", "info");
-  };
-
-  const handleEditProduct = (item: IProduct) => {
-    // openModal(ProductFormModal, { data: { title: "Edit Product", product: item } });
-    console.log("Open Edit Product Modal for:", item.name);
-    show("Coming Soon", `Edit ${item.name} functionality is coming soon.`, "info");
-  };
-
   const onViewDetails = (item: IProduct) => {
     // openModal(ProductDetailsModal, {
     //   data: { title: "Product Details", product: item },
-    //   size: "lg",
+    //   size: "3xl",
     //   side: "right",
     // });
     console.log("Open Product Details Modal for:", item.name);
-    show("Coming Soon", `View Details for ${item.name} is coming soon.`, "info");
   };
 
   // 11. EXPORT LOGIC: Update export logic for Products
@@ -298,26 +302,80 @@ export default function ProductsList() {
 
         await downloadCSV(csvContent, filename);
 
-        show(
+        toast.success(
           "Export Successful",
-          `${exportData.length} product records exported successfully.`,
-          "success"
+          {description: `${exportData.length} product records exported successfully.`,}
         );
       } else {
-        show("No Data", "No product records found to export.", "info");
+        toast.error("No Data", {description: "No product records found to export.", });
       }
     } catch (error) {
       console.error("Error exporting products:", error);
-      show(
+      toast.error(
         "Export Error",
-        "Failed to export products. Please try again.",
-        "error"
+        {description: "Failed to export products. Please try again.",}
       );
     } finally {
       setExportLoading(false);
     }
   };
 
+  const handleAddProduct = async () => {
+  const result = await openModal(AddProductModal, {
+    data: {product: null, productExtraData}, 
+    size: "3xl",
+    side: "right",
+    backdropClose: false,
+  });
+  if (result?.success && result?.product) {
+    if (products) {
+      products.push(result.product);
+      setProducts([...products]);
+    }
+  }
+};
+
+const handleEditProduct = async (product: IProduct) => {
+  const result = await openModal(AddProductModal, {
+    data: {product: product, productExtraData}, 
+    size: "3xl",
+    side: "right",
+    backdropClose: false,
+  });
+  if(result?.success && result?.product){
+    if(products)
+      setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+  }
+};
+
+const handleUpdateStock = async (product: IProduct) => {
+    const result = await openModal(UpdateStockModal, {
+        data: { product },
+        size: "md",
+        side: "right",
+        backdropClose: false,
+    });
+    if (result?.success && result?.product) {
+      if(products)
+        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+    }
+
+  };
+
+
+  const handleUpdateAvailability = async (product: IProduct) => {
+    const result = await openModal(UpdateAvailabilityModal, {
+        data: { product },
+        size: "md",
+        side: "right",
+        backdropClose: false,
+    });
+    if (result?.success && result?.product) {
+        if(products)
+        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+      }
+    
+  };
   // 12. RENDER: Use updated props for DataTable
   return (
     <div className="flex flex-col h-full">
@@ -335,7 +393,7 @@ export default function ProductsList() {
             data={products}
             loading={loading}
             onSearch={handleSearch}
-            filterOptions={categoryOptions} // Use category filter options
+            filterOptions={categories} 
             onFilter={handleFilter}
             page={currentPage}
             limit={10}

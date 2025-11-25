@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { Button, Input } from "../../../ui";
-import { useToast } from "../../../core/hooks/useToast";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authService } from "../../../core/services/auth";
 import { usePageTitle } from "../../../core/hooks/usePageTitle";
@@ -9,13 +8,13 @@ import { appService } from "../../../core/services/app";
 import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../core/enums/roles";
 import { IUser } from "../../../core/interfaces/IUser";
 import { IEntityItem, IEntity } from "../../../core/interfaces/IEntity";
+import { toast } from "sonner";
 
 const CODE_LENGTH = 4;
 
 const Verify = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { show } = useToast();
   const { setStoreEntities } = useStore();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,10 +30,10 @@ const Verify = () => {
     if (state?.email) {
       setCurrentEmail(state.email);
     } else {
-      show("Session Expired", "Please register or log in again.", "info");
+      toast.error("Session Expired", {description: "Please register or log in again."});
       navigate("/account/register", { replace: true });
     }
-  }, [location.state, navigate, show]);
+  }, [location.state, navigate]);
 
   const validateCode = useCallback((value: string) => {
     if (!value) return "Verification Code is required.";
@@ -128,12 +127,11 @@ const Verify = () => {
     const validationError = validateCode(code);
     if (validationError) {
       setError(validationError);
-      show("Validation Error", "Please enter a valid verification code.", "info");
-      return;
-    }
+      toast.error("Validation Error", {description: "Please enter a valid verification code."});
+      return   }
 
     if (!currentEmail) {
-      show("Error", "Email not found. Please try again.", "error");
+      toast.error("Error", {description: "Email not found. Please try again."});
       return;
     }
 
@@ -150,7 +148,7 @@ const Verify = () => {
         throw new Error(response.message || "Verification failed.");
       }
 
-      show("Success", response.message || "Email verified successfully!", "success");
+      toast.success("Success", {description: response.message || "Email verified successfully!"});
 
       if (response.results?.user) {
         setStoredItem(USER_KEY, response.results.user);
@@ -160,7 +158,7 @@ const Verify = () => {
       
     } catch (err: any) {
       const errorMessage = err.message || "Verification failed. The code might be incorrect or expired.";
-      show("Error", errorMessage, "error");
+      toast.error("Error", {description: errorMessage});
       setCode("");
     } finally {
       setLoading(false);
@@ -175,13 +173,13 @@ const Verify = () => {
       const response = await authService.resendOTP({ email: currentEmail });
       
       if (response.success) {
-        show("Success", response.message || "Verification code resent to your email.", "success");
+        toast.success("Success", {description: response.message || "Verification code resent to your email."});
       } else {
         throw new Error(response.message || "Failed to resend code.");
       }
     } catch (err: any) {
       const errorMessage = err.message || "Failed to resend code. Please try again later.";
-      show("Error", errorMessage, "error");
+      toast.error("Error", {description: errorMessage});
     } finally {
       setResendLoading(false);
     }

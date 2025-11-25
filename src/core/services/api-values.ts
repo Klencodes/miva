@@ -1,19 +1,25 @@
 export const apiValues = {
   get GET_APP_THEMES_ENDPOINT() { return 'utilities/app-themes/' },
   get GET_COUNTRIES_ENDPOINT() { return 'utilities/countries/' },
-  get UPLOAD_ASSETS_ENDPOINT() { return 'utilities/asset-upload/' },
+  get UPLOAD_ASSETS_ENDPOINT() { return 'uploads/single/' },
   get SIGNIN_ENDPOINT() { return 'users/login' },
 
   get BUSINESS_ENTITIES_ENDPOINT() { return 'entities/' },
+  get ASSIGN_USER_ENTITY_ENDPOINT() { return 'entities/assign-user-to-entity/' },
   get CREATE_BUSINESS_ENTITY_ENDPOINT() { return 'entities/' },
   get DASHBOARD_ANALYTICS_ENDPOINT() { return 'analytics/business-dashboard/' },
-  get GET_PRODUCTS_ENDPOINT() { return 'products/' },
+  get PRODUCTS_ENDPOINT() { return 'products/' },
+  get UPDATE_PRODUCT_AVAILABILITY_ENDPOINT() { return 'products/update-availability/' },
+  get UPDATE_PRODUCT_STOCK_ENDPOINT() { return 'products/update-stock/' },
+  get GET_PRODUCT_EXTRA_INFO_ENDPOINT() { return 'products/extra-product-data/' },
   get GET_ORDERS_ENDPOINT() { return 'orders/' },
   get CREATE_ORDER_ENDPOINT() { return 'orders/create/' },
   get GET_CUSTOMERS_ENDPOINT() { return 'users/customers/' },
   get ADD_CUSTOMERS_ENDPOINT() { return 'users/customers/add/' },
   get GET_CURRENT_USER_ENDPOINT() { return 'profile/' },
-  get GET_USERS_ENDPOINT() { return 'users/' },
+  get USERS_ENDPOINT() { return 'users/' },
+  get ADD_USER_ENDPOINT() { return 'users/add/' },
+
 
 
 

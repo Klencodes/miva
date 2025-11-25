@@ -1,4 +1,4 @@
-import { IResponse } from "../interfaces/IResponse";
+import { IResponse, UploadResult } from "../interfaces/IResponse";
 import { apiService } from "./api";
 import { apiValues } from "./api-values";
 import { handleError } from "./error-handler";
@@ -13,7 +13,7 @@ export class AppService {
 
   async uploadAsset(formData: FormData): Promise<any> {
     try {
-      return await apiService.postFormData<IResponse>(apiValues.UPLOAD_ASSETS_ENDPOINT, formData);
+      return await apiService.postFormData<IResponse & { results: UploadResult }>(apiValues.UPLOAD_ASSETS_ENDPOINT, formData);
     } catch (error: any) {
       throw new Error(handleError(error));
     }
@@ -78,6 +78,41 @@ export class AppService {
     }
   }
 
+  /**
+   * Create product
+   */
+  async createProduct(payload: any): Promise<any> {
+    try {
+      return await apiService.post<IResponse>(apiValues.PRODUCTS_ENDPOINT, payload);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+  /**
+   * Assign user entity 
+   */
+  async assignUserToEntity(payload: any): Promise<any> {
+    try {
+      return await apiService.post<IResponse>(apiValues.ASSIGN_USER_ENTITY_ENDPOINT, payload);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+
+
+  /**
+   * Update product
+   */
+  async updateProduct(payload: any): Promise<any> {
+    const url = `${apiValues.PRODUCTS_ENDPOINT}${payload.id}/`;
+    delete payload.id;
+    try {
+      return await apiService.put<IResponse>(url, payload);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+
 
   /**
    * Get products
@@ -95,7 +130,7 @@ export class AppService {
     }
    
     const queryParams = new URLSearchParams(params).toString();
-    return await apiService.get<IResponse>(`${apiValues.GET_PRODUCTS_ENDPOINT}?${queryParams}`);
+    return await apiService.get<IResponse>(`${apiValues.PRODUCTS_ENDPOINT}?${queryParams}`);
   } catch (error: any) {
     throw new Error(handleError(error));
   }
@@ -146,7 +181,28 @@ export class AppService {
     }
   }
 
+/**
+ * Update product availability
+ */
 
+  async updateProductAvailability(payload: any): Promise<any> {
+    try {
+      return await apiService.patch<IResponse>(apiValues.UPDATE_PRODUCT_AVAILABILITY_ENDPOINT, payload);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+/**
+ * Update product stock level
+ */
+
+  async updateProductStock(payload: any): Promise<any> {
+    try {
+      return await apiService.patch<IResponse>(apiValues.UPDATE_PRODUCT_STOCK_ENDPOINT, payload);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
 /**
  * Create new order
  */
@@ -159,46 +215,18 @@ export class AppService {
     }
   }
 
-  
+  /**
+ * Get Product Categories
+ */
+  async getProductExtraInfo(): Promise<any> {
+    try {
+          return await apiService.get<IResponse>(`${apiValues.GET_PRODUCT_EXTRA_INFO_ENDPOINT}`);
 
+    } catch (error) {
+          throw new Error(handleError(error));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    }
+  }
 
   /**
    * Get Sessions
@@ -212,7 +240,7 @@ export class AppService {
       params.search = search;
     }
     const queryParams = new URLSearchParams(params).toString();
-    return await apiService.get<IResponse>(`${apiValues.GET_USERS_ENDPOINT}?${queryParams}`);
+    return await apiService.get<IResponse>(`${apiValues.USERS_ENDPOINT}?${queryParams}`);
   } catch (error: any) {
     throw new Error(handleError(error));
   }
@@ -224,7 +252,7 @@ export class AppService {
  */
   async addNewUser(payload: any): Promise<any> {
     try {
-      return await apiService.post<IResponse>(apiValues.GET_USERS_ENDPOINT, payload);
+      return await apiService.post<IResponse>(apiValues.ADD_USER_ENDPOINT, payload);
     } catch (error: any) {
       throw new Error(handleError(error));
     }
@@ -236,7 +264,7 @@ export class AppService {
  * @returns 
  */
   async updateUser(payload: any): Promise<any> {
-    const url = `${apiValues.GET_USERS_ENDPOINT}${payload.id}/`;
+    const url = `${apiValues.USERS_ENDPOINT}${payload.id}/`;
     delete payload.id;
     try {
       return await apiService.put<IResponse>(url, payload);
@@ -244,6 +272,45 @@ export class AppService {
       throw new Error(handleError(error));
     }
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**
  * Update user role

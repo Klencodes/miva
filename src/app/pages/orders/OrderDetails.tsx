@@ -2,9 +2,6 @@ import React from "react";
 import { Button } from "../../../ui";
 import { useModal } from "../../../core/hooks/useModal";
 import { DateFormatEnums, dateUtils } from "../../../core/utils/date-format";
-import { appService } from "../../../core/services/app";
-import { useToast } from "../../../core/hooks/useToast";
-import { useStore } from "../../../core/hooks/useStore";
 
 // Import the Order interfaces defined earlier
 import { IOrder, IOrderItem } from "../../../core/interfaces/IOrder"; 
@@ -59,7 +56,7 @@ export const OrderDetailsModal: React.FC = () => {
   };
   
   // Calculate total quantity of items
-  const totalItemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  // const totalItemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="p-4 max-h-[90vh] overflow-y-auto">
@@ -111,8 +108,8 @@ export const OrderDetailsModal: React.FC = () => {
               />
               <DetailRow label="Customer Name" value={order.customer} />
               <DetailRow label="Cashier ID" value={order.cashier} />
-              <DetailRow label="Location/Entity ID" value={order.entity_id} />
-              <DetailRow label="Total Items" value={totalItemsCount} />
+              {/* <DetailRow label="Location/Entity ID" value={order.entity_id} />
+              <DetailRow label="Total Items" value={totalItemsCount} /> */}
             </div>
           </div>
 

@@ -27,13 +27,6 @@ export const NAVBAR_CONFIG: NavItem[] = [
     roles: [Roles.SUPER_ADMIN, Roles.ADMIN],
   },
   {
-    id: "customers",
-    title: "System Customers",
-    icon: "user-3-line",
-    link: "/system-customers",
-    roles: [Roles.SUPER_ADMIN, Roles.ADMIN],
-  },
-  {
     id: "reports",
     title: "Reports",
     icon: "dashboard-line",

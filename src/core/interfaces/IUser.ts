@@ -1,27 +1,32 @@
-import {  IEntityItem } from "./IEntity";
+export type UserRole = "super_admin" | "admin" | "user";
+export type UserGender = "male" | "female" | "other";
 
 export interface IUser {
   auth_token?: string;
-  email: string;
-  first_name: string;
-  gender: string;
   id: string;
-  is_active: boolean;
-  last_name: string;
-  login_attempts: number;
-  phone_number: string;
-  phone_code?: string;
-  profile_picture: null | string;
-  signup_date: string;
-  username: string;
+  email: string;
+  password?: string;
+  username?: string;
+  role: UserRole;
+  gender: UserGender;
+  dob?: Date;
+  emergency_contact_number?: string;
+  emergency_contact_name?: string;
+  relation_with_emergency_contact_number?: string;
+  phone_number?: string;
   verified: boolean;
-  referral_code: string;
-  role: string,
-  
+  image_url?: string;
+  image_alt?: string;
+  name: string;
+  first_name: string;
+  last_name: string;
+  deactivated: boolean;
+  last_login?: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface LoginFormState {
   email: string;
   password: string;
 }
-

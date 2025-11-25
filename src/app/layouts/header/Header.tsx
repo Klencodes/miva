@@ -9,12 +9,13 @@ import {
 import { LayoutMode } from "../types/layout";
 import { useLayout } from "../../../core/hooks/useLayout";
 import { appService } from "../../../core/services/app";
-import { IEntity, IEntityItem } from "../../../core/interfaces/IEntity";
+import { IEntityItem } from "../../../core/interfaces/IEntity";
 import { useModal } from "../../../core/hooks/useModal";
 import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../core/enums/roles";
 import { eventService } from "../../../core/services/events";
 import { Button } from "../../../ui";
 import AddEntityModal from "./AddEntityModal";
+import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
 
 interface HeaderProps {
   isVerticalLayout: boolean;
@@ -35,39 +36,31 @@ const Header: React.FC<HeaderProps> = ({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showEntityDropdown, setShowEntityDropdown] = useState(false);
   const [isEntityLoading, setIsEntityLoading] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const { user, entity, setEntity, storeEntities, setStoreEntities } =
-    useStore();
+  const { user, entity, setEntity, storeEntities, setStoreEntities } = useStore();
   const { layoutMode } = useLayout();
   const navigate = useNavigate();
   const { openModal } = useModal();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const entityDropdownRef = useRef<HTMLDivElement>(null);
   const userData = user || getStoredItem(USER_KEY, null);
+  const isOnline = useNetworkStatus();
 
-  // Track if we've already fetched entities to prevent duplicate calls
   const hasFetchedEntities = useRef(false);
-
-  // Online/offline detection
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
+  
+  // Get locally stored entity for immediate display when offline/before fetch
+  const storedEntity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
 
   // --- Entity Fetching/State Management Logic ---
   const fetchEntities = useCallback(
     async (isManualRefetch = false) => {
-      // Prevent API calls when offline
+      // 🛑 SHORT CIRCUIT: Prevent API calls when offline
       if (!isOnline) {
         setIsEntityLoading(false);
+        // Ensure storeEntities is not null if we have a stored entity, 
+        // preventing UI components from treating storeEntities as empty array
+        if (storedEntity && !storeEntities) {
+            setStoreEntities([storedEntity]); 
+        }
         return;
       }
 
@@ -87,7 +80,6 @@ const Header: React.FC<HeaderProps> = ({
       // If manual refresh, clear store temporarily
       if (isManualRefetch) {
         setStoreEntities(null);
-        // Note: We don't reset hasFetchedEntities here because we are effectively fetching now
       }
 
       try {
@@ -109,12 +101,8 @@ const Header: React.FC<HeaderProps> = ({
 
             setStoreEntities(entitiesToSet);
 
-            // Use functional update to remove 'entity' from dependency array
+            // Set current entity if not already set (will prioritize storedEntity from local storage)
             if (!entity) {
-              const storedEntity = getStoredItem<IEntityItem | null>(
-                ENTITY_KEY,
-                null
-              );
               setEntity(storedEntity || entitiesToSet[0]);
             }
           }
@@ -122,8 +110,11 @@ const Header: React.FC<HeaderProps> = ({
           setStoreEntities([]);
         }
       } catch (error) {
-        // If it failed, allow it to try again next time
-        hasFetchedEntities.current = false;
+        // If fetch failed due to a network issue, allow it to try again next time
+        // by NOT setting hasFetchedEntities.current = true if it wasn't a manual fetch.
+        if (!isManualRefetch) {
+            hasFetchedEntities.current = false;
+        }
 
         if (
           error instanceof TypeError &&
@@ -137,15 +128,21 @@ const Header: React.FC<HeaderProps> = ({
         setIsEntityLoading(false);
       }
     },
-    [isOnline, userData?.role, navigate, setEntity, setStoreEntities]
+    [isOnline, userData?.role, entity, setEntity, setStoreEntities, storedEntity, isEntityLoading, storeEntities]
   );
 
   // Fetch entities only once on mount and when coming back online
   useEffect(() => {
+    // 1. Set/restore the current entity immediately from local storage on mount
+    if (!entity && storedEntity) {
+        setEntity(storedEntity);
+    }
+
+    // 2. Fetch entities only if online and we haven't fetched yet
     if (isOnline && !hasFetchedEntities.current) {
       fetchEntities();
     }
-  }, [fetchEntities, isOnline]);
+  }, [fetchEntities, isOnline, entity, storedEntity, setEntity]);
 
   // Handlers for refresh
   const handleRefreshEntities = (e?: React.MouseEvent) => {
@@ -288,13 +285,18 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   const isCondensed = currentSidebarState === "condensed";
-  const displayEntityName = isEntityLoading
-    ? "Loading Entities..."
-    : !isOnline
-    ? "Offline - No Connection"
-    : entity
-    ? entity.name
-    : "Select Entity";
+  
+  // 🔥 REVISED LOGIC: Prioritize local entity name if offline
+  const displayEntityName = isOnline
+    ? isEntityLoading
+      ? "Loading Entities..."
+      : entity
+      ? entity.name
+      : "Select Entity"
+    : storedEntity // If offline, always use storedEntity for display
+    ? storedEntity.name
+    : "Offline - No Entity Loaded";
+
 
   return (
     <div className="flex items-center justify-between h-16 px-6 bg-card z-[1000] relative border-b border-border isolate-parts">
@@ -381,7 +383,9 @@ const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Entity Dropdown/Modal Button */}
-        {(storeEntities !== null || isEntityLoading) && (
+        {/* We allow display if storeEntities is not null (online data or restored offline data) 
+            OR if we are currently loading. */}
+        {(storeEntities !== null || isEntityLoading || storedEntity) && ( 
           <div ref={entityDropdownRef} className="relative">
             <button
               className="
@@ -397,7 +401,8 @@ const Header: React.FC<HeaderProps> = ({
               }
               aria-haspopup={"listbox"}
               aria-label="Select entity"
-              disabled={(isEntityLoading) || !isOnline}
+              // Disable dropdown if loading OR if offline and there's no selected entity
+              disabled={isEntityLoading || (!isOnline && !entity)} 
             >
               {displayEntityName}
 

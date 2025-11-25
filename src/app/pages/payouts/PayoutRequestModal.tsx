@@ -4,8 +4,8 @@ import { useModal } from "../../../core/hooks/useModal";
 import { appService } from "../../../core/services/app";
 
 import { removeUnderscoresAndCapitalize } from "../../../core/utils/remove-underscore";
-import { useToast } from "../../../core/hooks/useToast";
 import { IPayoutAccount } from "../../../core/interfaces/IPayout";
+import { toast } from "sonner";
 
 export interface RequestPayoutFormData {
   amount: string;
@@ -52,7 +52,6 @@ const ACCOUNT_TYPES = [
 
 const RequestPayoutModal: React.FC = () => {
   const { modalRef, modalData } = useModal();
-  const { show } = useToast();
 
   // State for existing accounts and form data
   const [existingAccounts, setExistingAccounts] = useState<IPayoutAccount[]>(
@@ -263,11 +262,11 @@ const RequestPayoutModal: React.FC = () => {
 
       const res = await appService.requestPayout(requestData);
       if (res && res.results) {
-        show("Success", "Payout request submitted successfully", "success");
+        toast.success("Success", {description: "Payout request submitted successfully"});
         modalRef?.close({ success: true, data: res.results });
       }
     } catch (error) {
-      show("Error", "Failed to request payout, try again later.", "error");
+      toast.error("Error", {description: "Failed to request payout, try again later."});
     } finally {
       setIsSubmitting(false);
     }

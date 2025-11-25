@@ -13,10 +13,10 @@ import { IPayout, IPayoutWallet } from "../../../core/interfaces/IPayout";
 import { useStore } from "../../../core/hooks/useStore";
 import { Roles } from "../../../core/enums/roles";
 import { convertToCSV, downloadCSV, onDownloadReceipt } from "../../../core/utils/fileFormators";
-import { useToast } from "../../../core/hooks/useToast";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import { Breadcrumb, Button, DataTable } from "../../../ui";
 import { IBreadcrumbItem, IBreadcrumbAction } from "../../../ui/components/Breadcrumb";
+import { toast } from "sonner";
 
 
 
@@ -33,7 +33,6 @@ export default function PayoutsList() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
   const { user, entity } = useStore();
-  const { show } = useToast();
   
   usePageTitle("Payouts");
 
@@ -292,17 +291,16 @@ const actions: IBreadcrumbAction[] = [
         await downloadCSV(csvContent, filename);
 
         // FIX 3: Add Success Toast
-        show("Export Successful", `${exportData.length} payout records exported successfully.`, "success");
+        toast.success("Export Successful", {description: `${exportData.length} payout records exported successfully.`});
 
       } else {
-        console.warn("No data available to export");
         // FIX 4: Add Warning Toast
-        show("No Data", "No payout records found to export.", "info");
+        toast.error("No Data", {description: "No payout records found to export."});
       }
     } catch (error) {
       console.error("Error exporting payouts:", error);
       // FIX 5: Add Error Toast
-      show("Export Error", "Failed to export payouts. Please try again.", "error");
+      toast.error("Export Error", {description: "Failed to export payouts. Please try again."});
     } finally {
       setExportLoading(false);
     }

@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePageTitle } from "../../../core/hooks/usePageTitle";
 import { appService } from "../../../core/services/app";
 import { CustomAction, TableColumn } from "../../../core/interfaces/table";
 import { DateFormatEnums } from "../../../core/utils/date-format";
 import { useDebounce } from "../../../core/hooks/useDebounce";
 import { eventService } from "../../../core/services/events";
-import { useToast } from "../../../core/hooks/useToast";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import { Breadcrumb, DataTable } from "../../../ui";
 import {
@@ -17,22 +16,31 @@ import { IOrder } from "../../../core/interfaces/IOrder";
 import { OrderDetailsModal } from "./OrderDetails";
 import { useModal } from "../../../core/hooks/useModal";
 import OrderReceipt from "./OrderReceipt";
+import { toast } from "sonner";
+import { syncService } from "../../../core/services/sync";
+import { IResponse } from "../../../core/interfaces/IResponse";
+import { indexedDBService } from "../../../core/services/indexdb";
+import { DBOrder } from "../../../core/interfaces/IDBTypes";
+import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
 
 export default function OrdersList() {
   // 1. STATE ADJUSTMENTS: Use IOrder interface and remove Payout/Wallet state
-  const [orders, setOrders] = useState<IOrder[] | null>([]);
+  const [orders, setOrders] = useState<IOrder[] | DBOrder[] | null>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [exportLoading, setExportLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<string>("all");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("all");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
-  const { show } = useToast();
+  const loadingRef = useRef(false);
+  const isOnline = useNetworkStatus();
 
-  // 2. PAGE TITLE: Update title
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
   usePageTitle("Sales Orders");
 
   // 3. BREADCRUMBS: Update breadcrumbs
@@ -109,9 +117,17 @@ export default function OrdersList() {
   // 6. BREADCRUMB ACTIONS: Keep Export
   const actions: IBreadcrumbAction[] = [
     {
+      label: loading ? "Syncing Orders..." : "Sync Orders",
+      action: () => handleManualSync(),
+      icon: loading ? "loader-4" : "refresh",
+      size: "sm",
+      variant: "outline",
+      disabled: loading,
+    },
+    {
       label: exportLoading ? "Exporting..." : "Export as CSV",
       action: () => handleExport(),
-      icon: exportLoading ? "loader-4-line" : "download",
+      icon: exportLoading ? "loader-4" : "download",
       size: "sm",
       variant: "outline",
       disabled: exportLoading,
@@ -137,33 +153,69 @@ export default function OrdersList() {
   // 8. DATA FETCHING: Update function to fetch Orders
   const fetchOrdersData = useCallback(
     async (
-      page: number,
-      search: string,
-      payment_method: string
-    ): Promise<void> => {
+      pageParam: number = 1,
+      search: string = "",
+      payment_method: string = "All"
+    ) => {
+      if (loadingRef.current) return;
+
+      loadingRef.current = true;
       setLoading(true);
+
       try {
         const payload = {
-          page,
+          page: pageParam,
           search,
           payment_method,
         };
 
-        const res = await appService.getOrders(payload);
+        let response: IOrder[] | DBOrder[] = []; // Initialize as empty array
+        let count = 0;
 
-        if (res.success) {
-          setOrders(res.results);
-          setTotalCount(res.count);
+        if (isOnline) {
+          try {
+            const serverResponse: IResponse = await appService.getOrders(
+              payload
+            );
+
+            if (serverResponse.success && serverResponse.results) {
+              response = serverResponse.results as IOrder[];
+              count = serverResponse.count as number;
+
+              // Cache the results in IndexedDB
+              if (currentPage === 1 && !search && payment_method === "All") {
+                await indexedDBService.saveOrders(serverResponse.results);
+                await indexedDBService.setLastSyncTime();
+              }
+            } else {
+              throw new Error("Server response not successful");
+            }
+          } catch (serverError) {
+            const localResponse = await indexedDBService.getAllOrders();
+            response = localResponse.results as DBOrder[];
+          }
+        } else {
+          const localResponse = await indexedDBService.getAllOrders();
+          console.log(localResponse, "localResponselocalResponselocalResponselocalResponse")
+          response = localResponse.results as DBOrder[];
+          count = localResponse.count as number;
         }
-      } catch (err: any) {
-        console.error("Failed to fetch orders:", err);
+
+        // Ensure orders is always an array
+        setOrders(response);
+        setTotalCount(count);
+      } catch (error) {
+        toast.error("Failed to load products");
+        // Set empty array on error
         setOrders([]);
         setTotalCount(0);
       } finally {
+        loadingRef.current = false;
         setLoading(false);
       }
     },
-    []
+    //eslint-disable-next-line
+    [isOnline]
   );
 
   // 9. EFFECT HOOKS: Adjust dependencies and remove wallet fetching
@@ -245,6 +297,31 @@ export default function OrdersList() {
     });
   };
 
+  // Manual sync trigger
+  const handleManualSync = async () => {
+    if (!isOnline) {
+      toast.error("No internet connection");
+      return;
+    }
+
+    try {
+      toast.info("Syncing data...");
+      const result = await syncService.manualSync();
+
+      if (result.products) {
+        toast.success("Orders synced successfully");
+        // Refresh current view
+        fetchOrdersData(1, searchTerm, selectedPaymentMethod);
+      }
+
+      if (result.orders.success > 0) {
+        toast.success(`${result.orders.success} orders synced`);
+      }
+    } catch (error) {
+      toast.error("Sync failed");
+    }
+  };
+
   // 11. EXPORT LOGIC: Update export logic for Orders
   const handleExport = async (): Promise<void> => {
     setExportLoading(true);
@@ -301,21 +378,18 @@ export default function OrdersList() {
 
         await downloadCSV(csvContent, filename);
 
-        show(
-          "Export Successful",
-          `${exportData.length} order records exported successfully.`,
-          "success"
-        );
+        toast.success("Export Successful", {
+          description: `${exportData.length} order records exported successfully.`,
+        });
       } else {
-        show("No Data", "No order records found to export.", "info");
+        toast.error("No Data", {
+          description: "No order records found to export.",
+        });
       }
     } catch (error) {
-      console.error("Error exporting orders:", error);
-      show(
-        "Export Error",
-        "Failed to export orders. Please try again.",
-        "error"
-      );
+      toast.error("Export Error", {
+        description: "Failed to export orders. Please try again.",
+      });
     } finally {
       setExportLoading(false);
     }
@@ -341,7 +415,7 @@ export default function OrdersList() {
             loading={loading}
             onSearch={handleSearch}
             filterOptions={paymentMethodOptions}
-            onFilter={handleFilter} // Changed to handleFilter
+            onFilter={handleFilter}
             page={currentPage}
             limit={10}
             count={totalCount}

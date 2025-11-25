@@ -6,8 +6,8 @@ import { IPayout } from "../../../core/interfaces/IPayout";
 import { Roles } from "../../../core/enums/roles";
 import { appService } from "../../../core/services/app";
 
-import { useToast } from "../../../core/hooks/useToast";
 import { useStore } from "../../../core/hooks/useStore";
+import { toast } from "sonner";
 
 interface PayoutDetailsModalProps {
   payout: IPayout;
@@ -17,7 +17,6 @@ interface PayoutDetailsModalProps {
 
 export const PayoutDetailsModal: React.FC = () => {
   const { modalRef, modalData } = useModal();
-  const { show } = useToast();
   const { user } = useStore();
   const [isLoading, setIsLoading] = React.useState(false);
   const { payout, title, subtitle } = modalData as PayoutDetailsModalProps;
@@ -64,11 +63,11 @@ export const PayoutDetailsModal: React.FC = () => {
         const res = await appService.addNewUser(payload);
 
         if (res.success) {
-            show("Success", "Payout request approved successfully", "success");
+            toast.success("Success", {description: "Payout request approved successfully"});
             modalRef!.close({action: "complete"})
         }
     } catch (error) {
-        show("Error", "An error occurred while approving payout request", "error");
+        toast.error("Error", {description: "An error occurred while approving payout request"});
     } finally {
         setIsLoading(false);
     }

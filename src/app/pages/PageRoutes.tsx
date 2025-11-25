@@ -25,7 +25,7 @@ export const PagesRoutes: React.FC = () => {
       {/* Modules with nested routes */}
       <Route path="/settings/*" element={<SettingsRoutes />} />
       <Route path="/payouts/*" element={<PayoutRoutes />} />
-      <Route path="/accounts/*" element={<UserManagementRoutes />} />
+      <Route path="/system-users/*" element={<UserManagementRoutes />} />
 
       {/* Catch all route for protected pages */}
       <Route path="*" element={<Navigate to="/store" replace />} />

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useModal } from "../../../core/hooks/useModal";
-import { useToast } from "../../../core/hooks/useToast";
 import { Button, Input } from "../../../ui";
 import { appService } from "../../../core/services/app";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
+import { toast } from "sonner";
 
 interface BusinessProfileForm {
   country: string;
@@ -33,7 +33,6 @@ const PHONE_PATTERN = /^[0-9]+$/;
 const AddEntityModal: React.FC<AddEntityModalProps> = () => { 
   const { modalRef, modalData } = useModal(); 
 
-  const { show } = useToast();
   const [form, setForm] = useState<BusinessProfileForm>(initialFormState);
   const [errors, setErrors] = useState<Partial<BusinessProfileForm>>({});
   const [loading, setLoading] = useState(false);
@@ -65,9 +64,6 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         setExistingLogoUrl(modalData.logo);
         setLogoPreview(modalData.logo);
       }
-      
-      // You might also want to set other entity-specific data
-      // like entity ID for the update operation
     }
   }, 
   //es-lint-disable-next-line
@@ -219,19 +215,17 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         throw new Error(response.message || `Failed to ${isEditMode ? 'update' : 'create'} business profile.`);
       }
       
-      show(
+      toast.success(
         "Success", 
-        response.message || `Business profile ${isEditMode ? 'updated' : 'created'} successfully!`, 
-        "success"
+        {description: response.message || `Business profile ${isEditMode ? 'updated' : 'created'} successfully!`}
       );
       
       // Close the modal upon success
       modalRef!.close({ success: "success" }); 
     } catch (error: any) {
-      show(
+      toast.error(
         "Error", 
-        error.message || `Failed to ${isEditMode ? 'update' : 'create'} business profile.`, 
-        "error"
+        {description: error.message || `Failed to ${isEditMode ? 'update' : 'create'} business profile.`}
       );
       throw error;
     }
@@ -244,7 +238,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
-      show("Validation Error", "Please correct the highlighted fields.", "error");
+      toast.error("Validation Error", { description:"Please correct the highlighted fields."});
       return;
     }
 

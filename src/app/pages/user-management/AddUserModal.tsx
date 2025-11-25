@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../../ui";
-import { useToast } from "../../../core/hooks/useToast";
 import { countries } from '../auth/countries';
 import { appService } from '../../../core/services/app';
+import { toast } from 'sonner';
 
+// 1. Updated FormData to include password
 interface FormData {
   first_name: string;
   last_name: string;
@@ -12,14 +13,15 @@ interface FormData {
   phone_number: string;
   phone_code: string;
   gender: string;
-  role?: string;
+  role: string;
+  password?: string; // Required for Add, optional for Edit
 }
 
-const AddEditStaff = () => {
+
+const AddUserModal = () => {
   const { modalRef, modalData } = useModal();
-  const { show } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const isAdd = modalData === null || modalData === undefined;
+  const isAdd = modalData === null || modalData === undefined || !modalData.id; // Check for modalData.id to determine edit mode
 
   // Initialize form data with proper structure
   const [formData, setFormData] = useState<FormData>({
@@ -29,7 +31,8 @@ const AddEditStaff = () => {
     phone_number: '',
     phone_code: '+233', 
     gender: '',
-    role: ''
+    role: '',
+    password: isAdd ? '' : undefined, 
   });
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -37,19 +40,23 @@ const AddEditStaff = () => {
 
   // Initialize form data when modalData changes
   useEffect(() => {
-    if (modalData && modalData?.user) {
+    if (modalData) {
+      // Use the structure of modalData (can be flat or nested under 'user')
+      const data = modalData.user || modalData;
+      
       setFormData({
-        first_name: modalData.user.first_name || '',
-        last_name: modalData.user.last_name || '',
-        email: modalData.user.email || '',
-        phone_number: modalData.user.phone_number || '',
-        phone_code: modalData.user.phone_code || '+233',
-        gender: modalData.user.gender || '',
-        role: modalData?.role || ''
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        email: data.email || '',
+        phone_number: data.phone_number || '',
+        phone_code: data.phone_code || '+233',
+        gender: data.gender || '',
+        role: data.role || '',
+        password: isAdd ? '' : undefined, 
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [modalData, isAdd]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
@@ -72,10 +79,11 @@ const AddEditStaff = () => {
       [field]: true
     }));
 
-    validateField(field, formData[field as keyof FormData]);
+    // Cast to keyof FormData for type safety
+    validateField(field as keyof FormData, formData[field as keyof FormData]);
   };
 
-  const validateField = (field: string, value?: string) => {
+  const validateField = (field: keyof FormData, value?: string) => {
     const newErrors = { ...errors };
     const val = value ?? '';
 
@@ -105,6 +113,17 @@ const AddEditStaff = () => {
           delete newErrors.email;
         }
         break;
+
+      // 2. Added Password Validation (only required for Add mode)
+      case 'password':
+        if (isAdd && !val) {
+            newErrors.password = 'Password is required';
+        } else if (isAdd && val && val.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters';
+        } else {
+            delete newErrors.password;
+        }
+        break;
       
       case 'phone_code':
         if (!val) {
@@ -124,6 +143,14 @@ const AddEditStaff = () => {
         }
         break;
       
+      case 'role':
+        if (!val) {
+            newErrors.role = 'Role is required';
+        } else {
+            delete newErrors.role;
+        }
+        break;
+
       default:
         break;
     }
@@ -133,30 +160,31 @@ const AddEditStaff = () => {
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
-    if (!formData.first_name.trim()) {
-      newErrors.first_name = 'First name is required';
+    const fieldsToValidate: (keyof FormData)[] = ['first_name', 'last_name', 'email', 'phone_code', 'phone_number', 'role', 'gender'];
+
+    if (isAdd) {
+        fieldsToValidate.push('password'); // Password is required on add
     }
     
-    if (!formData.last_name.trim()) {
-      newErrors.last_name = 'Last name is required';
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    
-    if (!formData.phone_code) {
-      newErrors.phone_code = 'Phone code is required';
-    }
-    
-    if (!formData.phone_number.trim()) {
-      newErrors.phone_number = 'Phone number is required';
-    } else if (!/^\d+$/.test(formData.phone_number.replace(/\s/g, ''))) {
-      newErrors.phone_number = 'Phone number must contain only digits';
+    fieldsToValidate.forEach(field => {
+        validateField(field, formData[field]);
+        // Re-run validation logic to correctly populate newErrors synchronously
+        // A simpler way: manually check key fields that affect submission
+    });
+
+    // Synchronous validation check for required fields:
+    if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
+    if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
+    if (!formData.phone_code) newErrors.phone_code = 'Phone code is required';
+    if (!formData.phone_number.trim()) newErrors.phone_number = 'Phone number is required';
+    else if (!/^\d+$/.test(formData.phone_number.replace(/\s/g, ''))) newErrors.phone_number = 'Phone number must contain only digits';
+    if (!formData.role) newErrors.role = 'Role is required';
+
+    if (isAdd) {
+        if (!formData.password) newErrors.password = 'Password is required';
+        else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     }
     
     setErrors(newErrors);
@@ -167,7 +195,8 @@ const AddEditStaff = () => {
       role: true,
       phone_code: true,
       phone_number: true,
-      gender: true
+      gender: true,
+      password: isAdd ? true : false,
     });
     
     return Object.keys(newErrors).length === 0;
@@ -175,40 +204,50 @@ const AddEditStaff = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      show("Validation Error", "Please fix the errors in the form.", 'error');
+      toast.error("Validation Error", {description: "Please fix the errors in the form."});
       return;
     }
 
     setIsLoading(true);
     try {
-      const submitData = {
+      const submitData: Partial<FormData & { id: string }> = {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         email: formData.email.trim(),
         phone_number: formData.phone_number.trim(),
         phone_code: formData.phone_code,
         gender: formData.gender,
-        role: formData.role ,
-        id: modalData?.user?.id, 
+        role: formData.role,
+        // 3. Add password only if adding
+        ...(isAdd && formData.password ? { password: formData.password } : {}), 
+        // Pass ID for update mode
+        ...(modalData?.id ? { id: userId } : {}),
       };
 
       let response;
       if (isAdd) {
+        // Ensure required fields for add are present
+        if (!submitData.password) {
+            throw new Error("Missing password for new user.");
+        }
         response = await appService.addNewUser(submitData);
       } else {
+        console.log(submitData, "submitData")
         response = await appService.updateUser(submitData);
       }
 
 
       if (response.success) {
-        show( "Success",  isAdd ? "User created successfully!" : "User updated successfully!", 'success');
+        toast.success( "Success",  {description: isAdd ? "User created successfully!" : "User updated successfully!",});
         modalRef!.close({ success: true });
       } else {
-        throw new Error(response.message || 'Operation failed');
+        // Use response.data.message if available from the server
+        throw new Error(response.message || response.data?.message || 'Operation failed');
       }
     } catch (error: any) {
-      console.error("Error saving user:", error);
-      show("Error", error.message || "Failed to save user details.", 'error');
+      // Accessing error.response.data.message for Axios/API error structure
+      const errorMessage = error.message || error.response?.data?.message || "Failed to save user details.";
+      toast.error("Error", {description: errorMessage,});
     } finally {
       setIsLoading(false);
     }
@@ -218,7 +257,7 @@ const AddEditStaff = () => {
     countries.map((country: { flag: string; code: string; phone_code: string }) => ({
       label: `${country.flag} ${country.code} | ${country.phone_code}`,
       value: country.phone_code
-    })), []);
+    })), [countries]);
 
   const roleOptions = useMemo(() => [
     { value: 'admin', label: 'Administrator' },
@@ -227,10 +266,13 @@ const AddEditStaff = () => {
     { value: 'finance', label: 'Finance' },
   ], []);
 
+  // Determine the ID field for the header title (might be nested or flat)
+  const userId = modalData?.id || modalData?.user?.id;
+
   return (
-    <div className="flex flex-col h-[80vh] w-full mx-auto p-3">
+    <div className="flex flex-col h-full w-full mx-auto px-2">
       {/* Header */}
-      <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 z-10">
+      <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 z-10 bg-card"> {/* Added bg-card */}
         <div className="flex flex-col">
           <h2 className="text-2xl text-text font-bold">
             {isAdd ? 'Add New User' : 'Edit User Details'}
@@ -238,7 +280,7 @@ const AddEditStaff = () => {
           <h4 className="text-md text-text-light mt-1">
             {isAdd 
               ? 'Create a new user account in the system' 
-              : `Update details for ${modalData?.user?.first_name} ${modalData?.user?.last_name}`
+              : `Update details for ${modalData?.user?.first_name || modalData?.first_name} ${modalData?.user?.last_name || modalData?.last_name}`
             }
           </h4>
         </div>
@@ -249,24 +291,6 @@ const AddEditStaff = () => {
         >
           <i className="ri-close-line text-xl"></i>
         </button>
-      </div>
-
-      {/* Form Guidance */}
-      <div className="bg-primary-5 border border-primary-20 rounded-sm p-4 mb-6">
-        <div className="flex items-start">
-          <i className="ri-user-add-line text-primary text-lg mr-3 mt-0.5"></i>
-          <div>
-            <p className="font-medium text-primary mb-1">
-              {isAdd ? 'Creating New User' : 'Updating User Information'}
-            </p>
-            <ul className="text-sm text-primary list-disc list-inside space-y-1">
-              <li>Fill in all required personal information</li>
-              <li>Set appropriate Role and permissions</li>
-              <li>Verify contact information for communication</li>
-              {isAdd && <li>User will receive activation instructions via email</li>}
-            </ul>
-          </div>
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-6 pb-4">
@@ -337,6 +361,8 @@ const AddEditStaff = () => {
               error={touched.email ? errors.email : ""}
               placeholder="Enter email address"
               required={true}
+              // Prevent changing email in edit mode (often handled separately/restricted)
+              disabled={!isAdd} 
             />
 
             <div className="flex w-full gap-2">
@@ -388,28 +414,30 @@ const AddEditStaff = () => {
               error={touched.role ? errors.role : ""}
               required={true}
             />
+            
+            {!isAdd && (
+                <p className="text-sm text-text-light italic">
+                    When updating, password is not require.
+                </p>
+            )}
+            <Input
+                    label="Password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(value: string) => handleInputChange("password", value)}
+                    onBlur={() => handleBlur("password")}
+                    error={touched.password ? errors.password : ""}
+                    placeholder="Enter password (min 6 chars)"
+                    required={isAdd}
+                />
           </div>
         </div>
 
-        {/* Form Validation & Requirements */}
-        <div className="bg-info-5 border border-info-20 rounded-sm p-4">
-          <div className="flex items-start">
-            <i className="ri-information-line text-info text-lg mr-3 mt-0.5"></i>
-            <div>
-              <p className="font-medium text-info mb-1">Form Requirements</p>
-              <ul className="text-sm text-info list-disc list-inside space-y-1">
-                <li>Fields marked with * are required</li>
-                <li>Email address must be unique and valid</li>
-                <li>Role determines system permissions</li>
-                <li>Phone number should contain only digits</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+      
       </div>
 
       {/* Footer */}
-      <div className="flex justify-between items-center pt-4 h-14 border-t border-border mt-auto">
+      <div className="flex gap-x-3 justify-end items-center pt-4 h-14 border-t border-border mt-auto sticky bottom-0 z-10 bg-card">
         <Button
           onClick={() => modalRef!.dismiss()}
           disabled={isLoading}
@@ -430,4 +458,4 @@ const AddEditStaff = () => {
   );
 };
 
-export default AddEditStaff;
+export default AddUserModal;

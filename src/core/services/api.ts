@@ -82,12 +82,12 @@ class ApiService {
         } else {
           delete config.headers["X-Entity-Context"];
         }
-        this._logRequest(
-            config.method ? config.method.toUpperCase() : 'UNKNOWN', 
-            config.url || 'UNKNOWN_URL', 
-            config.data, 
-            config.headers 
-        );
+        // this._logRequest(
+        //     config.method ? config.method.toUpperCase() : 'UNKNOWN', 
+        //     config.url || 'UNKNOWN_URL', 
+        //     config.data, 
+        //     config.headers 
+        // );
 
         return config;
       },
@@ -102,8 +102,8 @@ class ApiService {
         (error: AxiosError) => {
             const status = error.response?.status;
             if (status === 401 || status === 403) {
-                console.error(`🚨 Authorization failure detected: HTTP ${status}`);
                 this._clearUserData();
+                throw new Error(`🚨 Authorization failure detected: HTTP ${status}`);
             }
             
             return Promise.reject(error);

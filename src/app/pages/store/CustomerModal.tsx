@@ -3,6 +3,9 @@ import { Button, Input } from "../../../ui";
 import { appService } from "../../../core/services/app";
 import { toast } from "sonner";
 import { useModal } from "../../../core/hooks/useModal";
+import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
+import { indexedDBService } from "../../../core/services/indexdb";
+import { ICustomer } from "../../../core/interfaces/ICustomer";
 
 interface Customer {
   id: string;
@@ -21,30 +24,65 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ onClose, name }) =>
   const [fullName, setFullName] = useState(name || "");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [address, setAddress] = useState("");
-//   const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const isOnline = useNetworkStatus();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+ const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      const newCustomerData = {
+
+    const newCustomerData = {
         full_name: fullName,
         phone_number: phoneNumber,
         address: address,
-      };
-      const response = await appService.createCustomer(newCustomerData);
-      if (response.success) {
-        toast.success("Customer added successfully!");
-        onClose(response.results); // Pass the newly created customer back
-      } else {
-        toast.error(response.message || "Failed to add customer.");
+        email: email, // If you uncomment this field later
+    };
+
+    if (isOnline) {
+      try {
+        const response = await appService.createCustomer(newCustomerData);
+        if (response.success) {
+          toast.success("Customer added successfully!");
+          onClose(response.results);
+          // Save the synced customer to IndexedDB
+          await indexedDBService.saveCustomer({...response.results, status: 'synced', id: response.results.id});
+        } else {
+          toast.error(response.message || "Failed to add customer.");
+        }
+      } catch (error) {
+        toast.error("An unexpected error occurred.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error adding customer:", error);
-      toast.error("An unexpected error occurred.");
-    } finally {
-      setLoading(false);
+    } else {
+      // OFFLINE: Save to IndexDB
+      try {
+        // Save the customer with 'pending' status
+        const savedCustomer = await indexedDBService.saveCustomer({
+          ...newCustomerData,
+          id: "",
+          status: 'pending',
+          server_id: "",
+          updated_at: ""
+        });
+        
+        // Map the saved DBCustomer back to the expected Customer interface for onClose
+        const customerResult: Customer = {
+             id: savedCustomer.id, // Use local ID
+             full_name: savedCustomer.full_name,
+             phone_number: savedCustomer.phone_number,
+             address: savedCustomer.address,
+             email: savedCustomer.email,
+        };
+
+        toast.warning("Customer saved locally and will sync when online.");
+        onClose(customerResult); 
+      } catch (error) {
+        toast.error("Failed to save customer locally.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -63,6 +101,12 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ onClose, name }) =>
             label="Phone Number"
             value={phoneNumber}
             onChange={setPhoneNumber}
+            required
+          />
+           <Input
+            label="Phone Number(Optinal)"
+            value={email}
+            onChange={setEmail}
             required
           />
           <Input label="Address" value={address} onChange={setAddress} required />
@@ -86,10 +130,12 @@ const { modalRef } = useModal();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const isOnline = useNetworkStatus();
 
   // Fetch customers on modal open
   useEffect(() => {
       fetchCustomers();
+  // eslint-disable-next-line
   }, []);
 
   // Filter customers based on search term
@@ -107,17 +153,27 @@ const { modalRef } = useModal();
     }
   }, [searchTerm, customers]);
 
-  const fetchCustomers = async () => {
+const fetchCustomers = async () => {
     setLoading(true);
     try {
-      // Replace with your actual API call
-      const response = await appService.getCustomers();
-      if (response.success) {
-        // Assuming response.data is the array of Customer objects
-        setCustomers(response.results || []); 
+      let response;
+      if (isOnline) {
+        // ONLINE: Fetch from API
+        response = await appService.getCustomers();
+        if (response.success && response.results) {
+           const dbCustomers = response.results.map((c: ICustomer) => ({...c, status: 'synced', id: c.id}));
+           await indexedDBService.bulkSaveCustomers(dbCustomers);
+        }
+      } else {
+        // OFFLINE: Fetch from IndexedDB
+        response = await indexedDBService.getCustomers(); 
       }
-    } catch (error) {
-      console.error("Error fetching customers:", error);
+
+      if (response.success) {
+        setCustomers(response.results || []);
+      } 
+    } catch (error: any) {
+      toast.error("An error occurred while fetching customers.");
     } finally {
       setLoading(false);
     }

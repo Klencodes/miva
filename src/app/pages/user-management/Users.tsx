@@ -13,17 +13,18 @@ import { useDebounce } from "../../../core/hooks/useDebounce";
 import { appService } from "../../../core/services/app";
 
 import { StaffDetailsModal } from "./UserDetailModal";
-import AddEditStaff from "./AddUserModal";
-import { useToast } from "../../../core/hooks/useToast";
+import AddUserModal from "./AddUserModal";
 import { Roles } from "../../../core/enums/roles";
 import { useStore } from "../../../core/hooks/useStore";
 import { eventService } from "../../../core/services/events";
-import { IEntity } from "../../../core/interfaces/IEntity";
 import { IBreadcrumbAction, IBreadcrumbItem } from "../../../ui/components/Breadcrumb";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
+import { toast } from "sonner";
+import { IUser } from "../../../core/interfaces/IUser";
+import AssignUserEntity from "./AssignUserEntity";
 
 const Users = () => {
-  const [users, setUsers] = useState<IEntity[]>([]);
+  const [users, setUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -31,7 +32,6 @@ const Users = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const { openModal } = useModal();
-  const { show } = useToast();
   const { user } = useStore();
   usePageTitle("Users");
 
@@ -44,7 +44,7 @@ const Users = () => {
     {
       label: "Add New User",
       action: () => openAddModal(),
-      icon: "plus",
+      icon: "add",
       size: "sm",
       variant: "primary",
     },
@@ -58,70 +58,65 @@ const Users = () => {
   const columns: TableColumn[] = [
     {
       header: "User",
-      value: (item: IEntity) => [
-        `${item.user.first_name} ${item.user.last_name}`,
-        item.user.username,
+      value: (item: IUser) => [
+        `${item?.first_name} ${item.last_name}`,
+        item?.username,
       ],
       type: "column",
     },
     {
       header: "Contact",
-      value: (item: IEntity) => [
-        item.user.email,
-        item.user.phone_number,
+      value: (item: IUser) => [
+        item.email,
+        item.phone_number,
       ],
       type: "column",
     },
-    {
-      header: "Access Status",
-      value: (item: IEntity) =>
-        item.has_access
-          ? "Access Granted"
-          : "Access Denied",
+    // {
+    //   header: "Access Status",
+    //   value: (item: IUser) =>
+    //     item.has_access
+    //       ? "Access Granted"
+    //       : "Access Denied",
           
-      type: "status",
-      statusClasses: (item: IEntity) =>
-        item.has_access
-          ? "bg-success-10 text-success"
-          : "bg-danger-10 text-danger"
-    },
+    //   type: "status",
+    //   statusClasses: (item: IEntity) =>
+    //     item.has_access
+    //       ? "bg-success-10 text-success"
+    //       : "bg-danger-10 text-danger"
+    // },
 
     {
       header: "Verified",
-      value: (item: IEntity) =>
-        item.user.verified ? "Yes" : "No",
+      value: (item: IUser) =>
+        item.verified ? "Yes" : "No",
       type: "status",
-      statusClasses: (item: IEntity) =>
-        item.user.verified
+      statusClasses: (item: IUser) =>
+        item.verified
           ? "bg-success-10 text-success"
           : "bg-background-10 text-text",
     },
     {
       header: "Status",
-      value: (item: IEntity) =>
-        item.user.is_active
-          ? "Active"
-          : "Inactive",
+      value: (item: IUser) =>
+        item.deactivated
+          ? "Deactivated"
+          : "Active",
       type: "status",
-      statusClasses: (item: IEntity) =>
-        item.user.is_active
-          ? "bg-success-10 text-success"
-          : "bg-danger-10 text-danger",
+      statusClasses: (item: IUser) =>
+        item.deactivated
+          ? "bg-danger-10 text-danger"
+          : "bg-success-10 text-success",
     },
     {
       header: "Role",
-      value: (item: IEntity) =>
+      value: (item: IUser) =>
         initialCap(item.role || "") || "N/A",
       type: "column",
     },
-    // {
-    //   header: "Entity",
-    //   value: (item: IEntity) => item.entity?.name || "N/A",
-    //   type: "column",
-    // },
     {
       header: "Signed Up",
-      value: (item: IEntity) => item.user.signup_date,
+      value: (item: IUser) => item.updated_at,
       type: "date",
       format: DateFormatEnums.DATE_TIME_SHORT,
     },
@@ -132,10 +127,19 @@ const Users = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
-  const onView = async (item: any) => {
+  const onView = async (item: IUser) => {
     await openModal(StaffDetailsModal, {
       data: item,
       size: "xl",
+      side: 'right',
+    });
+  };
+
+  const openAssignModal = async (item: any) => {
+    await openModal(AssignUserEntity, {
+      data: item,
+      size: "xl",
+      side: 'right',
     });
   };
 
@@ -183,10 +187,11 @@ const Users = () => {
     setSearchTerm(term);
   };
 
-  const openAddModal = async (item?: IEntity) => {
-    const result = await openModal(AddEditStaff, {
+  const openAddModal = async (item?: IUser) => {
+    const result = await openModal(AddUserModal, {
       data: item,
       size: "xl",
+      side: 'right',
       backdropClose: false,
     });
     if (result?.success) {
@@ -194,23 +199,23 @@ const Users = () => {
     }
   };
 
-  const handleStateToggle = async (item: IEntity) => {
+  const handleStateToggle = async (item: IUser) => {
     try {
       const res = await appService.addNewUser({
-        user_id: item.user.id,
-        is_active: !item.user.is_active,
+        user_id: item.id,
+        deactivated: !item.deactivated,
       });
       if (res.success) {
-        show(
+        toast.success(
           "Success",
-          res.message || "User state updated successfully!",
-          "success"
+          {description: res.message || "User state updated successfully!",
+          }
         );
         //look for update user in the list and updated user
         setUsers((prevUsers) =>
           prevUsers.map((u) =>
-            u.user.id === item.user.id
-              ? { ...u, user: { ...u.user, has_access: !item.has_access } }
+            u.id === item.id
+              ? { ...u, user: { ...u, deactivated: !item.deactivated } }
               : u
           )
         );
@@ -218,48 +223,20 @@ const Users = () => {
         throw new Error(res.message || "Failed to update user state");
       }
     } catch (error: any) {
-      console.error("Error updating user state:", error);
-      show("Error", error.message || "Failed to update user state", "error");
+      toast.success("Error", {description: error.message || "Failed to update user state", });
     }
   };
 
-   const handleHasAccessToggle = async (item: IEntity) => {
-    try {
-      const res = await appService.updateMerchantUserState({
-        merchant_id: item.id,
-        access: !item.has_access,
-      });
-      if (res.success) {
-        show(
-          "Success",
-          res.message || "User state updated successfully!",
-          "success"
-        );
-        //look for update user in the list and updated user
-        setUsers((prevUsers) =>
-          prevUsers.map((u) =>
-            u.user.id === item.user.id
-              ? { ...u, user: { ...u.user, has_access: !item.has_access } }
-              : u
-          )
-        );
-      } else {
-        throw new Error(res.message || "Failed to update user state");
-      }
-    } catch (error: any) {
-      console.error("Error updating user state:", error);
-      show("Error", error.message || "Failed to update user state", "error");
-    }
-  };
-  const handleRoleUpdate = async (item: IEntity) => {
+
+  const handleRoleUpdate = async (item: IUser) => {
     try {
       const result = await openModal(RoleUpdateModal, {
         data: {
           role: item.role,
-          user: item.user,
-          entity: item.entity,
+          user: item,
         },
-        size: "3xl",
+        side: 'right',
+        size: "xl",
         backdropClose: false,
       });
 
@@ -273,7 +250,7 @@ const Users = () => {
         const response = await appService.updateUserRole(updateData);
 
         if (response.success) {
-          show("Success", "User role updated successfully!", "success");
+          toast.success("Success", {description: "User role updated successfully!", });
           getUsers(currentPage, debouncedSearchTerm);
 
         } else {
@@ -282,16 +259,28 @@ const Users = () => {
       }
     } catch (error: any) {
       console.error("Error updating role:", error);
-      show("Error", error.message || "Failed to update user role", "error");
+      toast.error("Error", {description: error.message || "Failed to update user role", });
     }
   };
 
- const getCustomActions = (item: IEntity): CustomAction[] => {
+ const getCustomActions = (item: IUser): CustomAction[] => {
     const actions: CustomAction[] = [
+      {
+        title: "Edit User",
+        handler: () => openAddModal(item),
+        icon: "edit-line",
+        classes: "",
+      }, 
       {
         title: "View User",
         handler: () => onView(item),
         icon: "eye-line",
+        classes: "",
+      },
+      {
+        title: "Assign Entity",
+        handler: () => openAssignModal(item),
+        icon: "user-shared-line",
         classes: "",
       },
       {
@@ -300,22 +289,15 @@ const Users = () => {
         icon: "user-shared-line",
         classes: "text-info hover:bg-info-50",
       },
-      {
-        title: item.has_access ? "Deny Access" : "Grant Access",
-        handler: () => handleHasAccessToggle(item),
-        icon: item.has_access ? "forbid-line" : "checkbox-circle-line",
-        classes: item.has_access
-          ? "text-danger hover:bg-danger-50"
-          : "text-success hover:bg-success-50",
-      },
+     
     ];
 
     if (user?.role === Roles.SUPER_ADMIN) {
       actions.push({
-        title: item.user.is_active ? "Deactivate" : "Activate",
+        title: item.deactivated ? "Deactivate" : "Activate",
         handler: () => handleStateToggle(item),
-        icon: item.user.is_active ? "forbid-line" : "checkbox-circle-line",
-        classes: item.user.is_active
+        icon: item.deactivated ? "forbid-line" : "checkbox-circle-line",
+        classes: item.deactivated
           ? "text-danger hover:bg-danger-50"
           : "text-success hover:bg-success-50",
       });

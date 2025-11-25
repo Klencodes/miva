@@ -7,7 +7,6 @@ import App from "./App";
 import "./index.css";
 import { ThemeProvider } from "./core/contexts/ThemeProvider";
 import { ErrorBoundary } from "./app/pages/error/ErrorBoundary";
-import { ToastProvider } from "./core/hooks/useToast";
 import { LayoutProvider } from "./core/contexts/LayoutProvider";
 import { StoreProvider } from "./core/contexts/StoreProvider";
 import { ModalProvider } from "./core/hooks/useModal";
@@ -39,7 +38,6 @@ ReactDOM.createRoot(rootElement).render(
     <ErrorBoundary>
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
-          <ToastProvider>
             <ThemeProvider>
               <StoreProvider>
                 <LayoutProvider>
@@ -49,7 +47,6 @@ ReactDOM.createRoot(rootElement).render(
                 </LayoutProvider>
               </StoreProvider>
             </ThemeProvider>
-          </ToastProvider>
         </QueryClientProvider>
       </BrowserRouter>
     </ErrorBoundary>

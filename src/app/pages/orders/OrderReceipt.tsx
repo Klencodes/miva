@@ -15,8 +15,8 @@ import { Button } from "../../../ui";
  * @param {number} amount
  * @param {string} currencySymbol
  */
-const formatCurrency = (amount: number, currencySymbol = "₵") => {
-  return `${currencySymbol}${amount.toFixed(2)}`;
+const formatCurrency = (amount: any, currencySymbol = "₵") => {
+  return `${currencySymbol}${parseFloat(amount)?.toFixed(2)}`;
 };
 
 // Component representing the thermal receipt paper area

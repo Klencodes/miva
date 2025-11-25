@@ -7,12 +7,12 @@ import {
   USER_KEY,
   useStore,
 } from "../../../core/hooks/useStore";
-import { useToast } from "../../../core/hooks/useToast";
 import { authService } from "../../../core/services/auth";
 import { appService } from "../../../core/services/app";
 import { IUser } from "../../../core/interfaces/IUser";
-import { IEntity, IEntityItem } from "../../../core/interfaces/IEntity";
+import { IEntityItem } from "../../../core/interfaces/IEntity";
 import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../core/enums/roles";
+import { toast } from "sonner";
 
 export interface LoginFormState {
   email: string;
@@ -28,8 +28,7 @@ const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { show } = useToast();
-  const { setStoreEntities, isAuthenticatedRef } = useStore();
+  const { setStoreEntities } = useStore();
 
   const [form, setForm] = useState<LoginFormState>(initialFormState);
   const [errors, setErrors] = useState<Partial<LoginFormState>>({});
@@ -111,11 +110,9 @@ const Login: React.FC = () => {
       setErrors(newErrors);
 
       if (Object.keys(newErrors).length > 0) {
-        show(
+        toast.error(
           "Validation Error",
-          "Please check your email and password",
-          "info"
-        );
+          {description: "Please check your email and password"} );
         return;
       }
 
@@ -128,17 +125,17 @@ const Login: React.FC = () => {
         }
         const userData = res?.results;
         setStoredItem(USER_KEY, userData);
-        if (!userData.verified) {
+        if(!userData.verified) {
           navigate("/account/verify", { state: { email: form.email } });
-          show("Info", "Please verify your account to proceed.", "info", 5000);
+          toast.error("Info", {description: "Please verify your account to proceed."});
           return;
         }
 
-        show("Success", "Welcome back!", "success");
+        toast.success("Success", {description: "Welcome back!"});
         await handleEntitiesAfterLogin(userData);
       } catch (err: any) {
         const errorMessage = err.message || "Invalid email or password";
-        show("Error", errorMessage, "error");
+        toast.error("Error", {description: errorMessage});
       } finally {
         setLoading(false);
       }

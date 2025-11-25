@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button } from '../../../ui';
-import { useToast } from '../../../core/hooks/useToast';
 import { countries } from './countries';
 import { authService } from '../../../core/services/auth';
 import { useStore } from '../../../core/hooks/useStore';
+import { toast } from 'sonner';
 
 interface RegisterForm {
   email: string;
@@ -31,7 +31,6 @@ const Register: React.FC = () => {
     phone_code: phoneCodes[0].value || '',
   };
   const navigate = useNavigate();
-  const { show } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<RegisterForm>(initialFormData);
 
@@ -58,11 +57,11 @@ const Register: React.FC = () => {
 
   const onSubmit = useCallback(async () => {
   if(formData?.password.length < 6 ){
-    show('Error', 'Password must be at least 6 characters', 'error');
+    toast.error('Error', {description: 'Password must be at least 6 characters'});
     return;
   }
   if (!isFormValid) {
-    show('Validation Error', 'Please fill all required fields correctly', 'info');
+    toast.error('Validation Error', {description: 'Please fill all required fields correctly'});
     return;
   }
   
@@ -77,12 +76,12 @@ const Register: React.FC = () => {
       navigate('/account/verify', { 
         state: { email: formData.email } 
       });
-      show(response.response || 'Success', response.message || 'Registration successful', 'success');    
+      toast.success(response.response || 'Success', {description: response.message || 'Registration successful'});    
     }
    } catch (err: any) {
     setLoading(false);
     const errorMessage = err.error?.message || err.message || 'Registration failed';
-    show('Error', errorMessage, 'error');
+    toast.error('Error', {description: errorMessage,});
   }
   // eslint-disable-next-line
 }, [formData, isFormValid, setUser]); // Add setUser to dependencies

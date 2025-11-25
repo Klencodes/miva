@@ -1,11 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useModal } from "../../../core/hooks/useModal";
-import { useToast } from "../../../core/hooks/useToast";
 import { ReadAgreementModalContent } from "./ReadAgreement";
 import { Button, Input } from "../../../ui";
 import { appService } from "../../../core/services/app";
 import { usePageTitle } from "../../../core/hooks/usePageTitle";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
+import { toast } from "sonner";
 
 interface BusinessProfileForm {
   country: string;
@@ -30,7 +30,6 @@ const PHONE_PATTERN = /^[0-9]+$/;
 
 const CreateBusiness: React.FC = () => { 
   const { openModal } = useModal();
-  const { show } = useToast();
   const [form, setForm] = useState<BusinessProfileForm>(initialFormState);
   const [errors, setErrors] = useState<Partial<BusinessProfileForm>>({});
   const [loading, setLoading] = useState(false);
@@ -175,11 +174,11 @@ const CreateBusiness: React.FC = () => {
       if (!response.success) {
         throw new Error(response.message || "Failed to create business profile.");
       }
-      show("Success", response.message || "Business profile created successfully!", "success");
+      toast.success("Success", {description: response.message || "Business profile created successfully!"});
       window.location.replace("/dashboard");
 
     } catch (error: any) {
-      show("Error", error.message || "Failed to create business profile.", "error");
+      toast.error("Error", {description: error.message || "Failed to create business profile."});
       throw error; // Re-throw to handle in calling function
     }
   };
@@ -191,7 +190,7 @@ const CreateBusiness: React.FC = () => {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
-      show("Validation Error", "Please correct the highlighted fields.", "error");
+      toast.error("Validation Error", {description: "Please correct the highlighted fields."});
       return;
     }
 
@@ -210,13 +209,13 @@ const CreateBusiness: React.FC = () => {
         });
       } catch (error) {
         // User closed the modal without agreeing
-        show("Error", "You must accept the terms and conditions to continue.", "error");
+        toast.error("Error", {description: "You must accept the terms and conditions to continue."});
         setLoading(false);
         return;
       }
 
       if (!agreementResult || agreementResult.agreedToTerms !== true) {
-        show("Error", "You must accept the terms and conditions to continue.", "error");
+        toast.error("Error", {description: "You must accept the terms and conditions to continue."});
         setLoading(false);
         return;
       }

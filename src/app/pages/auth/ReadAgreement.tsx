@@ -1,7 +1,7 @@
 import React, { useState, FC } from "react";
 import { useModal } from "../../../core/hooks/useModal";
-import { useToast } from "../../../core/hooks/useToast";
 import { Button } from "../../../ui";
+import { toast } from "sonner";
 
 interface AgreementForm {
   agreeTerms: boolean;
@@ -11,7 +11,6 @@ interface AgreementForm {
 
 export const ReadAgreementModalContent: FC = () => {
   const { modalRef, modalData } = useModal();
-  const { show } = useToast();
   const [agreementForm, setAgreementForm] = useState<AgreementForm>({
     agreeTerms: false,
     marketingConsent: false,
@@ -27,11 +26,9 @@ export const ReadAgreementModalContent: FC = () => {
 
   const saveAgreement = () => {
     if (!agreementForm.agreeTerms) {
-      show(
+      toast.error(
         "Action Required",
-        "Please accept the EV Merchant Agreement to proceed",
-        "error"
-      );
+        { description: "Please accept the EV Merchant Agreement to proceed"});
       return;
     }
 
