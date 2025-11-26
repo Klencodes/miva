@@ -140,13 +140,12 @@ export default function ProductsList() {
       icon: "eye-line",
       classes: "",
     },
-    // Add delete action if needed
-    // {
-    //   title: "Delete",
-    //   handler: () => handleDeleteProduct(item),
-    //   icon: "delete-bin-line",
-    //   classes: "text-error",
-    // },
+    {
+      title: "Delete",
+      handler: () => handleDeleteProduct(item),
+      icon: "delete-bin-line",
+      classes: "text-error",
+    },
   ];
 
   // 8. DATA FETCHING: Update function to fetch Products
@@ -249,6 +248,44 @@ export default function ProductsList() {
     // });
     console.log("Open Product Details Modal for:", item.name);
   };
+
+  const handleDeleteProduct = async (product: IProduct) => {
+    // toast.custom((id) => (
+    //   <div className="bg-card p-4 rounded-md shadow-lg">
+    //     <div className="font-semibold text-text">Are you sure you want to delete this product?</div>
+    //     <div className="flex justify-end gap-2 mt-3">
+    //       <Button
+    //         variant="ghost"
+    //         onClick={() => toast.dismiss(id)}
+    //       >
+    //         Cancel
+    //       </Button>
+    //       <Button
+    //         variant="danger"
+    //         onClick={async () => {
+    //           toast.dismiss(id); 
+    //           try {
+    //             const res = await appService.deleteProduct(product.id);
+    //             if (res.success) {
+    //               toast.success("Product deleted successfully");
+    //               if(products){
+    //                 setProducts(products.filter((p) => p.id !== product.id));
+    //               }
+    //             } else {
+    //               toast.error("Failed to delete product");
+    //             }
+    //           } catch (error) {
+    //             console.error("Failed to delete product:", error);
+    //             toast.error("Failed to delete product");
+    //           }
+    //         }}
+    //       >
+    //         Delete
+    //       </Button>
+    //     </div>
+    //   </div>
+    // ));
+  }
 
   // 11. EXPORT LOGIC: Update export logic for Products
   const handleExport = async (): Promise<void> => {

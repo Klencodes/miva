@@ -1,7 +1,7 @@
 export const apiValues = {
-  get GET_APP_THEMES_ENDPOINT() { return 'utilities/app-themes/' },
+  get APP_THEMES_ENDPOINT() { return 'utilities/theme/' },
   get GET_COUNTRIES_ENDPOINT() { return 'utilities/countries/' },
-  get UPLOAD_ASSETS_ENDPOINT() { return 'uploads/single/' },
+  get UPLOAD_ASSETS_ENDPOINT() { return 'utilities/upload-single-file/' },
   get SIGNIN_ENDPOINT() { return 'users/login' },
 
   get BUSINESS_ENTITIES_ENDPOINT() { return 'entities/' },

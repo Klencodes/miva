@@ -9,7 +9,7 @@ import { toast, Toaster } from "sonner";
 function App() {
   const appTitle = "GodDid Mart";
   const location = useLocation();
-  const { initializeTheme } = useTheme();
+  const { initializeTheme, isThemeReady } = useTheme();
   const { checkAuthStatus, initializationComplete } = useStore();
   const [isAppInitialized, setIsAppInitialized] = useState(false);
   const { isDark } = useTheme();
@@ -70,7 +70,7 @@ function App() {
         theme={isDark ? "dark" : "light"}
       />
 
-      {(!isAppInitialized || !initializationComplete) ? (
+      {(!isAppInitialized || !initializationComplete || !isThemeReady) ? (
         <Loader />
       ) : (
         <AppRoutes />

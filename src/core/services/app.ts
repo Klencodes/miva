@@ -11,6 +11,28 @@ export class AppService {
    * @returns return server response
    */
 
+  async updateTheme(payload: any): Promise<any> {
+    try {
+      return await apiService.postFormData<IResponse>(apiValues.APP_THEMES_ENDPOINT, payload);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }  
+
+  async getTheme(): Promise<any> {
+    try {
+      return await apiService.getNoToken<IResponse>(apiValues.APP_THEMES_ENDPOINT, {});
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }  
+  
+  /**
+   * Upload photo
+   * @param formData FormData with image file
+   * @returns return server response
+   */
+
   async uploadAsset(formData: FormData): Promise<any> {
     try {
       return await apiService.postFormData<IResponse & { results: UploadResult }>(apiValues.UPLOAD_ASSETS_ENDPOINT, formData);
@@ -108,6 +130,16 @@ export class AppService {
     delete payload.id;
     try {
       return await apiService.put<IResponse>(url, payload);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+  /**
+   * Delete product
+   */
+  async deleteProduct(id: string): Promise<any> {
+    try {
+      return await apiService.put<IResponse>(`${apiValues.PRODUCTS_ENDPOINT}${id}/`);
     } catch (error: any) {
       throw new Error(handleError(error));
     }

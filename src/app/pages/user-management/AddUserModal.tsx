@@ -257,7 +257,9 @@ const AddUserModal = () => {
     countries.map((country: { flag: string; code: string; phone_code: string }) => ({
       label: `${country.flag} ${country.code} | ${country.phone_code}`,
       value: country.phone_code
-    })), [countries]);
+    })
+    //eslint-disable-next-line
+  ), [countries]);
 
   const roleOptions = useMemo(() => [
     { value: 'admin', label: 'Administrator' },

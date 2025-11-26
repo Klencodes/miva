@@ -1,9 +1,29 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { THEME_MODE_KEY } from '../hooks/useTheme';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { getStoredItem, setStoredItem } from '../hooks/useStore';
+import { appService } from '../services/app';
 
+export const THEME_MODE_KEY = 'theme-mode';
 export type Theme = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
+
+export interface ThemeColors {
+  primary: string;
+  secondary: string;
+  background: string;
+  card: string;
+  text: string;
+  textLight: string;
+  border: string;
+  disabled: string;
+  danger: string;
+  info: string;
+  success: string;
+}
+
+export interface AppThemes {
+  light: ThemeColors;
+  dark: ThemeColors;
+}
 
 export interface ThemeContextType {
   theme: Theme;
@@ -12,6 +32,11 @@ export interface ThemeContextType {
   setTheme: (theme: Theme) => void;
   initializeTheme: () => void;
   isDark: boolean;
+  // New properties for API themes
+  themes: AppThemes;
+  isThemeReady: boolean;
+  updateThemes: (newThemes: AppThemes) => void;
+  resetToDefaultThemes: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -21,6 +46,35 @@ interface ThemeProviderProps {
   defaultTheme?: Theme;
   enableSystem?: boolean;
 }
+
+const defaultThemes: AppThemes = {
+  light: {
+    primary: "#ff6b57",
+    secondary: "#6c757d",
+    background: "#f8f9fa",
+    card: "#ffffff",
+    text: "#212529",
+    textLight: "#495057",
+    border: "#ced4da",
+    disabled: "#e9ecef",
+    danger: "#FF453A",
+    info: "#e08e00",
+    success: "#34C759",
+  },
+  dark: {
+    primary: "#ff6b57",
+    secondary: "#6c757d",
+    background: "#0a0a0a",
+    card: "#171717",
+    text: "#EAEAEA",
+    textLight: "#A7A9AB",
+    border: "#404040",
+    disabled: "#343a40",
+    danger: "#FF453A",
+    info: "#e08e00",
+    success: "#34C759",
+  },
+};
 
 export function ThemeProvider({ 
   children, 
@@ -33,6 +87,20 @@ export function ThemeProvider({
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
+  const [themes, setThemes] = useState<AppThemes>(defaultThemes);
+  const [isThemeReady, setIsThemeReady] = useState<boolean>(false);
+
+  // Use refs to prevent infinite loops
+  const themesRef = useRef(themes);
+  const themeRef = useRef(theme);
+  const resolvedThemeRef = useRef(resolvedTheme);
+
+  // Keep refs updated
+  useEffect(() => {
+    themesRef.current = themes;
+    themeRef.current = theme;
+    resolvedThemeRef.current = resolvedTheme;
+  }, [themes, theme, resolvedTheme]);
 
   const getSystemTheme = (): ResolvedTheme => {
     if (typeof window === 'undefined') return 'light';
@@ -46,7 +114,22 @@ export function ThemeProvider({
     return theme as ResolvedTheme;
   };
 
-  const applyTheme = (newTheme: Theme) => {
+  const applyCssVariables = useCallback((colors: ThemeColors) => {
+    const root = document.documentElement;
+    root.style.setProperty("--primary-color", colors.primary);
+    root.style.setProperty("--secondary-color", colors.secondary);
+    root.style.setProperty("--background-color", colors.background);
+    root.style.setProperty("--card-color", colors.card);
+    root.style.setProperty("--text-color", colors.text);
+    root.style.setProperty("--text-light-color", colors.textLight);
+    root.style.setProperty("--border-color", colors.border);
+    root.style.setProperty("--disabled-color", colors.disabled);
+    root.style.setProperty("--danger-color", colors.danger);
+    root.style.setProperty("--info-color", colors.info);
+    root.style.setProperty("--success-color", colors.success);
+  }, []);
+
+  const applyTheme = useCallback((newTheme: Theme, currentThemes: AppThemes = themesRef.current) => {
     const resolved = resolveTheme(newTheme);
     
     // Update document attributes
@@ -54,27 +137,67 @@ export function ThemeProvider({
     document.documentElement.classList.toggle('dark', resolved === 'dark');
     document.documentElement.style.colorScheme = resolved;
     
+    // Apply CSS variables from the current themes
+    if (currentThemes && currentThemes[resolved]) {
+      applyCssVariables(currentThemes[resolved]);
+    }
+    
     setResolvedTheme(resolved);
-  };
+    // eslint-disable-next-line
+  }, [applyCssVariables, enableSystem]);
 
-  const initializeTheme = () => {
+  const initializeTheme = useCallback(() => {
     const savedTheme = (getStoredItem<Theme>(THEME_MODE_KEY, defaultTheme));
     setThemeState(savedTheme);
     applyTheme(savedTheme);
-  };
+  }, [defaultTheme, applyTheme]);
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
     setStoredItem(THEME_MODE_KEY, newTheme);
     applyTheme(newTheme);
-  };
+  }, [applyTheme]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     const themes: Theme[] = enableSystem ? ['light', 'dark', 'system'] : ['light', 'dark'];
-    const currentIndex = themes.indexOf(theme);
+    const currentIndex = themes.indexOf(themeRef.current);
     const nextIndex = (currentIndex + 1) % themes.length;
     setTheme(themes[nextIndex]);
-  };
+  }, [enableSystem, setTheme]);
+
+  const updateThemes = useCallback((newThemes: AppThemes) => {
+    setThemes(newThemes);
+    applyTheme(themeRef.current, newThemes);
+  }, [applyTheme]);
+
+  const resetToDefaultThemes = useCallback(() => {
+    setThemes(defaultThemes);
+    applyTheme(themeRef.current, defaultThemes);
+  }, [applyTheme]);
+
+  // Initialize theme on mount - only once
+  useEffect(() => {
+    const initializeAppTheme = async () => {
+      setIsThemeReady(false);
+      
+      // Initialize local theme first
+      initializeTheme();
+      
+      // Then fetch API theme
+      try {
+        const res = await appService.getTheme();
+        if (res.success && res.results && res.results.themes) {
+          updateThemes(res.results.themes);
+        }
+      } catch (error) {
+        console.error("Failed to fetch API theme:", error);
+      } finally {
+        setIsThemeReady(true);
+      }
+    };
+
+    initializeAppTheme();
+  }, []); // Empty dependency array to run only once on mount
 
   // Listen for system theme changes
   useEffect(() => {
@@ -88,14 +211,12 @@ export function ThemeProvider({
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
-    // eslint-disable-next-line 
-  }, [theme, enableSystem]);
+  }, [theme, enableSystem, applyTheme]);
 
-  // Initialize theme on mount
+  // Apply theme when themes change
   useEffect(() => {
-    initializeTheme();
-    // eslint-disable-next-line 
-  }, []);
+    applyTheme(themeRef.current, themesRef.current);
+  }, [themes, applyTheme]);
 
   const value: ThemeContextType = {
     theme,
@@ -104,6 +225,10 @@ export function ThemeProvider({
     setTheme,
     initializeTheme,
     isDark: resolvedTheme === 'dark',
+    themes,
+    isThemeReady,
+    updateThemes,
+    resetToDefaultThemes,
   };
 
   return (

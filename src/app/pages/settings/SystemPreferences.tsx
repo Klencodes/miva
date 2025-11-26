@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { AppThemes, ThemeColors, ThemeMode, useTheme } from '../../../core/hooks/useTheme';
 import { useLayout } from '../../../core/hooks/useLayout';
 import { LayoutMode } from '../../layouts/types/layout';
 import { usePageTitle } from '../../../core/hooks/usePageTitle';
 import { SelectOption } from '../../../core/interfaces/ISelectOption';
 import { Input, Breadcrumb } from '../../../ui';
 import { IBreadcrumbItem } from '../../../ui/components/Breadcrumb';
+import { appService } from '../../../core/services/app';
+import { useTheme, ThemeColors, AppThemes, Theme } from '../../../core/contexts/ThemeProvider';
 
 const SystemPreferences: React.FC = () => {
-    usePageTitle("System Preferences"); 
+  usePageTitle("System Preferences"); 
 
-  const { themes, mode, setThemeMode, updateThemes, resetToDefaultThemes } = useTheme();
+  const { themes,theme, setTheme, updateThemes, resetToDefaultThemes } = useTheme();
   const { layoutMode, setLayoutMode } = useLayout();
   
-  const [selectedThemeMode, setSelectedThemeMode] = useState<ThemeMode>(mode);
+  const [selectedThemeMode, setSelectedThemeMode] = useState<Theme>(theme);
   const [selectedLayout, setSelectedLayout] = useState<LayoutMode>(layoutMode);
   const [customLightTheme, setCustomLightTheme] = useState<ThemeColors>(themes.light);
   const [customDarkTheme, setCustomDarkTheme] = useState<ThemeColors>(themes.dark);
@@ -36,8 +37,8 @@ const SystemPreferences: React.FC = () => {
 
   // Sync with theme service
   useEffect(() => {
-    setSelectedThemeMode(mode);
-  }, [mode]);
+    setSelectedThemeMode(theme);
+  }, [theme]);
 
   useEffect(() => {
     setSelectedLayout(layoutMode);
@@ -54,9 +55,9 @@ const SystemPreferences: React.FC = () => {
     setLayoutMode(newLayout);
   };
 
-  const onThemeModeChange = (newMode: ThemeMode) => {
+  const onThemeModeChange = (newMode: Theme) => {
     setSelectedThemeMode(newMode);
-    setThemeMode(newMode);
+    setTheme(newMode);
   };
 
   const validateColor = (value: string, colorType: string) => {
@@ -89,11 +90,13 @@ const SystemPreferences: React.FC = () => {
     }
   };
 
-  const applyCustomTheme = () => {
+  const applyCustomTheme = async () => {
     const customThemes: AppThemes = {
       light: { ...customLightTheme },
       dark: { ...customDarkTheme },
     };
+    const palyload  = {theme_string: JSON.stringify(customThemes)}
+    await appService.updateTheme(palyload);
     updateThemes(customThemes);
   };
 
@@ -121,10 +124,9 @@ const SystemPreferences: React.FC = () => {
           value={value}
           onChange={(newValue) => validateColor(newValue, colorType)}
           placeholder="#RRGGBB"
-          prefixIcon={true}
-        >
-          <i slot="prefix" className="ri-palette-line text-lg text-text-light" />
-        </Input>
+          prefixIcon={"palette"}
+        />
+         
       </div>
     </div>
   );
@@ -143,21 +145,17 @@ const SystemPreferences: React.FC = () => {
           selectOptions={layoutOptions}
           value={selectedLayout}
           onChange={(newValue) => onLayoutChange(newValue as LayoutMode)}
-          prefixIcon={true}
-        >
-          <i slot="prefix" className="ri-layout-line text-lg text-text-light" />
-        </Input>
+          prefixIcon={"layout"}
+        />
 
         <Input
           label="Theme Mode"
           type="select"
           selectOptions={themeModeOptions}
           value={selectedThemeMode}
-          onChange={(newValue) => onThemeModeChange(newValue as ThemeMode)}
-          prefixIcon={true}
-        >
-          <i slot="prefix" className="ri-palette-line text-lg text-text-light" />
-        </Input>
+          onChange={(newValue) => onThemeModeChange(newValue as Theme)}
+          prefixIcon={"palette"}
+        />
       </div>
 
       {/* Theme Customization */}

@@ -414,7 +414,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
              
               <div className="grid grid-cols-2 gap-4">
-                {/* <Input
+                {!isEditMode && (<Input
                   label="Stock Quantity"
                   type="number"
                   placeholder="0"
@@ -426,7 +426,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                   onBlur={() => handleBlur("stock")}
                   error={errors.stock}
                   min={parseFloat("0")}
-                /> */}
+                />)}
                  <Input
                 type="select"
                 label="Category"

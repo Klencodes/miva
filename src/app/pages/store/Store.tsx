@@ -13,6 +13,7 @@ import CustomerModal from "./CustomerModal";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
 import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
 import { ICartContentProps } from "../../../core/interfaces/IStore";
+import { SelectOption } from "../../../core/interfaces/ISelectOption";
 
 const CartContent: React.FC<ICartContentProps> = ({
   cartItems,
@@ -263,10 +264,11 @@ const CartContent: React.FC<ICartContentProps> = ({
               <div className="flex-1">
                 <Input
                   type="number"
-                  label="Tendered Cash (GHC)"
+                  label="Tendered Cash"
                   value={tenderedCash}
                   onChange={(val) => setTenderedCash(parseFloat(val) || 0)}
                   min={parseFloat("0")}
+                  placeholder="0.00"
                 />
               </div>
 
@@ -341,7 +343,7 @@ const CartContent: React.FC<ICartContentProps> = ({
 
 const ModernStore: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<SelectOption[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
@@ -463,18 +465,6 @@ const ModernStore: React.FC = () => {
 
           setHasMore(!!response.next);
           setPage(pageParam);
-
-          if (pageParam === 1) {
-            const uniqueCategories: any[] = [
-              "All",
-              ...Array.from(
-                new Set(
-                  (response.results || []).map((p: IProduct) => p.category_name)
-                )
-              ),
-            ];
-            setCategories(uniqueCategories);
-          }
         } else {
           setProducts([]);
         }
@@ -488,6 +478,27 @@ const ModernStore: React.FC = () => {
     },
     [isOnline]
   );
+
+  useEffect(() => {
+    const getProductExttraData = async () => {
+      try {
+        const res = await appService.getProductExtraInfo();
+        if (res.success) {
+          setCategories([
+            { label: "All", value: "All" },
+            ...res.results?.categories?.map(
+              (category: SelectOption) => category
+            ),
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch product categories:", error);
+      }
+    };
+    getProductExttraData();
+  }, []);
+
+  // Generate order code
   const generateOrderCode = () => {
     const now = new Date();
     const yy = now.getFullYear().toString().slice(-2);
@@ -825,12 +836,13 @@ const ModernStore: React.FC = () => {
 
               <div className="flex items-center gap-3">
                 {/* Search */}
-                <div className="relative">
+                <div className="relative w-full flex-1 -mb-5">
                   <Input
                     type="text"
                     label="Search products..."
                     value={searchTerm}
                     onChange={searchProducts}
+                    prefixIcon="search"
                   />
                 </div>
 
@@ -851,32 +863,26 @@ const ModernStore: React.FC = () => {
                 </div>
               </div>
               {isOnline && (
-                <Button
-                  onClick={handleManualSync}
-                  // size="sm"
-                >
-                  Sync Products
-                </Button>
+                <Button onClick={handleManualSync}>Sync Products</Button>
               )}
             </div>
 
             {/* Categories */}
-            <div className="flex flex-wrap gap-2 mt-6">
-              {categories.map((category) => (
-                <button
-                  key={category}
+            <div className="flex flex-nowrap mt-6 items-center overflow-x-auto mb-3">
+              {categories.map((category: SelectOption) => (
+                <Button
+                  key={category.value}
                   onClick={() => {
-                    setSelectedCategory(category);
-                    fetchProducts(1, searchTerm, category);
+                    setSelectedCategory(category.value);
+                    fetchProducts(1, searchTerm, category.value);
                   }}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    selectedCategory === category
-                      ? "bg-primary text-white shadow-md"
-                      : "bg-background text-text hover:bg-gray-200 dark:hover:bg-gray-600"
-                  }`}
+                  variant={
+                    selectedCategory === category.value ? "primary" : "ghost"
+                  }
+                  className="whitespace-nowrap flex-shrink-0 min-w-max mr-2"
                 >
-                  {category}
-                </button>
+                  {category.value}
+                </Button>
               ))}
             </div>
           </div>

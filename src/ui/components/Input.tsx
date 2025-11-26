@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
-import { SelectOption } from "../../core/interfaces/ISelectOption";
+
+// Define the SelectOption interface as it was used but not defined in the original snippet.
+export interface SelectOption {
+  value: string | number;
+  label: string;
+  disabled?: boolean;
+}
 
 export type InputSize = 'sm' | 'md' | 'lg';
 export type InputVariant = 'default' | 'filled' | 'outline';
@@ -23,8 +29,10 @@ export interface CustomInputProps {
   disabled?: boolean;
   readonly?: boolean;
   required?: boolean;
-  prefixIcon?: boolean;
-  suffixIcon?: boolean;
+  // --- MODIFIED: Icons are now strings (e.g., "add") ---
+  prefixIcon?: string;
+  suffixIcon?: string;
+  // -----------------------------------------------------
   suffixIconClickable?: boolean;
   min?: number;
   max?: number;
@@ -37,6 +45,15 @@ export interface CustomInputProps {
   onSuffixIconClick?: () => void;
   children?: React.ReactNode;
 }
+
+// Helper component to render the Remix Icon
+const IconRenderer = ({ iconName, extraClasses = '' }: { iconName: string; extraClasses?: string }) => {
+  if (!iconName) return null;
+  // Generates the required class structure: ri-{iconName}-line
+  const iconClass = `ri-${iconName}-line`;
+  return <i className={`text-lg ${iconClass} ${extraClasses}`}></i>;
+};
+
 
 const Input: React.FC<CustomInputProps> = ({
   id,
@@ -54,8 +71,10 @@ const Input: React.FC<CustomInputProps> = ({
   disabled = false,
   readonly = false,
   required = false,
-  prefixIcon = false,
-  suffixIcon = false,
+  // --- MODIFIED: Accepting string icons ---
+  prefixIcon,
+  suffixIcon,
+  // ----------------------------------------
   suffixIconClickable = false,
   min,
   max,
@@ -66,13 +85,12 @@ const Input: React.FC<CustomInputProps> = ({
   onBlur,
   onFocus,
   onSuffixIconClick,
-  children
 }) => {
   const generatedId = useId();
   const inputId = id || `input-${generatedId}`;
-  const inputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const selectRef = useRef<HTMLSelectElement>(null);
+  const inputRef = useRef(null);
+  const textareaRef = useRef(null);
+  const selectRef = useRef(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -97,38 +115,24 @@ const Input: React.FC<CustomInputProps> = ({
   const showError = type !== 'checkbox';
   const floatingLabel = labelType === 'floating';
 
-  // Icon visibility helpers - EXCLUDING 'textarea' for icon usage logic
-  const showFloatingPrefixIcon = prefixIcon && 
+  // Icon visibility helpers (now checking for truthy string)
+  const hasPrefixIcon = !!prefixIcon && 
     type !== 'checkbox' &&
     type !== 'textarea';
 
-  const showFloatingSuffixIcon = suffixIcon && 
+  // Suffix icons are NOT supported for password, range, select, or textarea
+  const hasSuffixIcon = !!suffixIcon && 
     type !== 'password' && 
     type !== 'checkbox' && 
     type !== 'range' && 
     type !== 'select' &&
     type !== 'textarea';
 
-  const showFloatingPasswordIcon = type === 'password';
+  const showPasswordIcon = type === 'password';
 
-  const showDefaultPrefixIcon = prefixIcon && 
-    type !== 'password' && 
-    type !== 'checkbox' && 
-    type !== 'range' && 
-    type !== 'select' &&
-    type !== 'textarea';
-
-  const showDefaultSuffixIcon = suffixIcon && 
-    type !== 'password' && 
-    type !== 'checkbox' && 
-    type !== 'range' && 
-    type !== 'select' &&
-    type !== 'textarea';
-
-  const showDefaultPasswordIcon = type === 'password' && labelType === 'default';
 
   // Helper method to get the actual input type
-  const getInputType = (): string => {
+  const getInputType = () => {
     if (type === 'password' && showPassword) {
       return 'text';
     }
@@ -140,37 +144,37 @@ const Input: React.FC<CustomInputProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  const updateHasValue = (): void => {
+  const updateHasValue = () => {
     setHasValue(!!value || value === 0 || value === false);
   };
 
-  const handleFocus = (): void => {
+  const handleFocus = () => {
     setIsFocused(true);
     onFocus?.();
   };
 
-  const handleBlur = (): void => {
+  const handleBlur = () => {
     setIsFocused(false);
     onBlur?.();
     updateHasValue();
   };
 
-  const togglePasswordVisibility = (): void => {
+  const togglePasswordVisibility = () => {
     if (type === 'password' && !disabled) {
       setShowPassword(!showPassword);
     }
   };
 
-  const focusInput = (): void => {
+  const focusInput = () => {
     if (!disabled) {
-      if (inputRef.current) inputRef.current.focus();
-      if (textareaRef.current) textareaRef.current.focus();
-      if (selectRef.current) selectRef.current.focus();
+      if (inputRef.current) (inputRef.current as HTMLInputElement).focus();
+      if (textareaRef.current) (textareaRef.current as HTMLTextAreaElement).focus();
+      if (selectRef.current) (selectRef.current as HTMLSelectElement).focus();
     }
   };
 
-  const handleSuffixIconClick = (): void => {
-    if (suffixIconClickable && !disabled) {
+  const handleSuffixIconClick = () => {
+    if (suffixIconClickable && !disabled && hasSuffixIcon) {
       onSuffixIconClick?.();
     }
   };
@@ -178,7 +182,7 @@ const Input: React.FC<CustomInputProps> = ({
   /**
    * Floating Input Classes
    */
-  const getFloatingInputClasses = (): string => {
+  const getFloatingInputClasses = () => {
     const baseClasses = 'block w-full focus:border-primary transition-all duration-200 bg-transparent outline-none';
     
     const radiusClasses = {
@@ -215,7 +219,7 @@ const Input: React.FC<CustomInputProps> = ({
   /**
    * Default Input Classes
    */
-  const getInputClasses = (): string => {
+  const getInputClasses = () => {
     if (type === 'range') {
       const radiusClasses = {
         none: 'rounded-none',
@@ -226,7 +230,7 @@ const Input: React.FC<CustomInputProps> = ({
         full: 'rounded-full'
       }[radius];
 
-      return `w-full h-2 bg-background${radiusClasses} appearance-none cursor-pointer outline-none
+      return `w-full h-2 bg-background ${radiusClasses} appearance-none cursor-pointer outline-none
               focus:border-primary
               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer
               [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer`;
@@ -252,8 +256,6 @@ const Input: React.FC<CustomInputProps> = ({
     let variantClasses;
     switch (variant) {
       case 'default':
-        variantClasses = `bg-background border border-border ${isFocused ? 'border-primary' : ''}`;
-        break;
       case 'filled':
         variantClasses = `bg-background border border-border ${isFocused ? 'border-primary' : ''}`;
         break;
@@ -271,7 +273,7 @@ const Input: React.FC<CustomInputProps> = ({
     return [baseClasses, radiusClasses, sizeClasses, variantClasses, stateClasses, errorClasses].join(' ');
   };
 
-  const getCheckboxClasses = (): string => {
+  const getCheckboxClasses = () => {
     const baseClasses = 'h-4 w-4 rounded border-border bg-background text-primary focus:border-primary outline-none';
     
     const radiusClasses = {
@@ -289,7 +291,7 @@ const Input: React.FC<CustomInputProps> = ({
   /**
    * Floating Label Classes
    */
-  const getFloatingLabelClasses = (): string => {
+  const getFloatingLabelClasses = () => {
     const baseClasses = 'absolute left-3 pointer-events-none transition-all duration-200 origin-top-left bg-card px-1 z-10';
     
     const activePosition = '-top-2 text-base scale-75';
@@ -312,41 +314,52 @@ const Input: React.FC<CustomInputProps> = ({
     return [baseClasses, positionClasses, colorClasses, errorClasses].join(' ');
   };
 
-  const getFloatingIconClasses = (): string => {
+  const getFloatingIconClasses = (isPrefix = false) => {
     const positionClasses = isFocused || hasValue
       ? 'top-2'
       : 'top-1/2 -translate-y-1/2';
+      
+    // Adjust horizontal position based on type and side
+    const horizontalClasses = isPrefix ? 'left-0 pl-3' : 'right-0 pr-3';
 
-    return `absolute ${positionClasses} transition-all duration-200`;
+    return `absolute ${horizontalClasses} ${positionClasses} transition-all duration-200`;
+  };
+  
+  const getDefaultIconClasses = (isPrefix = false) => {
+    const horizontalClasses = isPrefix ? 'left-0 pl-3' : 'right-0 pr-3';
+    return `absolute ${horizontalClasses} flex items-center`;
   };
 
   // Event handlers
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
+  const handleInputChange = (event: { target: { value: any; }; }) => {
     const newValue = event.target.value;
     onChange?.(newValue);
   };
 
-  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleCheckboxChange = (event: { target: { checked: any; }; }) => {
     const newValue = event.target.checked;
     onChange?.(newValue);
   };
 
-  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
+  const handleSelectChange = (event: { target: { value: any; }; }) => {
     const newValue = event.target.value;
     onChange?.(newValue);
   };
 
-  // Extract prefix and suffix from children
-  const prefixContent = React.Children.toArray(children).find(
-    (child: any) => child.props?.slot === 'prefix'
-  );
-
-  const suffixContent = React.Children.toArray(children).find(
-    (child: any) => child.props?.slot === 'suffix'
-  );
 
   // Render methods for different input types
   const renderFloatingInput = () => {
+    // Calculate padding based on icon presence
+    const pL = hasPrefixIcon ? ' pl-10' : '';
+    let pR = '';
+    
+    // Password icon always takes precedence for the right side for 'password' type
+    if (showPasswordIcon) {
+        pR = ' pr-10';
+    } else if (hasSuffixIcon) {
+        pR = ' pr-10';
+    }
+
     if (type === 'select') {
       return (
         <select
@@ -356,7 +369,8 @@ const Input: React.FC<CustomInputProps> = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           disabled={disabled}
-          className={getFloatingInputClasses() + " appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZXZyb24tZG93biI+PHBhdGggZD0ibTYgOSA2IDYgNi02Ii8+PC9wYXRoPjwvc3ZnPg==')] bg-no-repeat bg-[center_right_0.75rem] bg-[length:1rem]"}
+          className={getFloatingInputClasses() + (hasPrefixIcon ? ' pl-8' : '') +  (hasSuffixIcon ? ' pr-8' : '') +
+            " appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZXZyb24tZG93biI+PHBhdGggZD0ibTYgOSA2IDYgNi02Ii8+PC9wYXRoPjwvc3ZnPg==')] bg-no-repeat bg-[center_right_0.75rem] bg-[length:1rem]"}
         >
           {selectPlaceholder && !value && (
             <option value="" disabled selected></option>
@@ -381,8 +395,8 @@ const Input: React.FC<CustomInputProps> = ({
           onBlur={handleBlur}
           value={value}
           className={getFloatingInputClasses() + ' resize-none min-h-[100px]' + 
-            (prefixIcon && showFloatingPrefixIcon ? ' pl-12' : '') +
-            (suffixIcon && showFloatingSuffixIcon ? ' pr-10' : '')}
+            (hasPrefixIcon ? ' pl-12' : '') + // Textarea needs a bit more space
+            (hasSuffixIcon ? ' pr-10' : '')}
         />
       );
     } else {
@@ -398,15 +412,21 @@ const Input: React.FC<CustomInputProps> = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           value={value}
-          className={getFloatingInputClasses() +
-            (prefixIcon && showFloatingPrefixIcon ? ' pl-10' : '') +
-            (showFloatingPasswordIcon || (suffixIcon && showFloatingSuffixIcon) ? ' pr-10' : '')}
+          className={getFloatingInputClasses() + pL + pR}
         />
       );
     }
   };
 
   const renderDefaultInput = () => {
+    // Calculate padding for Default Input
+    const pL = hasPrefixIcon ? ' pl-10' : '';
+    let pR = '';
+    
+    if (showPasswordIcon || hasSuffixIcon) {
+        pR = ' pr-10';
+    }
+
     switch (type) {
       case 'range':
         return (
@@ -462,9 +482,7 @@ const Input: React.FC<CustomInputProps> = ({
             onChange={handleSelectChange}
             onBlur={handleBlur}
             disabled={disabled}
-             className={getFloatingInputClasses() +
-            (prefixIcon && showFloatingPrefixIcon ? ' pl-10' : '') +
-            (showFloatingPasswordIcon || (suffixIcon && showFloatingSuffixIcon) ? ' pr-10' : '') + " appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZXZyb24tZG93biI+PHBhdGggZD0ibTYgOSA2IDYgNi02Ii8+PC9wYXRoPjwvc3ZnPg==')] bg-no-repeat bg-[center_right_0.75rem] bg-[length:1rem]"}
+             className={getInputClasses() + " appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZXZyb24tZG93biI+PHBhdGggZD0ibTYgOSA2IDYgNi02Ii8+PC9wYXRoPjwvc3ZnPg==')] bg-no-repeat bg-[center_right_0.75rem] bg-[length:1rem]"}
           >
             
             {selectPlaceholder && (
@@ -493,8 +511,8 @@ const Input: React.FC<CustomInputProps> = ({
             value={value}
             onBlur={handleBlur}
             className={getInputClasses() + ' resize-none min-h-[100px]' + 
-              (prefixIcon && showDefaultPrefixIcon ? ' pl-10' : '') +
-              (suffixIcon && showDefaultSuffixIcon ? ' pr-10' : '') +
+              (hasPrefixIcon ? ' pl-10' : '') +
+              (hasSuffixIcon ? ' pr-10' : '') +
               (error ? ' border-danger' : '')}
           />
         );
@@ -512,10 +530,7 @@ const Input: React.FC<CustomInputProps> = ({
             onFocus={handleFocus}
             value={value}
             onBlur={handleBlur}
-            className={getInputClasses() +
-              (prefixIcon && showDefaultPrefixIcon ? ' pl-10' : '') +
-              (showDefaultPasswordIcon || (suffixIcon && showDefaultSuffixIcon) ? ' pr-10' : '') +
-              (error ? ' border-danger' : '')}
+            className={getInputClasses() + pL + pR + (error ? ' border-danger' : '')}
           />
         );
     }
@@ -523,10 +538,18 @@ const Input: React.FC<CustomInputProps> = ({
 
   return (
     <div className="block space-y-1 mb-5">
+      {/* Load Remix Icon CSS from CDN for demo purposes */}
+      <link 
+        href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" 
+        rel="stylesheet"
+      />
+
       {showFloatingLabel && (
         <div className="relative">
+          {/* Floating Input */}
           {renderFloatingInput()}
 
+          {/* Floating Label */}
           <label 
             htmlFor={inputId} 
             className={getFloatingLabelClasses()}
@@ -536,16 +559,18 @@ const Input: React.FC<CustomInputProps> = ({
             {required && <span className="text-danger">*</span>}
           </label>
 
-          {showFloatingPrefixIcon && prefixContent && (
-            <div className={`absolute left-0 pl-3 flex items-center pointer-events-none text-text-light ${getFloatingIconClasses()}`}>
-              {prefixContent}
+          {/* Floating Prefix Icon */}
+          {hasPrefixIcon && (
+            <div className={`flex items-center pointer-events-none text-text-light ${getFloatingIconClasses(true)}`}>
+              <IconRenderer iconName={prefixIcon} />
             </div>
           )}
 
-          {showFloatingPasswordIcon && (
+          {/* Floating Password Icon (Always visible if type is password) */}
+          {showPasswordIcon && (
             <button
               type="button"
-              className={`absolute right-0 pr-3 flex items-center text-text-light hover:text-primary transition-colors ${getFloatingIconClasses()}`}
+              className={`flex items-center text-text-light hover:text-primary transition-colors ${getFloatingIconClasses(false)}`}
               onClick={togglePasswordVisibility}
               onMouseDown={(e) => e.preventDefault()}
               disabled={disabled}
@@ -554,16 +579,20 @@ const Input: React.FC<CustomInputProps> = ({
             </button>
           )}
 
-          {showFloatingSuffixIcon && suffixContent && (
+          {/* Floating Suffix Icon */}
+          {hasSuffixIcon && (
             <div 
-              className={`absolute right-0 pr-3 flex items-center transition-colors ${getFloatingIconClasses()} ${
+              className={`flex items-center transition-colors ${getFloatingIconClasses(false)} ${
                 !suffixIconClickable 
                   ? 'text-text-light pointer-events-none' 
                   : 'cursor-pointer pointer-events-auto'
               }`}
               onClick={handleSuffixIconClick}
             >
-              {suffixContent}
+              <IconRenderer 
+                iconName={suffixIcon} 
+                extraClasses={suffixIconClickable ? 'hover:text-primary' : ''}
+              />
             </div>
           )}
         </div>
@@ -578,18 +607,22 @@ const Input: React.FC<CustomInputProps> = ({
 
       {showDefaultInput && (
         <div className={`relative flex items-center ${type === 'checkbox' ? 'flex-row-reverse' : ''}`}>
-          {showDefaultPrefixIcon && prefixContent && (
-            <div className="absolute left-0 pl-3 flex items-center pointer-events-none text-text-light">
-              {prefixContent}
+          
+          {/* Default Prefix Icon */}
+          {hasPrefixIcon && (
+            <div className={`pointer-events-none text-text-light ${getDefaultIconClasses(true)}`}>
+              <IconRenderer iconName={prefixIcon} />
             </div>
           )}
           
+          {/* Default Input (or Checkbox/Range) */}
           {renderDefaultInput()}
 
-          {showDefaultPasswordIcon && (
+          {/* Default Password Icon */}
+          {showPasswordIcon && (
             <button
               type="button"
-              className="absolute right-0 pr-3 flex items-center text-text-light hover:text-primary"
+              className={`text-text-light hover:text-primary ${getDefaultIconClasses(false)}`}
               onClick={togglePasswordVisibility}
               onMouseDown={(e) => e.preventDefault()}
               disabled={disabled}
@@ -598,16 +631,20 @@ const Input: React.FC<CustomInputProps> = ({
             </button>
           )}
 
-          {showDefaultSuffixIcon && suffixContent && (
+          {/* Default Suffix Icon */}
+          {hasSuffixIcon && (
             <div 
-              className={`absolute right-0 pr-3 flex items-center ${
+              className={`${getDefaultIconClasses(false)} ${
                 !suffixIconClickable 
                   ? 'text-text-light pointer-events-none' 
                   : 'cursor-pointer pointer-events-auto'
               }`}
               onClick={handleSuffixIconClick}
             >
-              {suffixContent}
+              <IconRenderer 
+                iconName={suffixIcon} 
+                extraClasses={suffixIconClickable ? 'hover:text-primary' : ''}
+              />
             </div>
           )}
         </div>
