@@ -20,7 +20,7 @@ export interface LoginFormState {
 }
 
 const initialFormState: LoginFormState = {
-  email: "shine@goddidmart.com",
+  email: "shine@gmart.com",
   password: "pass123",
 };
 
@@ -73,7 +73,6 @@ const Login: React.FC = () => {
   const handleEntitiesAfterLogin = async (userData: IUser) => {
       try {
         const entitiesRes = await appService.getEntities();
-        console.log(entitiesRes.results)
         let entitiesToSet: IEntityItem[] = [];
           entitiesToSet = entitiesRes.results;
           const hasEntities = entitiesRes?.results?.length > 0;
@@ -94,7 +93,12 @@ const Login: React.FC = () => {
           setStoreEntities(entitiesToSet);
           window.location.replace("/dashboard");
         } else {
+          if (userData.role === Roles.SUPER_ADMIN) {
+
           navigate("/account/create-business");
+          } else{
+            navigate("/account/access-denied");
+          }
         }
         return;
       } catch (error) {

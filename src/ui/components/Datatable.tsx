@@ -366,7 +366,7 @@ const DataTable: React.FC<DataTableProps> = ({
             <img
               src={value}
               alt={altText}
-              className={`rounded-full object-cover ${sizeClasses} ${
+              className={`rounded-sm object-cover ${sizeClasses} ${
                 imgConfig.className || ""
               }`}
             />

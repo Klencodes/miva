@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ENTITY_KEY,
@@ -25,24 +25,26 @@ interface HeaderProps {
   currentSidebarState?: "standard" | "condensed" | "hidden";
 }
 
-const Header: React.FC<HeaderProps> = ({
+// Memoize the header to prevent unnecessary re-renders
+const Header: React.FC<HeaderProps> = memo(({
   isVerticalLayout,
   onToggleSidebar,
   onUserMenuAction,
   onLogoClick,
   currentSidebarState = "standard",
 }) => {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showEntityDropdown, setShowEntityDropdown] = useState(false);
   const [isEntityLoading, setIsEntityLoading] = useState(false);
+  
+  // Only select the specific store values we need
   const { user, entity, setEntity, storeEntities, setStoreEntities } = useStore();
   const { layoutMode } = useLayout();
   const navigate = useNavigate();
   const { openModal } = useModal();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const entityDropdownRef = useRef<HTMLDivElement>(null);
-  const userData = user || getStoredItem(USER_KEY, null);
   const isOnline = useNetworkStatus();
 
   const hasFetchedEntities = useRef(false);
@@ -50,34 +52,53 @@ const Header: React.FC<HeaderProps> = ({
   // Get locally stored entity for immediate display when offline/before fetch
   const storedEntity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
 
+  // Memoize user data to prevent unnecessary re-renders
+  const userData = useMemo(() => user || getStoredItem(USER_KEY, null), [user]);
+
+  // Memoize entity display logic
+  const displayEntityName = useMemo(() => {
+    return isOnline
+      ? isEntityLoading
+        ? "Loading Entities..."
+        : entity
+        ? entity.name
+        : "Select Entity"
+      : storedEntity
+      ? storedEntity.name
+      : "Offline - No Entity Loaded";
+  }, [isOnline, isEntityLoading, entity, storedEntity]);
+
+  // Memoize entity display logic
+  const shouldShowEntityDropdown = useMemo(() => {
+    return storeEntities !== null || isEntityLoading || storedEntity;
+  }, [storeEntities, isEntityLoading, storedEntity]);
+
+  // Memoize user role check
+  const isSuperAdmin = useMemo(() => {
+    return userData?.role === Roles.SUPER_ADMIN;
+  }, [userData?.role]);
+
   // --- Entity Fetching/State Management Logic ---
-  const fetchEntities = useCallback(
+const fetchEntities = useCallback(
     async (isManualRefetch = false) => {
-      // 🛑 SHORT CIRCUIT: Prevent API calls when offline
       if (!isOnline) {
         setIsEntityLoading(false);
-        // Ensure storeEntities is not null if we have a stored entity, 
-        // preventing UI components from treating storeEntities as empty array
         if (storedEntity && !storeEntities) {
             setStoreEntities([storedEntity]); 
         }
         return;
       }
 
-      // STOP THE LOOP:
-      // If not a manual refresh, and we are already loading OR have already fetched, stop.
       if (!isManualRefetch && (hasFetchedEntities.current || isEntityLoading)) {
         return;
       }
 
       setIsEntityLoading(true);
 
-      // MARK AS FETCHED IMMEDIATELY to prevent race conditions/loops
       if (!isManualRefetch) {
         hasFetchedEntities.current = true;
       }
 
-      // If manual refresh, clear store temporarily
       if (isManualRefetch) {
         setStoreEntities(null);
       }
@@ -89,7 +110,7 @@ const Header: React.FC<HeaderProps> = ({
           if (res.results.length > 0) {
             let entitiesToSet = res.results;
 
-            if (userData?.role === Roles.SUPER_ADMIN) {
+            if (isSuperAdmin) {
               entitiesToSet = res.results.map((ent: IEntityItem) => ({
                 ...ent,
                 id:
@@ -101,7 +122,6 @@ const Header: React.FC<HeaderProps> = ({
 
             setStoreEntities(entitiesToSet);
 
-            // Set current entity if not already set (will prioritize storedEntity from local storage)
             if (!entity) {
               setEntity(storedEntity || entitiesToSet[0]);
             }
@@ -110,25 +130,21 @@ const Header: React.FC<HeaderProps> = ({
           setStoreEntities([]);
         }
       } catch (error) {
-        // If fetch failed due to a network issue, allow it to try again next time
-        // by NOT setting hasFetchedEntities.current = true if it wasn't a manual fetch.
-        if (!isManualRefetch) {
+        console.error("Entity fetch failed:", error); 
+
+        if (isManualRefetch) {
             hasFetchedEntities.current = false;
+            console.warn("Manual refetch failed. Will retry on next render.");
+            setStoreEntities([]);
+        } else {
+             console.warn("Automatic fetch failed (Server Unreachable). Loop stopped.");
         }
 
-        if (
-          error instanceof TypeError &&
-          error.message.includes("Failed to fetch")
-        ) {
-          console.warn("Network error - keeping existing entities if any");
-        } else {
-          setStoreEntities([]);
-        }
       } finally {
         setIsEntityLoading(false);
       }
     },
-    [isOnline, userData?.role, entity, setEntity, setStoreEntities, storedEntity, isEntityLoading, storeEntities]
+    [isOnline, isSuperAdmin, entity, setEntity, setStoreEntities, storedEntity, isEntityLoading, storeEntities]
   );
 
   // Fetch entities only once on mount and when coming back online
@@ -145,7 +161,7 @@ const Header: React.FC<HeaderProps> = ({
   }, [fetchEntities, isOnline, entity, storedEntity, setEntity]);
 
   // Handlers for refresh
-  const handleRefreshEntities = (e?: React.MouseEvent) => {
+  const handleRefreshEntities = useCallback((e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -157,20 +173,21 @@ const Header: React.FC<HeaderProps> = ({
     }
 
     fetchEntities(true);
-  };
+  }, [fetchEntities, isOnline]);
 
   // Handle entity selection
-  const handleEntitySelect = async (selectedEntity: IEntityItem) => {
+  const handleEntitySelect = useCallback(async (selectedEntity: IEntityItem) => {
     setEntity(selectedEntity);
     setShowEntityDropdown(false);
     eventService.triggerRefresh();
-  };
+  }, [setEntity]);
 
-  // --- UI/Event Handlers (unchanged) ---
+  // --- UI/Event Handlers ---
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
+    
     const handleClickOutside = (event: MouseEvent) => {
       if (
         userMenuRef.current &&
@@ -185,15 +202,17 @@ const Header: React.FC<HeaderProps> = ({
         setShowEntityDropdown(false);
       }
     };
+    
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("mousedown", handleClickOutside);
+    
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  const toggleFullScreen = () => {
+  const toggleFullScreen = useCallback(() => {
     if (!isFullscreen) {
       document.documentElement.requestFullscreen().catch((err) => {
         console.error(`Error attempting to enable fullscreen: ${err.message}`);
@@ -203,15 +222,15 @@ const Header: React.FC<HeaderProps> = ({
         document.exitFullscreen();
       }
     }
-  };
+  }, [isFullscreen]);
 
-  const toggleUserMenu = (event: React.MouseEvent) => {
+  const toggleUserMenu = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
-    setShowUserMenu(!showUserMenu);
+    setShowUserMenu(prev => !prev);
     setShowEntityDropdown(false);
-  };
+  }, []);
 
-  const handleAddEntity = async () => {
+  const handleAddEntity = useCallback(async () => {
     if (!isOnline) {
       return;
     }
@@ -224,39 +243,34 @@ const Header: React.FC<HeaderProps> = ({
         backdropClose: true,
       });
 
-      switch (result?.success) {
-        case "success":
-          // After successful addition, refresh entities
-          handleRefreshEntities();
-          return;
-
-        default:
-          break;
+      if (result?.success === "success") {
+        // After successful addition, refresh entities
+        handleRefreshEntities();
       }
     } catch (error) {
       console.error("Error in handleAddEntity:", error);
     }
-  };
+  }, [isOnline, openModal, handleRefreshEntities]);
 
-  const handleEntityButtonClick = (e: React.MouseEvent) => {
+  const handleEntityButtonClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowEntityDropdown(!showEntityDropdown);
-  };
+    setShowEntityDropdown(prev => !prev);
+  }, []);
 
-  const handleToggleSidebar = () => {
+  const handleToggleSidebar = useCallback(() => {
     onToggleSidebar();
-  };
+  }, [onToggleSidebar]);
 
-  const handleLogoClickInternal = (event: React.MouseEvent) => {
+  const handleLogoClickInternal = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     if (onLogoClick) {
       onLogoClick();
     } else {
       navigate("/dashboard");
     }
-  };
+  }, [onLogoClick, navigate]);
 
-  const handleUserMenuAction = (
+  const handleUserMenuAction = useCallback((
     action: "logout" | "profile" | "settings",
     event: React.MouseEvent
   ) => {
@@ -282,49 +296,44 @@ const Header: React.FC<HeaderProps> = ({
           break;
       }
     }
-  };
+  }, [onUserMenuAction, navigate]);
 
   const isCondensed = currentSidebarState === "condensed";
-  
-  // 🔥 REVISED LOGIC: Prioritize local entity name if offline
-  const displayEntityName = isOnline
-    ? isEntityLoading
-      ? "Loading Entities..."
-      : entity
-      ? entity.name
-      : "Select Entity"
-    : storedEntity // If offline, always use storedEntity for display
-    ? storedEntity.name
-    : "Offline - No Entity Loaded";
 
+  // Memoize logo classes
+  const logoClasses = useMemo(() => `
+    flex items-center transition-all duration-300 cursor-pointer
+    ${isCondensed ? "w-[30px]" : "w-[230px]"}
+  `, [isCondensed]);
+
+  const iconLogoClass = useMemo(() => `
+    h-8 w-8
+    ${isCondensed ? "block" : "hidden"}
+  `, [isCondensed]);
+
+  const fullLogoClass = useMemo(() => `
+    h-[45px] ml-3 transition-opacity duration-200
+    ${isCondensed ? "opacity-0 w-0 ml-0 hidden" : "opacity-100 block"}
+  `, [isCondensed]);
 
   return (
     <div className="flex items-center justify-between h-16 px-6 bg-card z-[1000] relative border-b border-border isolate-parts">
       {/* --- LEFT SIDE (Logo/Sidebar Toggle) --- */}
       <div className="flex items-center gap-4">
         <Link
-          to="/dashboard"
-          className={`
-            flex items-center transition-all duration-300 cursor-pointer
-            ${isCondensed ? "w-[30px]" : "w-[230px]"}
-          `}
+          to="/store"
+          className={logoClasses}
           aria-label="Home"
           onClick={handleLogoClickInternal}
         >
           <img
             src="/icons/logo-icon.png"
-            className={`
-              h-8 w-8
-              ${isCondensed ? "block" : "hidden"}
-            `}
+            className={iconLogoClass}
             alt="App Icon"
           />
           <img
             src="/icons/logo-full.png"
-            className={`
-              h-[45px] ml-3 transition-opacity duration-200
-              ${isCondensed ? "opacity-0 w-0 ml-0 hidden" : "opacity-100 block"}
-            `}
+            className={fullLogoClass}
             alt="App Logo"
           />
         </Link>
@@ -383,9 +392,7 @@ const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Entity Dropdown/Modal Button */}
-        {/* We allow display if storeEntities is not null (online data or restored offline data) 
-            OR if we are currently loading. */}
-        {(storeEntities !== null || isEntityLoading || storedEntity) && ( 
+        {shouldShowEntityDropdown && ( 
           <div ref={entityDropdownRef} className="relative">
             <button
               className="
@@ -396,12 +403,9 @@ const Header: React.FC<HeaderProps> = ({
                 disabled:opacity-50 disabled:cursor-not-allowed
               "
               onClick={handleEntityButtonClick}
-              aria-expanded={
-                showEntityDropdown
-              }
-              aria-haspopup={"listbox"}
+              aria-expanded={showEntityDropdown}
+              aria-haspopup="listbox"
               aria-label="Select entity"
-              // Disable dropdown if loading OR if offline and there's no selected entity
               disabled={isEntityLoading || (!isOnline && !entity)} 
             >
               {displayEntityName}
@@ -427,7 +431,7 @@ const Header: React.FC<HeaderProps> = ({
                 role="listbox"
               >
                 {/* 1. Add Entity Button (Now at the Top) */}
-                {user?.role === Roles.SUPER_ADMIN && (
+                {isSuperAdmin && (
                   <div className="px-1 py-1 w-full">
                   <Button
                     size="sm"
@@ -570,6 +574,8 @@ const Header: React.FC<HeaderProps> = ({
       </div>
     </div>
   );
-};
+});
+
+Header.displayName = "Header";
 
 export default Header;

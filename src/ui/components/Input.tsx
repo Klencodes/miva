@@ -539,10 +539,6 @@ const Input: React.FC<CustomInputProps> = ({
   return (
     <div className="block space-y-1 mb-5">
       {/* Load Remix Icon CSS from CDN for demo purposes */}
-      <link 
-        href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" 
-        rel="stylesheet"
-      />
 
       {showFloatingLabel && (
         <div className="relative">

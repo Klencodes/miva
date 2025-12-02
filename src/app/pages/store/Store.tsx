@@ -110,7 +110,7 @@ const CartContent: React.FC<ICartContentProps> = ({
             {cartItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-card rounded-sm shadow-sm px-4 py-3"
+                className="bg-card rounded-sm shadow-sm p-3"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3 flex-1">
@@ -356,7 +356,6 @@ const ModernStore: React.FC = () => {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  // 2. Add state for mobile cart modal
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const { user } = useStore();
@@ -511,6 +510,7 @@ const ModernStore: React.FC = () => {
 
     return `G-${datePart}${randomPart}`;
   };
+
   // Submit order with direct implementation
   const submitOrder = async () => {
     if (cartItems.length === 0) {
@@ -518,14 +518,10 @@ const ModernStore: React.FC = () => {
       return;
     }
 
-    // if (!selectedCustomer) {
-    //   toast.error("Please select a customer");
-    //   return;
-    // }
     setCreatingOrder(true);
 
     const order = {
-      cashier: `${user!.first_name} ${user!.last_name[0]}`,
+      cashier: `${user!.first_name} ${user!.last_name[0]}`, // Assuming user is always defined here
       customer: selectedCustomer,
       total: parseFloat(total?.toFixed(2)),
       subtotal: parseFloat(subTotal?.toFixed(2)),
@@ -538,7 +534,6 @@ const ModernStore: React.FC = () => {
         product_id: item.id,
         quantity: item.quantity,
         unit_price: item.price,
-
         product_name: item.name,
         short_name: item.short_name,
         category_name: item.category_name,
@@ -546,72 +541,70 @@ const ModernStore: React.FC = () => {
         content_unit: item.content_unit,
         selling_unit_quantity: item.selling_unit_quantity,
         selling_unit: item.selling_unit,
-
         image_url: item.image_url,
         image_alt: item.image_alt,
       })),
-
       payment: {
         payment_method: paymentMethod,
         amount_paid: tenderedCash,
         reference_id: referenceId,
       },
     };
-    try {
-      let response;
 
+    try {
+      console.log("💾 Step 1: Always save to IndexedDB first (offline-first)");
+
+      // ALWAYS save to IndexedDB first
+      const localResponse = await indexedDBService.createOrder(order as any);
+
+      if (!localResponse.success) {
+        throw new Error("Failed to save order locally");
+      }
+
+      const localOrderId = localResponse.results?.id;
+      console.log("✅ Order saved locally with ID:", localOrderId);
+
+      // If online, try to sync to server immediately
       if (isOnline) {
+        console.log("🌐 Online: Attempting immediate server sync...");
         try {
-          // Try to submit to server first
           const serverResponse = await appService.createOrder(order);
 
           if (serverResponse.success) {
-            response = {
-              success: true,
-              order_id: serverResponse.order_id,
-              message: "Order submitted successfully",
-            };
+            console.log("✅ Server accepted order");
+
+            // Get server ID from response
+            const serverOrderId = serverResponse?.results?.id;
+            const serverCode = serverResponse?.results?.code;
+            const serverCreatedAt = serverResponse.results?.created_at;
+
+            if (localOrderId && serverOrderId) {
+              // Update local order with server info
+              await indexedDBService.updateOrderStatus(
+                localOrderId,
+                "synced",
+                serverOrderId,
+                serverCode,
+                serverCreatedAt
+              );
+            }
+
+            await cleanupOrderData("Order submitted successfully!");
           } else {
-            throw new Error("Server rejected order");
+            await cleanupOrderData("Order saved locally - will retry sync");
           }
         } catch (serverError) {
-          console.warn(
-            "Server submission failed, saving locally:",
-            serverError
+          await cleanupOrderData(
+            "Order saved locally - sync failed, will retry"
           );
-          // Fall through to local storage
-
-          response = await indexedDBService.createOrder(order);
         }
       } else {
-        // Save to IndexedDB when offline
-        response = await indexedDBService.createOrder(order);
-      }
-
-      if (response?.success) {
-        toast.success(response.message || "Order submitted successfully");
-        setCartItems([]);
-        setDiscount(0);
-        setSelectedCustomer(null);
-        setTenderedCash(0);
-        setPaymentMethod("Cash");
-        setReferenceId("");
-        // 3. Close the modal on successful order submission
-        setIsCartOpen(false);
-
-        // Refresh products to update stock if online
-        if (isOnline) {
-          fetchProducts(1, searchTerm, selectedCategory);
-        }
-
-        // Try to sync orders if we're online (for the fallback case)
-        if (isOnline) {
-          setTimeout(() => syncService.syncOrders(), 1000);
-        }
+        await cleanupOrderData(
+          "Order saved offline - will sync when back online"
+        );
       }
     } catch (error) {
-      console.error("Order submission failed:", error);
-      toast.error("Failed to submit order");
+      toast.error("Failed to save order");
     } finally {
       setCreatingOrder(false);
     }
@@ -727,18 +720,6 @@ const ModernStore: React.FC = () => {
     );
   };
 
-  // const toggleItemDetails = (productId: string) => {
-  //   setCartItems((prev) =>
-  //     prev.map((item) =>
-  //       item.id === productId ? { ...item, expanded: !item.expanded } : item
-  //     )
-  //   );
-  // };
-
-  // const applyDiscount = (amount: number) => {
-  //   setDiscount(amount);
-  // };
-
   // Search function
   const searchProducts = useCallback(
     async (term: string) => {
@@ -819,24 +800,52 @@ const ModernStore: React.FC = () => {
     //eslint-disable-next-line
   }, [selectedCustomer]);
 
+  const cleanupOrderData = async (message: any) => {
+    toast.success(message || "Order submitted successfully");
+    setCartItems([]);
+    setDiscount(0);
+    setSelectedCustomer(null);
+    setTenderedCash(0);
+    setPaymentMethod("Cash");
+    setReferenceId("");
+    setIsCartOpen(false);
+
+    // Refresh products to update stock if online
+    if (isOnline) {
+      fetchProducts(1, searchTerm, selectedCategory);
+    }
+
+    // Try to sync orders if we're online (for the fallback case)
+    if (isOnline) {
+      setTimeout(() => syncService.syncOrders(), 1000);
+    }
+  };
+
   return (
     <div className="w-full h-full">
-      <div className="flex flex-col lg:flex-row gap-6 h-full">
+      <div className="flex flex-row gap-6 h-full">
         {/* Products Section */}
-        <div className="flex-1 flex flex-col h-full bg-background">
+        <div className="flex-1 h-full bg-background min-w-0">
+
           {/* Header */}
-          <div className="rounded-sm shadow-sm px-4 mb-4">
+          <div className="rounded-sm shadow-sm mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-text">Products</h1>
-                <p className="text-text-light mt-1">
+              <div className="min-w-0">
+                {" "}
+                {/* Added min-w-0 to prevent text overflow */}
+                <h1 className="text-2xl font-bold text-text truncate">
+                  Products
+                </h1>
+                <p className="text-text-light mt-1 truncate">
                   Browse and add items to your cart
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative w-full flex-1 -mb-5">
+                <div className="relative flex-1 sm:flex-none sm:w-64 -mb-5">
+                  {" "}
+                  {/* Fixed width on sm+ */}
                   <Input
                     type="text"
                     label="Search products..."
@@ -846,8 +855,8 @@ const ModernStore: React.FC = () => {
                   />
                 </div>
 
-                {/* 4. Cart counter for mobile - UPDATED to open modal */}
-                <div className="lg:hidden relative">
+                {/* Cart counter for mobile */}
+                <div className="lg:hidden relative flex-shrink-0">
                   <button
                     onClick={() => setIsCartOpen(true)}
                     className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center relative"
@@ -863,33 +872,47 @@ const ModernStore: React.FC = () => {
                 </div>
               </div>
               {isOnline && (
-                <Button onClick={handleManualSync}>Sync Products</Button>
+                <Button onClick={handleManualSync} className="flex-shrink-0">
+                  Sync Products
+                </Button>
               )}
             </div>
 
-            {/* Categories */}
-            <div className="flex flex-nowrap mt-6 items-center overflow-x-auto mb-3">
-              {categories.map((category: SelectOption) => (
-                <Button
-                  key={category.value}
-                  onClick={() => {
-                    setSelectedCategory(category.value);
-                    fetchProducts(1, searchTerm, category.value);
-                  }}
-                  variant={
-                    selectedCategory === category.value ? "primary" : "ghost"
-                  }
-                  className="whitespace-nowrap flex-shrink-0 min-w-max mr-2"
-                >
-                  {category.value}
-                </Button>
-              ))}
+            {/* Categories - Fixed section */}
+            <div className="mt-4 w-full">
+              <div className="relative">
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-2">
+                  <div className="flex items-center space-x-2 py-1 min-w-max">
+                    {" "}
+                    {/* Changed to min-w-max */}
+                    {categories.map((category: SelectOption) => (
+                      <Button
+                        key={category.value}
+                        onClick={() => {
+                          setSelectedCategory(category.value);
+                          fetchProducts(1, searchTerm, category.value);
+                        }}
+                        variant={
+                          selectedCategory === category.value
+                            ? "primary"
+                            : "ghost"
+                        }
+                        className="whitespace-nowrap flex-shrink-0" // Ensures buttons don't shrink
+                      >
+                        {category.label || category.value}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Optional: Gradient fade effect on right side */}
+                <div className="absolute top-0 right-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none"></div>
+              </div>
             </div>
           </div>
-
           {/* Products Grid - Scrollable Container */}
           <div className="flex-1 overflow-y-auto px-2">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xxl:grid-cols-5 gap-4 pb-4 bg-background rounded-sm">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-4 bg-background rounded-sm">
               {products.map((product, index) => (
                 <div
                   key={product.id}
@@ -908,8 +931,8 @@ const ModernStore: React.FC = () => {
                       className="w-full h-full object-cover"
                     />
                     {product.stock === 0 && (
-                      <div className="absolute inset-0 bg-danger/50 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm bg-red-600 px-2 py-1 rounded-sm">
+                      <div className="absolute inset-0 bg-danger-5 flex items-center justify-center">
+                        <span className="text-white font-semibold text-sm bg-danger px-2 py-1 rounded-sm">
                           Out of Stock
                         </span>
                       </div>
@@ -919,12 +942,12 @@ const ModernStore: React.FC = () => {
                   {/* Product Info */}
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-text text-sm line-clamp-2 flex-1">
+                      <h3 className="font-semibold text-text text-sm line-clamp-2 flex-1 min-w-0">
                         {product.short_name}
                       </h3>
-                      <span className="text-xs text-text-light bg-background px-2 py-1 rounded ml-2 whitespace-nowrap">
+                      <span className="text-xs text-text-light bg-background px-2 py-1 rounded ml-2 whitespace-nowrap flex-shrink-0">
                         {product.selling_unit_quantity}x
-                        {product.content_measurement} / {product.selling_unit}
+                        {product.content_measurement}{product.content_unit} / {product.selling_unit}
                       </span>
                     </div>
 
@@ -938,7 +961,7 @@ const ModernStore: React.FC = () => {
                             : "bg-danger-10 text-danger"
                         }`}
                       >
-                        {product.stock} {product.selling_unit}s in stock
+                        {formatQuantity(product.stock)} {product.selling_unit}s in stock
                       </span>
                     </p>
 
@@ -949,12 +972,13 @@ const ModernStore: React.FC = () => {
                     </div>
 
                     {/* Add to Cart Buttons */}
-                    <div className="flex gap-2 mt-3">
+                    <div className="flex gap-2 mt-3 flex-wrap">
                       <Button
                         onClick={() => addQuarterToCart(product)}
                         disabled={!product.is_available || product.stock === 0}
                         variant="ghost"
                         size="sm"
+                        className="flex-shrink-0"
                       >
                         ¼
                       </Button>
@@ -963,6 +987,7 @@ const ModernStore: React.FC = () => {
                         disabled={!product.is_available || product.stock === 0}
                         variant="ghost"
                         size="sm"
+                        className="flex-shrink-0"
                       >
                         ½
                       </Button>
@@ -971,6 +996,7 @@ const ModernStore: React.FC = () => {
                         disabled={!product.is_available || product.stock === 0}
                         variant="ghost"
                         size="sm"
+                        className="flex-1 min-w-0 truncate"
                       >
                         Add (1 {product.selling_unit})
                       </Button>
@@ -996,8 +1022,8 @@ const ModernStore: React.FC = () => {
           </div>
         </div>
 
-        {/* 5. Cart Section - DESKTOP ONLY */}
-        <div className="hidden lg:block lg:w-96 h-full border border-border">
+        {/* Cart Section - DESKTOP ONLY */}
+        <div className="hidden lg:block lg:w-96 h-full border border-border flex-shrink-0">
           <CartContent
             cartItems={cartItems}
             subTotal={subTotal}
@@ -1028,7 +1054,7 @@ const ModernStore: React.FC = () => {
         </div>
       </div>
 
-      {/* 6. Cart Modal for Mobile (Full Screen Drawer/Modal) */}
+      {/* Cart Modal for Mobile (Full Screen Drawer/Modal) */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           {/* Backdrop */}

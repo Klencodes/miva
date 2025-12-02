@@ -8,7 +8,8 @@ import Loader from "./ui/components/Loader";
 const AuthRoutes = lazy(() => import("./app/pages/auth/AuthRoutes"));
 const PagesRoutes = lazy(() => import("./app/pages/PageRoutes"));
 
-const AppRoutes = () => {
+// Fix: Create proper component functions instead of inline functions
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const {
     userRef,
     getRequiredRoute,
@@ -22,6 +23,60 @@ const AppRoutes = () => {
     return getRequiredRoute();
   }, [initializationComplete, getRequiredRoute]);
 
+  const currentAuthState = isAuthenticatedRef.current;
+
+  // If not authenticated, redirect to login
+  if (!userRef.current && !currentAuthState) {
+    return (
+      <Navigate to="/account/login" state={{ from: location }} replace />
+    );
+  }
+
+  // If there's a required route and we're not on it, redirect
+  if (requiredRoute && requiredRoute !== location.pathname) {
+    return <Navigate to={requiredRoute} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const {
+    userRef,
+    getRequiredRoute,
+    isAuthenticatedRef,
+    initializationComplete,
+  } = useStore();
+  const location = useLocation();
+
+  const requiredRoute = useMemo(() => {
+    if (!initializationComplete) return null;
+    return getRequiredRoute();
+  }, [initializationComplete, getRequiredRoute]);
+
+  const currentAuthState = isAuthenticatedRef.current;
+  const hasPendingEntity = !!getStoredItem(PENDING_ENTITY_KEY, null);
+
+  // If authenticated and no special requirements, go to dashboard
+  if (currentAuthState && !requiredRoute && !hasPendingEntity) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // If authenticated but has requirements, allow the required route logic to handle it
+  if (
+    currentAuthState &&
+    requiredRoute &&
+    requiredRoute !== location.pathname
+  ) {
+    return <Navigate to={requiredRoute} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppRoutes = () => {
+  const { initializationComplete } = useStore();
+
   if (!initializationComplete) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -29,57 +84,6 @@ const AppRoutes = () => {
       </div>
     );
   }
-
-  const currentAuthState = isAuthenticatedRef.current;
-
-  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    // If not authenticated, redirect to login
-    if (!userRef.current && !currentAuthState) {
-      return (
-        <Navigate to="/account/login" state={{ from: location }} replace />
-      );
-    }
-
-    // If there's a required route and we're not on it, redirect
-    if (requiredRoute && requiredRoute !== location.pathname) {
-      return <Navigate to={requiredRoute} replace />;
-    }
-
-    return <>{children}</>;
-  };
-
-  const hasPendingEntity = !!getStoredItem(PENDING_ENTITY_KEY, null);
-  const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-    // If authenticated and no special requirements, go to dashboard
-    if (currentAuthState && !requiredRoute && !hasPendingEntity ) {
-      return <Navigate to="/dashboard" replace />;
-    }
-
-    // If authenticated but has requirements, allow the required route logic to handle it
-    if (
-      currentAuthState &&
-      requiredRoute &&
-      requiredRoute !== location.pathname
-    ) {
-      return <Navigate to={requiredRoute} replace />;
-    }
-
-    return <>{children}</>;
-  };
-
-  // Define routes that should use Public Route
-  const publicRoutes = [
-    "/account/login",
-    "/account/register",
-    "/account/forgot-password",
-    "/account/verify",
-    "/account/create-business",
-    "/account/pending-entity-approval",
-  ];
-
-  const isPublicRoutes = publicRoutes.some((route) =>
-    location.pathname.startsWith(route)
-  );
 
   return (
     <Suspense fallback={<Loader />}>
@@ -98,21 +102,16 @@ const AppRoutes = () => {
         <Route
           path="/*"
           element={
-            isPublicRoutes ? (
+            <ProtectedRoute>
               <CommonLayout>
                 <PagesRoutes />
               </CommonLayout>
-            ) : (
-              <ProtectedRoute>
-                <CommonLayout>
-                  <PagesRoutes />
-                </CommonLayout>
-              </ProtectedRoute>
-            )
+            </ProtectedRoute>
           }
         />
       </Routes>
     </Suspense>
   );
 };
+
 export default AppRoutes;

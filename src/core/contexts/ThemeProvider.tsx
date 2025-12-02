@@ -197,6 +197,7 @@ export function ThemeProvider({
     };
 
     initializeAppTheme();
+    //eslint-disable-next-line
   }, []); // Empty dependency array to run only once on mount
 
   // Listen for system theme changes

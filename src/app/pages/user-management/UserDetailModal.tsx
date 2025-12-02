@@ -13,11 +13,11 @@ export const StaffDetailsModal = () => {
   };
 
   const getStatusColor = (isActive: boolean) => {
-    return isActive ? 'text-success' : 'text-error';
+    return isActive ? 'text-success' : 'text-danger';
   };
 
   const getVerificationColor = (verified: boolean) => {
-    return verified ? 'text-success' : 'text-info';
+    return verified ? 'text-success' : 'text-danger';
   };
 
   return (
@@ -106,7 +106,7 @@ export const StaffDetailsModal = () => {
               <i className="ri-shield-check-line text-text-light mr-2"></i>
               <h3 className="font-semibold text-text">Account Status</h3>
             </div>
-            <p className={`text-lg font-bold ${getStatusColor(userData.deactivated)}`}>
+            <p className={`text-lg font-bold ${getStatusColor(!userData.deactivated)}`}>
               {!userData.deactivated ? 'Active' : 'Inactive'}
             </p>
             <p className="text-sm text-text-light mt-1">
@@ -143,7 +143,7 @@ export const StaffDetailsModal = () => {
            
             <div>
               <p className="text-sm text-text-light mb-1">User Since</p>
-              <p className="font-medium text-text">{dateUtils.formatDate(userData.last_login, DateFormatEnums.DATE_TIME_SHORT)}</p>
+              <p className="font-medium text-text">{dateUtils.formatDate(userData.created_at, DateFormatEnums.DATE_TIME_SHORT)}</p>
             </div>
           </div>
         </div>

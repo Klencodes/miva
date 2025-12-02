@@ -1,7 +1,7 @@
 export interface IResponse {
   results: any;
   success: boolean;
-  message: string;
+  message?: string;
   next?: string | null;
   count?: number | null;
   previous?: string | null;

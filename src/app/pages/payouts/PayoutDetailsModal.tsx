@@ -4,10 +4,10 @@ import { useModal } from "../../../core/hooks/useModal";
 import { DateFormatEnums, dateUtils } from "../../../core/utils/date-format";
 import { IPayout } from "../../../core/interfaces/IPayout";
 import { Roles } from "../../../core/enums/roles";
-import { appService } from "../../../core/services/app";
 
 import { useStore } from "../../../core/hooks/useStore";
 import { toast } from "sonner";
+import { authService } from "../../../core/services/auth";
 
 interface PayoutDetailsModalProps {
   payout: IPayout;
@@ -60,7 +60,7 @@ export const PayoutDetailsModal: React.FC = () => {
         const payload = {
             payout_id: payout?.id
         }
-        const res = await appService.addNewUser(payload);
+        const res = await authService.addNewUser(payload);
 
         if (res.success) {
             toast.success("Success", {description: "Payout request approved successfully"});

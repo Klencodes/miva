@@ -6,6 +6,7 @@ const Register = React.lazy(() => import('./Register'));
 const ForgotPassword = React.lazy(() => import('./ForgotPassword'));
 const CreateBusiness = React.lazy(() => import('./CreateBusiness'));
 const Verify = React.lazy(() => import('./Verify'));
+const AccessDenied = React.lazy(() => import('./AccessDenied'));
 
 const AuthRoutes: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ const AuthRoutes: React.FC = () => {
       <Route path="/verify" element={<Verify />} />
       <Route path="/create-business" element={<CreateBusiness />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/access-denied" element={<AccessDenied />} />
       
       {/* Catch all for auth - redirect to login */}
       <Route path="*" element={<Navigate to="/account/login" replace />} />

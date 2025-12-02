@@ -128,7 +128,16 @@ body {
   border: 3px solid var(--border-color);
 }
 
+/* Add to your global CSS */
+.scroll-container {
+  contain: layout paint;
+  width: 100%;
+}
 
+.scroll-content {
+  overflow-x: auto;
+  width: 100%;
+}
 .card {
   display: flex;
   flex-direction: column;

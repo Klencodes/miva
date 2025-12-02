@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "../../core/hooks/useStore";
 import { useNavService } from "../../core/hooks/useNavService";
 import { useLayout } from "../../core/hooks/useLayout";
@@ -50,43 +50,41 @@ const useIsTablet = () => {
   return isTablet;
 };
 
-const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
+// Memoize the layout component to prevent unnecessary re-renders
+const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
   const { user } = useStore();
   const { getFilteredNavItems } = useNavService();
-  const { layoutMode, sidebarState, toggleSidebar, isVerticalLayout, } = useLayout();
-  const location = useLocation();
+  const { layoutMode, sidebarState, toggleSidebar, isVerticalLayout } = useLayout();
   const navigate = useNavigate();
   const [filteredNavItems, setFilteredNavItems] = useState<NavItem[]>([]);
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
-  const isTablet = useIsTablet(); 
+  const isTablet = useIsTablet();
 
-  // --- DERIVE CONDENSED STATE AUTOMATICALLY ---
+  // Memoize user data to prevent unnecessary re-renders
+  const userRoles = useMemo(() => {
+    return user?.role ? [user.role as Roles] : [];
+  }, [user?.role]);
+
+  // Memoize the isCondensed calculation
   const isCondensed = useMemo(() => {
     return isVerticalLayout() && isTablet;
   }, [isVerticalLayout, isTablet]);
 
+  // Memoize final sidebar state
   const finalSidebarState = useMemo(() => {
     if (isCondensed) {
-        return SidebarState.CONDENSED;
+      return SidebarState.CONDENSED;
     }
     return sidebarState;
   }, [isCondensed, sidebarState]);
 
-
-  useEffect(() => {
-    loadNavItems();
-    // eslint-disable-next-line 
-  }, [user, location.pathname]);
-
+  // Memoize the loadNavItems function
   const loadNavItems = useCallback(async () => {
     setLoading(true);
     try {
-      if (user?.role) {
-        const userRoles = [user.role as Roles];
-          const filteredItems = getFilteredNavItems(userRoles);
-
-        // const filteredItems = getFilteredNavItems([user.role as Roles]);
+      if (userRoles.length > 0) {
+        const filteredItems = getFilteredNavItems(userRoles);
         setFilteredNavItems([...filteredItems]);
       } else {
         setFilteredNavItems([]);
@@ -96,8 +94,14 @@ const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, getFilteredNavItems]);
+  }, [userRoles, getFilteredNavItems]);
 
+  // Only reload nav items when user roles change
+  useEffect(() => {
+    loadNavItems();
+  }, [loadNavItems]);
+
+  // Memoize all callback functions
   const closeAllSubmenus = useCallback(() => {
     if (isMobile && sidebarState !== SidebarState.HIDDEN) {
       toggleSidebar();
@@ -136,12 +140,25 @@ const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
     [navigate]
   );
 
-  const showLoading = loading && filteredNavItems.length === 0;
-  const isMobileSidebarOpen = isMobile && sidebarState !== SidebarState.HIDDEN;
+  // Memoize derived values
+  const showLoading = useMemo(() => loading && filteredNavItems.length === 0, [loading, filteredNavItems.length]);
+  const isMobileSidebarOpen = useMemo(() => isMobile && sidebarState !== SidebarState.HIDDEN, [isMobile, sidebarState]);
+
+  // Memoize layout class calculations
+  const layoutClasses = useMemo(() => {
+    return `flex flex-1 overflow-hidden relative ${layoutMode === LayoutMode.VERTICAL ? "flex-row" : "flex-col"}`;
+  }, [layoutMode]);
+
+  const contentClasses = useMemo(() => {
+    return `flex-1 overflow-y-auto transition-all duration-300 ease-in-out bg-background
+      ${isMobileSidebarOpen ? "pointer-events-none" : ""} 
+      ${layoutMode === LayoutMode.VERTICAL ? " lg:p-6 md:p-4" : "p-4"}
+      scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent`;
+  }, [isMobileSidebarOpen, layoutMode]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
-      {/* Header Component */}
+      {/* Header Component - This should not re-render on route changes */}
       <Header
         isVerticalLayout={isVerticalLayout()}
         onToggleSidebar={handleToggleSidebar}
@@ -150,18 +167,16 @@ const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
         onLogoClick={handleLogoClick}
       />
 
-      {layoutMode === LayoutMode.HORIZONTAL &&
-        !showLoading && filteredNavItems.length > 0 && (
-          <Topbar
-            navItems={filteredNavItems}
-            onNavItemClick={handleNavItemClick}
-          />
-        )}
+      {layoutMode === LayoutMode.HORIZONTAL && !showLoading && filteredNavItems.length > 0 && (
+        <Topbar
+          navItems={filteredNavItems}
+          onNavItemClick={handleNavItemClick}
+        />
+      )}
 
       {/* Main Content Area */}
-      <div className={` flex flex-1 overflow-hidden relative  ${layoutMode === LayoutMode.VERTICAL ? "flex-row" : "flex-col"}`}
-      >
-        {/* Mobile Overlay - Should be UNDER the sidebar but OVER the content */}
+      <div className={layoutClasses}>
+        {/* Mobile Overlay */}
         {layoutMode === LayoutMode.VERTICAL && isMobileSidebarOpen && (
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
@@ -169,30 +184,25 @@ const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
           />
         )}
 
-        {/* Vertical Sidebar Navigation - Only show in vertical layout mode */}
+        {/* Vertical Sidebar Navigation - This should not re-render on route changes */}
         {layoutMode === LayoutMode.VERTICAL && (
           <Sidebar
             isVerticalLayout={isVerticalLayout()}
-            isMobile={isMobile} 
-            isTablet={isTablet} 
-            currentSidebarState={finalSidebarState} 
+            isMobile={isMobile}
+            isTablet={isTablet}
+            currentSidebarState={finalSidebarState}
             navItems={filteredNavItems}
             onNavItemClick={handleNavItemClick}
             loading={loading}
           />
         )}
 
-        {/* Page Content Area */}
+        {/* Page Content Area - Only this part should update on route changes */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <div
-            className={` flex-1 overflow-y-auto transition-all duration-300 ease-in-out bg-background
-              ${ isMobileSidebarOpen ? "pointer-events-none" : "" } 
-              ${layoutMode === LayoutMode.VERTICAL ? " lg:p-6 md:p-4" : "p-4"}
-              scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent
-            `}
+            className={contentClasses}
             onClick={closeAllSubmenus}
           >
-            {/* Loading State */}
             {showLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
@@ -201,7 +211,7 @@ const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
                 </div>
               </div>
             ) : (
-              // Main Content
+              // Main Content - This is what changes on route navigation
               children
             )}
           </div>
@@ -211,5 +221,6 @@ const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
       </div>
     </div>
   );
-};
+});
+
 export default CommonLayout;

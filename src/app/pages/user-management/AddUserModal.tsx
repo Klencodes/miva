@@ -2,8 +2,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../../ui";
 import { countries } from '../auth/countries';
-import { appService } from '../../../core/services/app';
 import { toast } from 'sonner';
+import { authService } from '../../../core/services/auth';
 
 // 1. Updated FormData to include password
 interface FormData {
@@ -230,10 +230,9 @@ const AddUserModal = () => {
         if (!submitData.password) {
             throw new Error("Missing password for new user.");
         }
-        response = await appService.addNewUser(submitData);
+        response = await authService.addNewUser(submitData);
       } else {
-        console.log(submitData, "submitData")
-        response = await appService.updateUser(submitData);
+        response = await authService.updateUser(submitData);
       }
 
 
@@ -242,7 +241,7 @@ const AddUserModal = () => {
         modalRef!.close({ success: true });
       } else {
         // Use response.data.message if available from the server
-        throw new Error(response.message || response.data?.message || 'Operation failed');
+        throw new Error(response.message || 'Operation failed');
       }
     } catch (error: any) {
       // Accessing error.response.data.message for Axios/API error structure

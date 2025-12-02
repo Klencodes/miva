@@ -4,7 +4,7 @@ import { appService } from "../../../core/services/app";
 import { CustomAction, TableColumn } from "../../../core/interfaces/table";
 import { useDebounce } from "../../../core/hooks/useDebounce";
 import { eventService } from "../../../core/services/events";
-import { Breadcrumb, DataTable } from "../../../ui";
+import { Breadcrumb, Button, DataTable } from "../../../ui";
 import {
   IBreadcrumbItem,
   IBreadcrumbAction,
@@ -17,6 +17,7 @@ import AddProductModal from "./AddProductModal";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import UpdateStockModal from "./UpdateStockModal";
 import UpdateAvailabilityModal from "./UpdateAvailabilityModal";
+import { formatQuantity } from "../../../core/utils/formatQuantity";
 
 export default function ProductsList() {
   // 1. STATE ADJUSTMENTS: Use IProduct interface
@@ -46,6 +47,15 @@ export default function ProductsList() {
   // 5. COLUMNS: Define columns for Products data
   const columns: TableColumn[] = [
     {
+      header: "Image",
+      value: (item: IProduct) => item.image_url,
+      type: "image",
+      imageConfig: {
+        size: "sm"
+      },
+      bold: true,
+    },  
+    {
       header: "Product Name",
       value: (item: IProduct) => item.short_name,
       type: "column",
@@ -67,7 +77,7 @@ export default function ProductsList() {
       header: "Stock Quantity",
       // Display stock with unit, rounded to 2 decimal places if needed
       value: (item: IProduct) =>
-        `${item.stock.toFixed(2)} ${item.selling_unit}`,
+        `${formatQuantity(item.stock)} ${item.selling_unit}s`,
       type: "column",
     },
     {
@@ -84,7 +94,7 @@ export default function ProductsList() {
     {
       header: "Selling Unit",
       value: (item: IProduct) =>
-        `${item.selling_unit_quantity} x ${item.content_measurement} ${item.content_unit} per ${item.selling_unit}`,
+        `${item.selling_unit_quantity} x ${item.content_measurement}${item.content_unit} per ${item.selling_unit}`,
       type: "column",
     },
     {
@@ -250,41 +260,41 @@ export default function ProductsList() {
   };
 
   const handleDeleteProduct = async (product: IProduct) => {
-    // toast.custom((id) => (
-    //   <div className="bg-card p-4 rounded-md shadow-lg">
-    //     <div className="font-semibold text-text">Are you sure you want to delete this product?</div>
-    //     <div className="flex justify-end gap-2 mt-3">
-    //       <Button
-    //         variant="ghost"
-    //         onClick={() => toast.dismiss(id)}
-    //       >
-    //         Cancel
-    //       </Button>
-    //       <Button
-    //         variant="danger"
-    //         onClick={async () => {
-    //           toast.dismiss(id); 
-    //           try {
-    //             const res = await appService.deleteProduct(product.id);
-    //             if (res.success) {
-    //               toast.success("Product deleted successfully");
-    //               if(products){
-    //                 setProducts(products.filter((p) => p.id !== product.id));
-    //               }
-    //             } else {
-    //               toast.error("Failed to delete product");
-    //             }
-    //           } catch (error) {
-    //             console.error("Failed to delete product:", error);
-    //             toast.error("Failed to delete product");
-    //           }
-    //         }}
-    //       >
-    //         Delete
-    //       </Button>
-    //     </div>
-    //   </div>
-    // ));
+    toast.custom((id) => (
+      <div className="bg-card p-4 rounded-md shadow-lg">
+        <div className="font-semibold text-text">Are you sure you want to delete this product?</div>
+        <div className="flex justify-end gap-2 mt-3">
+          <Button
+            variant="ghost"
+            onClick={() => toast.dismiss(id)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={async () => {
+              toast.dismiss(id); 
+              try {
+                const res = await appService.deleteProduct(product.id);
+                if (res.success) {
+                  toast.success("Product deleted successfully");
+                  if(products){
+                    setProducts(products.filter((p) => p.id !== product.id));
+                  }
+                } else {
+                  toast.error("Failed to delete product");
+                }
+              } catch (error) {
+                console.error("Failed to delete product:", error);
+                toast.error("Failed to delete product");
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+    ));
   }
 
   // 11. EXPORT LOGIC: Update export logic for Products

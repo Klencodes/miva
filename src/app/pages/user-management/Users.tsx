@@ -10,7 +10,6 @@ import { CustomAction, TableColumn } from "../../../core/interfaces/table";
 import { DateFormatEnums } from "../../../core/utils/date-format";
 import { useModal } from "../../../core/hooks/useModal";
 import { useDebounce } from "../../../core/hooks/useDebounce";
-import { appService } from "../../../core/services/app";
 
 import { StaffDetailsModal } from "./UserDetailModal";
 import AddUserModal from "./AddUserModal";
@@ -22,6 +21,7 @@ import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import { toast } from "sonner";
 import { IUser } from "../../../core/interfaces/IUser";
 import AssignUserEntity from "./AssignUserEntity";
+import { authService } from "../../../core/services/auth";
 
 const Users = () => {
   const [users, setUsers] = useState<IUser[]>([]);
@@ -94,7 +94,7 @@ const Users = () => {
       statusClasses: (item: IUser) =>
         item.verified
           ? "bg-success-10 text-success"
-          : "bg-background-10 text-text",
+          : "bg-danger-10 text-danger",
     },
     {
       header: "Status",
@@ -116,7 +116,7 @@ const Users = () => {
     },
     {
       header: "Signed Up",
-      value: (item: IUser) => item.updated_at,
+      value: (item: IUser) => item.created_at,
       type: "date",
       format: DateFormatEnums.DATE_TIME_SHORT,
     },
@@ -147,11 +147,11 @@ const Users = () => {
     async (page: number, search: string): Promise<void> => {
       setLoading(true);
       try {
-        const res = await appService.getUsers(page, search);
+        const res = await authService.getUsers(page, search);
 
         if (res.success) {
           setUsers(res.results);
-          setTotalCount(res.count);
+          setTotalCount(res.count!);
         }
       } catch (err: any) {
         console.log(err, "err");
@@ -201,7 +201,7 @@ const Users = () => {
 
   const handleStateToggle = async (item: IUser) => {
     try {
-      const res = await appService.addNewUser({
+      const res = await authService.updateUserState({
         user_id: item.id,
         deactivated: !item.deactivated,
       });
@@ -215,7 +215,7 @@ const Users = () => {
         setUsers((prevUsers) =>
           prevUsers.map((u) =>
             u.id === item.id
-              ? { ...u, user: { ...u, deactivated: !item.deactivated } }
+              ? { ...u, deactivated: !item.deactivated  }
               : u
           )
         );
@@ -243,14 +243,14 @@ const Users = () => {
       if (result?.success && result.newRole) {
         // Prepare data for API
         const updateData = {
-          merchant_id: item.id,
+          user_id: item.id,
           role: result.newRole,
         };
 
-        const response = await appService.updateUserRole(updateData);
+        const response = await authService.updateUserRole(updateData);
 
         if (response.success) {
-          toast.success("Success", {description: "User role updated successfully!", });
+          toast.success("Success", {description: response.message, });
           getUsers(currentPage, debouncedSearchTerm);
 
         } else {
@@ -294,10 +294,10 @@ const Users = () => {
 
     if (user?.role === Roles.SUPER_ADMIN) {
       actions.push({
-        title: item.deactivated ? "Deactivate" : "Activate",
+        title: !item.deactivated ? "Deactivate" : "Activate",
         handler: () => handleStateToggle(item),
-        icon: item.deactivated ? "forbid-line" : "checkbox-circle-line",
-        classes: item.deactivated
+        icon: !item.deactivated ? "forbid-line" : "checkbox-circle-line",
+        classes: !item.deactivated
           ? "text-danger hover:bg-danger-50"
           : "text-success hover:bg-success-50",
       });
@@ -361,14 +361,13 @@ const RoleUpdateModal = () => {
       { value: "", label: "Select Role" },
       // { value: "owner", label: "Owner" },
       { value: "admin", label: "Administrator" },
-      { value: "manager", label: "Manager" },
+      { value: "sales", label: "Sales" },
       { value: "operator", label: "Operator" },
-      { value: "finance", label: "Finance" },
     ],
     []
   );
   return (
-    <div className="flex flex-col w-full mx-auto p-4">
+    <div className="flex flex-col w-full h-full mx-auto">
       {/* Header */}
       <div className="flex flex-row justify-between items-start mb-4">
         <div className="flex flex-col">
@@ -387,8 +386,9 @@ const RoleUpdateModal = () => {
         </button>
       </div>
 
-      {/* Current Information */}
-      <div className="bg-background-50 rounded-sm p-3 mb-4">
+     <div className=" flex-1">
+       {/* Current Information */}
+      <div className="bg-background rounded-sm p-3 mb-4">
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <span className="text-text-light">Current Role:</span>
@@ -441,6 +441,7 @@ const RoleUpdateModal = () => {
           </div>
         </div>
       </div>
+     </div>
 
       {/* Footer */}
       <div className="flex justify-between items-center pt-4 border-t border-border">

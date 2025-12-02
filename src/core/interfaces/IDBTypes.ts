@@ -1,3 +1,5 @@
+
+import { IOrderItem, IOrderPayment } from "./IOrder";
 import { IResponse } from "./IResponse";
 
 export interface DBProduct {
@@ -18,21 +20,6 @@ export interface DBProduct {
   entity_id: string;
 }
 
-export interface DBOrderItem {
-  product_id: string;
-  quantity: number;
-  unit_price: number;
-  product_name: string;
-  short_name: string;
-  category_name: string;
-  content_measurement: string;
-  content_unit: string;
-  selling_unit_quantity: number;
-  selling_unit: string;
-  image_url?: string;
-  image_alt?: string;
-}
-
 export interface DBPayment {
   payment_method: string;
   amount_paid: number;
@@ -40,8 +27,8 @@ export interface DBPayment {
 }
 
 export interface DBOrder {
-  id?: number;
-  server_id?: string;
+  id?: number; // Local ID (auto-increment in IndexedDB)
+  server_id?: string; // Server ID (from server response)
   code?: string;
   cashier: string | null;
   customer: string | null;
@@ -51,15 +38,15 @@ export interface DBOrder {
   tendered_cash: number;
   balance: number;
   balance_label?: string;
-  items: DBOrderItem[];
-  payment: DBPayment;
+  items: IOrderItem[];
+  payment: IOrderPayment;
   entity_id?: string;
   status?: 'pending' | 'synced' | 'failed';
   created_at?: string;
   synced_at?: string;
-  // Add for cleanup
-  server_created_at?: string; // When order was created on server
+  server_created_at?: string;
 }
+
 export interface DBCustomer {
   id: string; 
   server_id?: string; 
@@ -71,11 +58,13 @@ export interface DBCustomer {
   created_at: string; 
   updated_at: string; 
   synced_at?: string; 
+  entity_id?: string;
 }
 
 export interface CustomerResponse extends IResponse {
   results: DBCustomer[];
 }
+
 export interface ProductsResponse {
   success: boolean;
   results: DBProduct[];

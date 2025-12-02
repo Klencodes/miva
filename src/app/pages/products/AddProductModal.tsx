@@ -107,11 +107,11 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       selling_unit,
     } = formData;
 
-    if (selling_unit_quantity && content_measurement && selling_unit) {
+    if (selling_unit_quantity && content_measurement && selling_unit && content_unit) {
       setFormattedNamePreview(
         `${
           name || "Product"
-        }, ${selling_unit_quantity}x${content_measurement} per ${selling_unit}`
+        }, ${selling_unit_quantity}x${content_measurement}${content_unit} per ${selling_unit}`
       );
     } else if (content_measurement && content_unit) {
       setFormattedNamePreview(
@@ -167,9 +167,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
   // Fetch dropdown data
   useEffect(() => {
-    setCategories(modalData?.productExtraData?.categories || []);
-    setContentUnits(modalData?.productExtraData?.content_units || []);
-    setSellingUnits(modalData?.productExtraData?.selling_units || []);
+    setCategories([{value: "", label: "Select Category"}, ...(modalData?.productExtraData?.categories || [])]);
+    setContentUnits([{value: "", label: "Select Content Unit"}, ...(modalData?.productExtraData?.content_units || [])]);
+    setSellingUnits([{value: "", label: "Select Selling Unit"}, ...(modalData?.productExtraData?.selling_units || [])]);
     // eslint-disable-next-line
   }, []);
 

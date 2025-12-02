@@ -104,10 +104,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ onClose, name }) =>
             required
           />
            <Input
-            label="Phone Number(Optinal)"
+            label="Email(Optinal)"
             value={email}
             onChange={setEmail}
-            required
           />
           <Input label="Address" value={address} onChange={setAddress} required />
 

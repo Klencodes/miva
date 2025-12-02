@@ -2,7 +2,10 @@ export const apiValues = {
   get APP_THEMES_ENDPOINT() { return 'utilities/theme/' },
   get GET_COUNTRIES_ENDPOINT() { return 'utilities/countries/' },
   get UPLOAD_ASSETS_ENDPOINT() { return 'utilities/upload-single-file/' },
-  get SIGNIN_ENDPOINT() { return 'users/login' },
+  get SIGNIN_ENDPOINT() { return 'users/signin' },
+  get SIGNUP_ENDPOINT() { return 'users/signup' },
+  get UPDATE_USER_STATE_ENDPOINT() { return 'users/update-state' },
+  get UPDATE_USER_ROLE_ENDPOINT() { return 'users/update-role' },
 
   get BUSINESS_ENTITIES_ENDPOINT() { return 'entities/' },
   get ASSIGN_USER_ENTITY_ENDPOINT() { return 'entities/assign-user-to-entity/' },
@@ -30,14 +33,8 @@ export const apiValues = {
   get SESSIONS_ENDPOINT() { return 'analytics/business-dashboard/' },
 
   get SIGN_OUT_USER_ENDPOINT() { return 'users/mct/signout/' },
-  get SIGNUP_ENDPOINT() { return 'users/mct/signup/' },
   get VERIFY_OTP_ENDPOINT() { return 'users/verify-otp/' },
   get RESEND_OTP_ENDPOINT() { return 'users/resend-otp/' },
-
-
-
-  get UPDATE_USER_ROLE_ENDPOINT() { return 'users/mct/update-merchant-role/' },
-  get UPDATE_MERCHANT_ACCESS_STATE_ENDPOINT() { return 'users/mct/update-merchant-access/' },
   
   get PAYOUTS_ENDPOINT() { return 'transactions/mct/payouts/' },
   get PAYOUT_WALLET_ENDPOINT() { return 'transactions/mct/payout-wallet/' },

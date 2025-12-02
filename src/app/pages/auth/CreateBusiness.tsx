@@ -71,10 +71,7 @@ const CreateBusiness: React.FC = () => {
       try {
         const res = await appService.getSupportedCountries();
         if (res.success) {
-            const formattedCountries = [{ value: "", label: "Select Country" }, ...res.results.map((country: any) => ({
-            value: country.name,
-            label: country.name,
-          }))];
+            const formattedCountries = [{ value: "", label: "Select Country" }, ...res.results.map((country: SelectOption) => country)];
           setSupportedCountries(formattedCountries);
         }
       } catch (error) {

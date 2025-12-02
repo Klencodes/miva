@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NavItem } from '../types/navigations';
 import { useStore } from '../../../core/hooks/useStore';
@@ -17,7 +17,7 @@ interface SidebarProps {
   loading?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
+const Sidebar: React.FC<SidebarProps> = memo(({ 
   isMobile = false,
   currentSidebarState,
   navItems,
@@ -535,6 +535,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </div>
   );
-};
+});
+
+Sidebar.displayName = "Sidebar";
 
 export default Sidebar;

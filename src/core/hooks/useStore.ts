@@ -64,6 +64,10 @@ export const removeStoredItem = (key: string): void => {
   }
 };
 
+// Create a stable reference for empty array/object to prevent unnecessary re-renders
+const EMPTY_ARRAY: IEntityItem[] = [];
+const EMPTY_OBJECT = {};
+
 export const useStore = () => {
   // --- STATE DEFINITIONS ---
   const [user, setUserState] = useState<IUser | null>(null);
@@ -76,6 +80,7 @@ export const useStore = () => {
   // --- REFS for immediate/non-reactive access ---
   const userRef = useRef<IUser | null>(null);
   const isAuthenticatedRef = useRef<boolean>(false);
+  const entityRef = useRef<IEntityItem | null>(null);
 
   // --- INITIALIZATION EFFECT (Reads from storage once) ---
   useEffect(() => {
@@ -87,32 +92,28 @@ export const useStore = () => {
     setEntityState(initialEntity);
     setStoreEntitiesState(null);
     userRef.current = initialUser;
+    entityRef.current = initialEntity;
     isAuthenticatedRef.current = !!initialUser?.auth_token;
     setInitializationComplete(true);
   }, []);
 
-  // --- DERIVED MEMOIZED VALUES ---
-  const isAuthenticated = useMemo(() => !!user?.auth_token, [user?.auth_token]);
-  const hasStoreEntities = useMemo(() => !!entity, [entity]);
-
   // --- STORAGE SYNC EFFECTS (Run AFTER initialization is complete) ---
-
   useEffect(() => {
     if (initializationComplete) {
       setStoredItem(USER_KEY, user);
       userRef.current = user;
-      isAuthenticatedRef.current = isAuthenticated;
+      isAuthenticatedRef.current = !!user?.auth_token;
     }
-  }, [user, isAuthenticated, initializationComplete]);
+  }, [user, initializationComplete]);
 
   useEffect(() => {
     if (initializationComplete) {
       setStoredItem(ENTITY_KEY, entity);
+      entityRef.current = entity;
     }
   }, [entity, initializationComplete]);
 
-  // --- ACTIONS ---
-
+  // --- ACTIONS (Memoized callbacks) ---
   const setUser = useCallback((userData: IUser | null) => {
     setUserState(userData);
   }, []);
@@ -121,9 +122,9 @@ export const useStore = () => {
     setEntityState(newEntity);
   }, []);
 
-  // FIXED: Remove storeEntities from dependencies since it's not used in the function
   const setStoreEntities = useCallback((newEntities: IEntityItem[] | null) => {
     setStoreEntitiesState(newEntities);
+    
     // Only auto-set entity if no entity is currently selected
     setEntityState((currentEntity) => {
       if (currentEntity) {
@@ -131,7 +132,6 @@ export const useStore = () => {
       }
 
       const storedEntity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
-
       if (storedEntity) {
         return storedEntity;
       }
@@ -145,14 +145,17 @@ export const useStore = () => {
   }, []);
 
   const checkAuthStatus = useCallback(async () => {
-    const isValid = isAuthenticated;
-    return { isValid };
-  }, [isAuthenticated]);
+    return { isValid: !!userRef.current?.auth_token };
+  }, []);
 
   const logout = useCallback(() => {
     setUserState(null);
     setEntityState(null);
     setStoreEntitiesState(null);
+    userRef.current = null;
+    entityRef.current = null;
+    isAuthenticatedRef.current = false;
+    
     // Clear all storage
     [USER_KEY, ENTITY_KEY, PENDING_ENTITY_KEY].forEach((key) => {
       removeStoredItem(key);
@@ -161,33 +164,59 @@ export const useStore = () => {
     window.location.href = "/account/login";
   }, []);
 
-  const getRequiredRoute = useCallback(
-    (): string | null => {
-      const needsVerification = user && !user.verified;
+  const getRequiredRoute = useCallback((): string | null => {
+    const currentUser = userRef.current;
+    const needsVerification = currentUser && !currentUser.verified;
 
-      if (needsVerification) return "/account/verify";
-      // if (hasPendingEntities) return '/account/pending-entity-approval';
-      // if (needsSetup) return '/account/create-business';
-      if (!isAuthenticated) return "/account/login";
+    if (needsVerification) return "/account/verify";
+    if (!isAuthenticatedRef.current) return "/account/login";
 
-      return null;
-    },
-    // eslint-disable-next-line
-    [isAuthenticated, user, hasStoreEntities]
-  );
+    return null;
+  }, []);
 
+  // --- MEMOIZED DERIVED VALUES ---
+  
+  // Memoize user-related derived values
+const userDerived = useMemo(() => {
+  if (!user) {
+    return {
+      isAuthenticated: false,
+      hasStoreEntities: false,
+      userRole: null,
+      isVerified: false,
+    };
+  }
+  
   return {
+    isAuthenticated: !!user.auth_token,
+    hasStoreEntities: !!entity,
+    userRole: user.role,
+    isVerified: user.verified,
+  };
+}, [user, entity]);
+
+  // Memoize store entities with stable reference
+  const stableStoreEntities = useMemo(() => {
+    return storeEntities || EMPTY_ARRAY;
+  }, [storeEntities]);
+
+  // Memoize the entire store object to prevent unnecessary re-renders
+  const store = useMemo(() => ({
     // State
     user,
     entity,
-    storeEntities,
+    storeEntities: stableStoreEntities,
     initializationComplete,
     
-    // Derived values
-    isAuthenticated,
-    isAuthenticatedRef,
+    // Refs (for non-reactive access)
     userRef,
-    hasStoreEntities,
+    isAuthenticatedRef,
+    entityRef,
+
+    // Derived values
+    isAuthenticated: userDerived.isAuthenticated,
+    hasStoreEntities: userDerived.hasStoreEntities,
+    userRole: userDerived.userRole,
 
     // Actions
     setUser,
@@ -196,5 +225,56 @@ export const useStore = () => {
     setStoreEntities,
     checkAuthStatus,
     getRequiredRoute,
-  };
+  }), [
+    user,
+    entity,
+    stableStoreEntities,
+    initializationComplete,
+    userDerived.isAuthenticated,
+    userDerived.hasStoreEntities,
+    setUser,
+    logout,
+    setEntity,
+    setStoreEntities,
+    checkAuthStatus,
+    getRequiredRoute,
+  ]);
+
+  return store;
+};
+
+// Selective store hooks for optimized performance
+export const useUser = () => {
+  const { user, setUser, logout, userRef, isAuthenticatedRef } = useStore();
+  
+  return useMemo(() => ({
+    user,
+    setUser,
+    logout,
+    userRef,
+    isAuthenticatedRef,
+  }), [user, setUser, logout, userRef, isAuthenticatedRef]);
+};
+
+export const useEntity = () => {
+  const { entity, setEntity, storeEntities, setStoreEntities, entityRef } = useStore();
+  
+  return useMemo(() => ({
+    entity,
+    setEntity,
+    storeEntities,
+    setStoreEntities,
+    entityRef,
+  }), [entity, setEntity, storeEntities, setStoreEntities, entityRef]);
+};
+
+export const useAuth = () => {
+  const { isAuthenticated, checkAuthStatus, getRequiredRoute, initializationComplete } = useStore();
+  
+  return useMemo(() => ({
+    isAuthenticated,
+    checkAuthStatus,
+    getRequiredRoute,
+    initializationComplete,
+  }), [isAuthenticated, checkAuthStatus, getRequiredRoute, initializationComplete]);
 };

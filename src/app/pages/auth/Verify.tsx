@@ -3,7 +3,12 @@ import { Button, Input } from "../../../ui";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authService } from "../../../core/services/auth";
 import { usePageTitle } from "../../../core/hooks/usePageTitle";
-import { ENTITY_KEY, setStoredItem, USER_KEY, useStore } from "../../../core/hooks/useStore";
+import {
+  ENTITY_KEY,
+  setStoredItem,
+  USER_KEY,
+  useStore,
+} from "../../../core/hooks/useStore";
 import { appService } from "../../../core/services/app";
 import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../core/enums/roles";
 import { IUser } from "../../../core/interfaces/IUser";
@@ -30,14 +35,17 @@ const Verify = () => {
     if (state?.email) {
       setCurrentEmail(state.email);
     } else {
-      toast.error("Session Expired", {description: "Please register or log in again."});
+      toast.error("Session Expired", {
+        description: "Please register or log in again.",
+      });
       navigate("/account/register", { replace: true });
     }
   }, [location.state, navigate]);
 
   const validateCode = useCallback((value: string) => {
     if (!value) return "Verification Code is required.";
-    if (value.length !== CODE_LENGTH) return `Code must be ${CODE_LENGTH} digits.`;
+    if (value.length !== CODE_LENGTH)
+      return `Code must be ${CODE_LENGTH} digits.`;
     if (/\D/.test(value)) return "Code must contain only digits.";
     return "";
   }, []);
@@ -45,7 +53,7 @@ const Verify = () => {
   const handleChange = (value: string) => {
     const sanitizedValue = value.replace(/\D/g, "").slice(0, CODE_LENGTH);
     setCode(sanitizedValue);
-    
+
     if (sanitizedValue) {
       setError(validateCode(sanitizedValue));
     } else {
@@ -55,83 +63,93 @@ const Verify = () => {
 
   const handleEntitiesAfterVerification = useCallback(
     async (userData: IUser) => {
-        try {
-            const entitiesRes = await appService.getEntities();
-            const rawResults = entitiesRes.results;
-            
-            let entitiesToSet: IEntityItem[] = [];
-            let entityToSet: IEntityItem | null = null;
+      try {
+        const entitiesRes = await appService.getEntities();
+        const rawResults = entitiesRes.results;
 
-            let entityArray: any[] = [];
-            
-            if (!rawResults || (Array.isArray(rawResults) && rawResults.length === 0)) {
-                entityArray = [];
-            } else if (Array.isArray(rawResults)) {
-                entityArray = rawResults;
-            } else if (typeof rawResults === 'object' && rawResults !== null) {
-                entityArray = [rawResults];
-            } else {
-                console.warn("Unexpected entity response structure:", rawResults);
-                navigate("/account/create-business", { replace: true });
-                return;
-            }
+        let entitiesToSet: IEntityItem[] = [];
+        let entityToSet: IEntityItem | null = null;
 
-            const hasEntities = entityArray.length > 0;
-            
-            if (hasEntities) {
-                const isPending = entityArray.some(ent => ent.approved === false);
-                
-                if (isPending) {
-                    navigate("/account/pending-entity-approval", { replace: true, state: entityArray[0] });
-                    return;
-                }
-                
-                entitiesToSet = entityArray.map(ent => (ent.entity ? ent.entity : ent));
+        let entityArray: any[] = [];
 
-                if (userData.role === Roles.SUPER_ADMIN) {
-                    entitiesToSet = entitiesRes.results.map((ent: IEntity) => ({
-                   ...ent.entity,
-                   id:
-                     ent.entity.name === "All Entities"
-                       ? SUPER_ADMIN_ENTITY_ID
-                       : ent.entity.id,
-                 }));
-                 entityToSet = entitiesToSet[0];
-                } else {
-                    entityToSet = entitiesToSet[0];
-                }
-
-                setStoredItem(ENTITY_KEY, entityToSet);
-                setStoreEntities(entitiesToSet);
-                window.location.replace("/dashboard");
-                
-            } else {
-                setStoreEntities([]);
-                setStoredItem(ENTITY_KEY, null);
-                navigate("/account/create-business", { replace: true });
-            }
-            
-        } catch (error) {
-            console.error("Error fetching entities:", error);
-            navigate("/account/create-business", { replace: true });
+        if (
+          !rawResults ||
+          (Array.isArray(rawResults) && rawResults.length === 0)
+        ) {
+          entityArray = [];
+        } else if (Array.isArray(rawResults)) {
+          entityArray = rawResults;
+        } else if (typeof rawResults === "object" && rawResults !== null) {
+          entityArray = [rawResults];
+        } else {
+          console.warn("Unexpected entity response structure:", rawResults);
+          navigate("/account/create-business", { replace: true });
+          return;
         }
+
+        const hasEntities = entityArray.length > 0;
+
+        if (hasEntities) {
+          const isPending = entityArray.some((ent) => ent.approved === false);
+
+          if (isPending) {
+            navigate("/account/pending-entity-approval", {
+              replace: true,
+              state: entityArray[0],
+            });
+            return;
+          }
+
+          entitiesToSet = entityArray.map((ent) =>
+            ent.entity ? ent.entity : ent
+          );
+
+          if (userData.role === Roles.SUPER_ADMIN) {
+            entitiesToSet = entitiesRes.results.map((ent: IEntity) => ({
+              ...ent.entity,
+              id:
+                ent.entity.name === "All Entities"
+                  ? SUPER_ADMIN_ENTITY_ID
+                  : ent.entity.id,
+            }));
+            entityToSet = entitiesToSet[0];
+          } else {
+            entityToSet = entitiesToSet[0];
+          }
+
+          setStoredItem(ENTITY_KEY, entityToSet);
+          setStoreEntities(entitiesToSet);
+          window.location.replace("/dashboard");
+        } else {
+          setStoreEntities([]);
+          setStoredItem(ENTITY_KEY, null);
+          navigate("/account/create-business", { replace: true });
+        }
+      } catch (error) {
+        console.error("Error fetching entities:", error);
+        navigate("/account/create-business", { replace: true });
+      }
     },
     // eslint-disable-next-line
     [setStoreEntities]
-);
+  );
 
-  
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateCode(code);
     if (validationError) {
       setError(validationError);
-      toast.error("Validation Error", {description: "Please enter a valid verification code."});
-      return   }
+      toast.error("Validation Error", {
+        description: "Please enter a valid verification code.",
+      });
+      return;
+    }
 
     if (!currentEmail) {
-      toast.error("Error", {description: "Email not found. Please try again."});
+      toast.error("Error", {
+        description: "Email not found. Please try again.",
+      });
       return;
     }
 
@@ -143,22 +161,25 @@ const Verify = () => {
         otp: code,
       };
       const response = await authService.verifyOTP(payload);
-      
+
       if (!response.success) {
         throw new Error(response.message || "Verification failed.");
       }
 
-      toast.success("Success", {description: response.message || "Email verified successfully!"});
+      toast.success("Success", {
+        description: response.message || "Email verified successfully!",
+      });
 
       if (response.results?.user) {
         setStoredItem(USER_KEY, response.results.user);
       }
 
       await handleEntitiesAfterVerification(response.results?.user);
-      
     } catch (err: any) {
-      const errorMessage = err.message || "Verification failed. The code might be incorrect or expired.";
-      toast.error("Error", {description: errorMessage});
+      const errorMessage =
+        err.message ||
+        "Verification failed. The code might be incorrect or expired.";
+      toast.error("Error", { description: errorMessage });
       setCode("");
     } finally {
       setLoading(false);
@@ -171,15 +192,19 @@ const Verify = () => {
     setResendLoading(true);
     try {
       const response = await authService.resendOTP({ email: currentEmail });
-      
+
       if (response.success) {
-        toast.success("Success", {description: response.message || "Verification code resent to your email."});
+        toast.success("Success", {
+          description:
+            response.message || "Verification code resent to your email.",
+        });
       } else {
         throw new Error(response.message || "Failed to resend code.");
       }
     } catch (err: any) {
-      const errorMessage = err.message || "Failed to resend code. Please try again later.";
-      toast.error("Error", {description: errorMessage});
+      const errorMessage =
+        err.message || "Failed to resend code. Please try again later.";
+      toast.error("Error", { description: errorMessage });
     } finally {
       setResendLoading(false);
     }
