@@ -5,17 +5,17 @@ import {
   getStoredItem,
   USER_KEY,
   useStore,
-} from "../../../core/hooks/useStore";
-import { LayoutMode } from "../types/layout";
-import { useLayout } from "../../../core/hooks/useLayout";
-import { appService } from "../../../core/services/app";
-import { IEntityItem } from "../../../core/interfaces/IEntity";
-import { useModal } from "../../../core/hooks/useModal";
-import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../core/enums/roles";
-import { eventService } from "../../../core/services/events";
-import { Button } from "../../../ui";
+} from "../../../../core/hooks/useStore";
+import { LayoutMode } from "../../types/layout";
+import { useLayout } from "../../../../core/hooks/useLayout";
+import { appService } from "../../../../core/services/app";
+import { IEntityItem } from "../../../../core/interfaces/IEntity";
+import { useModal } from "../../../../core/hooks/useModal";
+import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../../core/enums/roles";
+import { eventService } from "../../../../core/services/events";
+import { Button } from "../../../../ui";
 import AddEntityModal from "./AddEntityModal";
-import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
+import useNetworkStatus from "../../../../core/hooks/useNetworkStatus";
 
 interface HeaderProps {
   isVerticalLayout: boolean;
@@ -130,7 +130,6 @@ const fetchEntities = useCallback(
           setStoreEntities([]);
         }
       } catch (error) {
-        console.error("Entity fetch failed:", error); 
 
         if (isManualRefetch) {
             hasFetchedEntities.current = false;
@@ -266,7 +265,7 @@ const fetchEntities = useCallback(
     if (onLogoClick) {
       onLogoClick();
     } else {
-      navigate("/dashboard");
+      navigate("/store");
     }
   }, [onLogoClick, navigate]);
 

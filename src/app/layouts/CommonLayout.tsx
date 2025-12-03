@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "../../core/hooks/useStore";
 import { useNavService } from "../../core/hooks/useNavService";
 import { useLayout } from "../../core/hooks/useLayout";
-import Header from "./header/Header";
-import Topbar from "./header/TopBar";
+import Header from "./components/header/Header";
+import Topbar from "./components/header/TopBar";
 import Sidebar from "./components/SideBar";
 import Footer from "./components/Footer";
 import { SidebarState, LayoutMode } from "./types/layout";
@@ -122,7 +122,7 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
   }, [toggleSidebar]);
 
   const handleLogoClick = useCallback(() => {
-    navigate("/dashboard");
+    navigate("/store");
   }, [navigate]);
 
   const handleUserMenuAction = useCallback(

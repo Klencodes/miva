@@ -37,7 +37,7 @@ export default function PayoutsList() {
   usePageTitle("Payouts");
 
   const breadcrumbs: IBreadcrumbItem[] = [
-    { label: "Dashboard", url: "/dashboard" },
+    { label: "Store", url: "/store" },
     { label: "Payouts", url: "/payouts", isActive: true },
   ];
 

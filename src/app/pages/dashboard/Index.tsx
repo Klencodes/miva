@@ -32,7 +32,6 @@ const Dashboard: FC = () => {
       };
       try {
         const res: any = await appService.getDashboardAnalytics(payload);
-          console.log(res.results, "RESULTS>>>>>>>>>>>>>>>")
         if (res.success && res.results) {
           setDashboardData(res.results);
         } else {
@@ -46,6 +45,7 @@ const Dashboard: FC = () => {
 
   useEffect(() => { 
     fetchAnalytics();
+    // eslint-disable-next-line 
   }, [sellingTab]);
 
   useEffect(() => {
@@ -86,6 +86,7 @@ const Dashboard: FC = () => {
     return () => {
       eventService.offRefresh(handleRefresh);
     };
+    // eslint-disable-next-line 
   }, []);
   return (
     <div className="h-full">

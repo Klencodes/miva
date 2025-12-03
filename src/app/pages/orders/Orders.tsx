@@ -44,7 +44,7 @@ export default function OrdersList() {
 
   // 3. BREADCRUMBS: Update breadcrumbs
   const breadcrumbs: IBreadcrumbItem[] = [
-    { label: "Dashboard", url: "/dashboard" },
+    { label: "Store", url: "/store" },
     { label: "Orders", url: "/orders", isActive: true },
   ];
 
@@ -352,21 +352,31 @@ const fetchOrdersData = useCallback(
     }
 
     try {
-      toast.info("Syncing data...");
-      const result = await syncService.manualSync();
+      toast.info("Syncing orders...");
+      const result = await syncService.syncOrders();
 
-      if (result.products) {
+      if (result.success) {
         // Refresh current view
         fetchOrdersData(1, searchTerm, selectedPaymentMethod);
-      }
-
-      if (result.orders.success > 0) {
-        toast.success(`${result.orders.success} orders synced`);
+        toast.success(`Orders synced successfully`);
       }
     } catch (error) {
       toast.error("Sync failed");
     }
   };
+
+  //force sync a single order 
+  //eslint-disable-next-line
+  const forceSyncSingleOrder = async(orderId: number) =>{
+    try{
+      const result = await syncService.forceSyncOrder(orderId)
+      if(result){
+        
+      }
+    } catch{
+      toast.error("Sync single order failed");
+    }
+  }
 
   // 11. EXPORT LOGIC: Update export logic for Orders
   const handleExport = async (): Promise<void> => {

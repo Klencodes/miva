@@ -1,12 +1,12 @@
 import { ENTITY_KEY, getStoredItem } from "../hooks/useStore";
 import { DBProduct, ProductsResponse, DBOrder, DBCustomer, CustomerResponse } from "../interfaces/IDBTypes";
 import { IEntityItem } from "../interfaces/IEntity";
-import { IOrder, IOrderItem, IOrderPayment } from "../interfaces/IOrder";
+import { IOrder } from "../interfaces/IOrder";
 import { IResponse } from "../interfaces/IResponse";
 
 class IndexedDBService {
   private dbName = 'GodDidMart';
-  private version = 7; 
+  private version = 9; // Incremented version for new hold_orders store
   private db: IDBDatabase | null = null;
   private readonly pageSize = 10;
 
@@ -38,7 +38,7 @@ class IndexedDBService {
           productsStore.createIndex('entity_id', 'entity_id', { unique: false });
         }
 
-        // Orders store - IMPORTANT: keyPath is 'id' (local auto-increment ID)
+        // Orders store (regular orders for sync)
         if (!db.objectStoreNames.contains('orders')) {
           const ordersStore = db.createObjectStore('orders', { keyPath: 'id', autoIncrement: true });
           ordersStore.createIndex('status', 'status', { unique: false });
@@ -51,6 +51,15 @@ class IndexedDBService {
           if (!ordersStore.indexNames.contains('server_id')) {
             ordersStore.createIndex('server_id', 'server_id', { unique: false });
           }
+        }
+
+        // HOLD ORDERS store - Separate store for local hold orders only
+        if (!db.objectStoreNames.contains('hold_orders')) {
+          const holdOrdersStore = db.createObjectStore('hold_orders', { keyPath: 'id', autoIncrement: true });
+          holdOrdersStore.createIndex('status', 'status', { unique: false });
+          holdOrdersStore.createIndex('created_at', 'created_at', { unique: false });
+          holdOrdersStore.createIndex('entity_id', 'entity_id', { unique: false });
+          holdOrdersStore.createIndex('code', 'code', { unique: true });
         }
 
         // Customers store
@@ -75,120 +84,133 @@ class IndexedDBService {
     }
     return this.db!;
   }
-  // --- Product methods ---
 
-  async saveProducts(products: DBProduct[]): Promise<void> {
-    const db = await this.ensureDB();
-    const entityId = this.entityIdString;
+  // ============= HOLD ORDERS METHODS (LOCAL ONLY - NO SYNC) =============
 
-    if (!entityId) {
-      throw new Error('Entity ID is required to save products');
-    }
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['products'], 'readwrite');
-      const store = transaction.objectStore('products');
-      // eslint-disable-next-line
-      let savedCount = 0;
-      // eslint-disable-next-line
-      let skippedCount = 0;
-
-      products.forEach(product => {
-        // FIX: Enhanced entity validation
-        if (product.entity_id !== entityId) {
-          skippedCount++;
-          return;
-        }
-
-        const productToSave = {
-          ...product,
-          last_synced: new Date().toISOString()
-        };
-
-        const request = store.put(productToSave);
-        request.onsuccess = () => {
-          savedCount++;
-        };
-      });
-
-      transaction.oncomplete = () => {
-        resolve();
-      };
-      
-      transaction.onerror = (event) => {
-        reject(transaction.error);
-      };
-    });
-  }
-
-  async getProducts(params: {
-    page?: number;
-    search?: string;
-    category?: string;
-    pageSize?: number;
-  }): Promise<ProductsResponse> {
+  // Create a hold order (local only, never synced)
+  async createHoldOrder(holdOrderData: Omit<DBOrder, 'id' | 'status' | 'created_at' | 'server_id' | 'synced_at' | 'server_created_at'>): Promise<IResponse> {
     const db = await this.ensureDB();
     const entityId = this.entityIdString;
 
     if (!entityId) {
       return {
         success: false,
-        results: [],
-        message: 'Entity ID not found',
-        next: null,
+        message: 'Entity ID is required to create a hold order',
+        results: null,
         count: 0,
+        next: null,
         previous: null
+      };
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['hold_orders'], 'readwrite');
+      const store = transaction.objectStore('hold_orders');
+
+      const orderToSave: Omit<DBOrder, 'id'> = {
+        ...holdOrderData,
+        entity_id: entityId,
+        status: 'hold', // Special status for hold orders
+        created_at: new Date().toISOString(),
+        synced_at: undefined,
+        server_id: undefined,
+        server_created_at: undefined
+      };
+
+
+      const request = store.add(orderToSave);
+
+      request.onsuccess = () => {
+        const savedOrder: DBOrder = {
+          ...orderToSave,
+          id: request.result as number // Local auto-increment ID
+        };
+        
+        
+        resolve({ 
+          success: true, 
+          results: savedOrder, 
+          message: 'Hold order created successfully',
+          count: 1,
+          next: null,
+          previous: null
+        });
+      };
+
+      request.onerror = (event) => {
+        console.error('❌ Failed to save hold order:', (event.target as IDBRequest).error);
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+
+  // Get all hold orders
+  async getHoldOrders(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }): Promise<IResponse> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) {
+      return { 
+        success: false, 
+        message: 'Entity ID not found', 
+        results: [], 
+        count: 0, 
+        next: null, 
+        previous: null 
       };
     }
 
     const {
       page = 1,
-      search = '',
-      category = 'All',
-      pageSize = this.pageSize
-    } = params;
+      pageSize = 100, // Default to show all hold orders
+      search = ''
+    } = params || {};
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['products'], 'readonly');
-      const store = transaction.objectStore('products');
+      const transaction = db.transaction(['hold_orders'], 'readonly');
+      const store = transaction.objectStore('hold_orders');
       const entityIndex = store.index('entity_id');
       
       const request = entityIndex.getAll(IDBKeyRange.only(entityId));
 
       request.onsuccess = () => {
-        let products = request.result as DBProduct[];
+        let holdOrders = request.result as DBOrder[];
 
-        // Apply search filter
+        // Apply search filter if provided
         if (search.trim()) {
           const searchLower = search.toLowerCase().trim();
-          products = products.filter((p: DBProduct) =>
-            p.name.toLowerCase().includes(searchLower) ||
-            p.short_name?.toLowerCase().includes(searchLower) ||
-            p.category_name.toLowerCase().includes(searchLower)
+          holdOrders = holdOrders.filter((order: DBOrder) =>
+            order.code?.toLowerCase().includes(searchLower) ||
+            order.customer?.toLowerCase().includes(searchLower) ||
+            order.cashier?.toLowerCase().includes(searchLower)
           );
         }
 
-        // Apply category filter
-        if (category && category !== 'All') {
-          products = products.filter((p: DBProduct) => p.category_name === category);
-        }
+        // Sort by creation date (newest first)
+        holdOrders.sort((a, b) => {
+          const dateA = new Date(a.created_at || '').getTime();
+          const dateB = new Date(b.created_at || '').getTime();
+          return dateB - dateA; // Newest first
+        });
 
         // Apply pagination
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
-        const paginatedProducts = products.slice(startIndex, endIndex);
-        const hasNext = endIndex < products.length;
+        const paginatedOrders = holdOrders.slice(startIndex, endIndex);
+        const hasMore = endIndex < holdOrders.length;
 
-        const response: ProductsResponse = {
+        resolve({
           success: true,
-          message: 'Products fetched successfully',
-          results: paginatedProducts,
-          next: hasNext ? `page=${page + 1}` : null,
-          count: products.length,
+          message: `Hold orders fetched successfully`,
+          results: paginatedOrders,
+          count: holdOrders.length,
+          next: hasMore ? `page=${page + 1}` : null,
           previous: page > 1 ? `page=${page - 1}` : null
-        };
-
-        resolve(response);
+        });
       };
 
       request.onerror = () => {
@@ -197,41 +219,200 @@ class IndexedDBService {
     });
   }
 
-  async getProductById(id: string): Promise<DBProduct | null> {
-    const db = await this.ensureDB();
-    const entityId = this.entityIdString;
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['products'], 'readonly');
-      const store = transaction.objectStore('products');
-      const request = store.get(id);
-
-      request.onsuccess = () => {
-        const product = request.result as DBProduct | undefined;
-        if (product && product.entity_id === entityId) {
-          resolve(product);
-        } else {
-          resolve(null);
-        }
-      };
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  async clearProducts(): Promise<void> {
+  // Get a single hold order by ID
+  async getHoldOrderById(id: number): Promise<IResponse> {
     const db = await this.ensureDB();
     const entityId = this.entityIdString;
 
     if (!entityId) {
-      return;
+      return { 
+        success: false, 
+        message: 'Entity ID not found', 
+        results: null, 
+        count: 0, 
+        next: null, 
+        previous: null 
+      };
     }
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['products'], 'readwrite');
-      const store = transaction.objectStore('products');
+      const transaction = db.transaction(['hold_orders'], 'readonly');
+      const store = transaction.objectStore('hold_orders');
+      const request = store.get(id);
+
+      request.onsuccess = () => {
+        const holdOrder = request.result as DBOrder | undefined;
+        
+        if (holdOrder && holdOrder.entity_id === entityId) {
+          resolve({
+            success: true,
+            message: 'Hold order found',
+            results: holdOrder,
+            count: 1,
+            next: null,
+            previous: null
+          });
+        } else {
+          resolve({
+            success: false,
+            message: 'Hold order not found',
+            results: null,
+            count: 0,
+            next: null,
+            previous: null
+          });
+        }
+      };
+
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
+  }
+
+  // Delete a hold order
+  async deleteHoldOrder(id: number): Promise<IResponse> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) {
+      return { 
+        success: false, 
+        message: 'Entity ID not found', 
+        results: null, 
+        count: 0, 
+        next: null, 
+        previous: null 
+      };
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['hold_orders'], 'readwrite');
+      const store = transaction.objectStore('hold_orders');
+      
+      const getRequest = store.get(id);
+
+      getRequest.onsuccess = () => {
+        const holdOrder = getRequest.result as DBOrder | undefined;
+        
+        if (!holdOrder) {
+          resolve({
+            success: false,
+            message: 'Hold order not found',
+            results: null,
+            count: 0,
+            next: null,
+            previous: null
+          });
+          return;
+        }
+
+        if (holdOrder.entity_id !== entityId) {
+          resolve({
+            success: false,
+            message: 'Hold order does not belong to current entity',
+            results: null,
+            count: 0,
+            next: null,
+            previous: null
+          });
+          return;
+        }
+
+        const deleteRequest = store.delete(id);
+        
+        deleteRequest.onsuccess = () => {
+          resolve({
+            success: true,
+            message: 'Hold order deleted successfully',
+            results: { id },
+            count: 1,
+            next: null,
+            previous: null
+          });
+        };
+
+        deleteRequest.onerror = () => {
+          resolve({
+            success: false,
+            message: 'Failed to delete hold order',
+            results: null,
+            count: 0,
+            next: null,
+            previous: null
+          });
+        };
+      };
+
+      getRequest.onerror = () => {
+        reject(getRequest.error);
+      };
+    });
+  }
+
+  // Count hold orders
+  async countHoldOrders(): Promise<IResponse> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) {
+      return { 
+        success: false, 
+        message: 'Entity ID not found', 
+        results: null, 
+        count: 0, 
+        next: null, 
+        previous: null 
+      };
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['hold_orders'], 'readonly');
+      const store = transaction.objectStore('hold_orders');
       const entityIndex = store.index('entity_id');
+      
+      const request = entityIndex.count(IDBKeyRange.only(entityId));
+
+      request.onsuccess = () => {
+        resolve({
+          success: true,
+          message: 'Hold orders counted',
+          results: { count: request.result },
+          count: 1,
+          next: null,
+          previous: null
+        });
+      };
+
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
+  }
+
+  // Clear all hold orders for current entity
+  async clearHoldOrders(): Promise<IResponse> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) {
+      return { 
+        success: false, 
+        message: 'Entity ID not found', 
+        results: null, 
+        count: 0, 
+        next: null, 
+        previous: null 
+      };
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['hold_orders'], 'readwrite');
+      const store = transaction.objectStore('hold_orders');
+      const entityIndex = store.index('entity_id');
+      
       const request = entityIndex.openCursor(IDBKeyRange.only(entityId));
-      // eslint-disable-next-line
+
       let deletedCount = 0;
 
       request.onsuccess = (event) => {
@@ -241,18 +422,26 @@ class IndexedDBService {
           deletedCount++;
           cursor.continue();
         } else {
-          resolve();
+          resolve({
+            success: true,
+            message: `Cleared ${deletedCount} hold orders`,
+            results: { deletedCount },
+            count: 1,
+            next: null,
+            previous: null
+          });
         }
       };
 
-      request.onerror = () => reject(request.error);
-      transaction.onerror = () => reject(transaction.error);
+      request.onerror = () => {
+        reject(request.error);
+      };
     });
   }
 
-  // --- Order methods ---
+  // ============= REGULAR ORDERS METHODS (FOR SYNC) =============
 
-  // Create a new order (offline-first approach)
+  // Create a regular order (for sync)
   async createOrder(orderData: Omit<DBOrder, 'id' | 'status' | 'created_at' | 'server_id'>): Promise<IResponse> {
     const db = await this.ensureDB();
     const entityId = this.entityIdString;
@@ -272,18 +461,16 @@ class IndexedDBService {
       const transaction = db.transaction(['orders'], 'readwrite');
       const store = transaction.objectStore('orders');
 
-      // Create order with local fields only
       const orderToSave: Omit<DBOrder, 'id'> = {
         ...orderData,
         entity_id: entityId,
-        status: 'pending', // Local status
-        created_at: new Date().toISOString(), // Use local created_at for server
+        status: 'pending', // Will be synced to server
+        created_at: new Date().toISOString(),
         synced_at: undefined,
-        server_id: undefined, // No server ID yet
+        server_id: undefined,
         server_created_at: undefined
       };
 
-      console.log('💾 Saving order to IndexedDB:', orderToSave);
 
       const request = store.add(orderToSave);
 
@@ -293,7 +480,6 @@ class IndexedDBService {
           id: request.result as number // Local auto-increment ID
         };
         
-        console.log('✅ Order saved with local ID:', savedOrder.id);
         
         resolve({ 
           success: true, 
@@ -312,97 +498,7 @@ class IndexedDBService {
     });
   }
 
-  // Save orders from server (with server IDs)
-  async saveOrders(orders: IOrder[]): Promise<void> {
-    const db = await this.ensureDB();
-    const entityId = this.entityIdString;
-
-    if (!entityId) {
-      throw new Error('Entity ID is required to save orders');
-    }
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['orders'], 'readwrite');
-      const store = transaction.objectStore('orders');
-      
-      let savedCount = 0;
-      let skippedCount = 0;
-
-      orders.forEach((order: IOrder) => {
-        // Only save orders that belong to current entity
-        if (order.entity_id !== entityId) {
-          skippedCount++;
-          return;
-        }
-
-        // Convert IOrder to DBOrder for storage
-        const orderToSave: DBOrder = {
-          id: undefined, // Will be auto-generated if new
-          server_id: order.id, // Server ID
-          code: order.code,
-          cashier: order.cashier,
-          customer: order.customer,
-          total: order.total,
-          subtotal: order.subtotal,
-          discount: order.discount,
-          tendered_cash: order.tendered_cash,
-          balance: order.balance,
-          balance_label: order.balance_label,
-          items: order.items as IOrderItem[],
-          payment: order.payment as IOrderPayment,
-          entity_id: order.entity_id,
-          status: 'synced', // Server orders are synced
-          created_at: order.created_at, // Use server's created_at
-          synced_at: new Date().toISOString(),
-          server_created_at: order.created_at // Server creation time
-        };
-
-        // Check if this order already exists locally
-        const getRequest = store.index('server_id').get(order.id);
-        
-        getRequest.onsuccess = () => {
-          const existingOrder = getRequest.result as DBOrder;
-          
-          if (existingOrder) {
-            // Update existing order with server data, preserve local ID
-            orderToSave.id = existingOrder.id;
-            console.log('🔄 Updating existing order with server data:', orderToSave.id);
-          }
-          
-          const putRequest = store.put(orderToSave);
-          putRequest.onsuccess = () => {
-            savedCount++;
-            if (!existingOrder) {
-              console.log('✅ Saved new server order:', order.id);
-            }
-          };
-          putRequest.onerror = (error) => {
-            console.error(`Failed to save server order ${order.id}:`, error);
-          };
-        };
-        
-        getRequest.onerror = () => {
-          // If index query fails, try to save anyway
-          const putRequest = store.put(orderToSave);
-          putRequest.onsuccess = () => savedCount++;
-          putRequest.onerror = () => {
-            console.error(`Failed to save server order ${order.id}:`, putRequest.error);
-          };
-        };
-      });
-
-      transaction.oncomplete = () => {
-        console.log(`✅ Saved ${savedCount} server orders, skipped ${skippedCount}`);
-        resolve();
-      };
-      
-      transaction.onerror = () => {
-        reject(transaction.error);
-      };
-    });
-  }
-
-  // Get all orders (local + server)
+  // Get all regular orders (local pending + server synced) - NO hold orders
   async getAllOrders(params?: {
     page?: number;
     pageSize?: number;
@@ -415,10 +511,10 @@ class IndexedDBService {
 
     if (!entityId) {
       return { 
-        results: [], 
-        count: 0, 
         success: false, 
         message: 'Entity ID not found', 
+        results: [], 
+        count: 0, 
         next: null, 
         previous: null 
       };
@@ -477,12 +573,13 @@ class IndexedDBService {
         const paginatedOrders = orders.slice(startIndex, endIndex);
         const hasMore = endIndex < orders.length;
 
-        // Count pending orders for information
-        const pendingCount = orders.filter(order => order.status === 'pending').length;
+        // Count orders by status for informative message
+        const pendingCount = orders.filter(o => o.status === 'pending').length;
+        const syncedCount = orders.filter(o => o.status === 'synced').length;
 
         resolve({
           success: true,
-          message: `Orders fetched successfully${pendingCount > 0 ? ` (${pendingCount} pending sync)` : ''}`,
+          message: `Orders fetched (${syncedCount} synced, ${pendingCount} pending)`,
           results: paginatedOrders,
           count: orders.length,
           next: hasMore ? `page=${page + 1}` : null,
@@ -495,6 +592,101 @@ class IndexedDBService {
       };
     });
   }
+
+  // Save orders from server (with server IDs)
+// First, let's add a utility function to properly handle the id field
+private prepareOrderForSave(order: IOrder, existingOrder?: DBOrder): any {
+  // Create the base object without id
+  const orderData: any = {
+    ...order,
+    server_id: order.id,
+    status: 'synced',
+    synced_at: new Date().toISOString(),
+    server_created_at: order.created_at
+  };
+
+  // Only add id if it exists and is valid
+  if (existingOrder?.id !== undefined && existingOrder?.id !== null) {
+    orderData.id = existingOrder.id;
+  }
+  
+  return orderData;
+}
+
+// Then update the saveOrders method:
+async saveOrders(orders: IOrder[]): Promise<void> {
+  const db = await this.ensureDB();
+  const entityId = this.entityIdString;
+
+  if (!entityId) {
+    throw new Error('Entity ID is required to save orders');
+  }
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['orders'], 'readwrite');
+    const store = transaction.objectStore('orders');
+    // eslint-disable-next-line 
+    let savedCount = 0;
+    // eslint-disable-next-line 
+    let skippedCount = 0;
+    // eslint-disable-next-line 
+    let errorCount = 0;
+
+    const processNextOrder = async (index: number) => {
+      if (index >= orders.length) {
+        // All orders processed
+        resolve();
+        return;
+      }
+
+      const order = orders[index];
+      
+      // Only save orders that belong to current entity
+      if (order.entity_id !== entityId) {
+        skippedCount++;
+        processNextOrder(index + 1);
+        return;
+      }
+
+      try {
+        // First, check if order exists
+        const existingOrder = await new Promise<DBOrder | undefined>((resolve, reject) => {
+          const request = store.index('server_id').get(order.id);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+
+        const orderToSave = this.prepareOrderForSave(order, existingOrder);
+
+        await new Promise<void>((resolve, reject) => {
+          const request = store.put(orderToSave);
+          request.onsuccess = () => {
+            savedCount++;
+            resolve();
+          };
+          request.onerror = () => {
+            errorCount++;
+            reject(request.error);
+          };
+        });
+
+      } catch (error) {
+        errorCount++;
+      }
+
+      // Process next order
+      processNextOrder(index + 1);
+    };
+
+    // Start processing
+    processNextOrder(0);
+    
+    transaction.onerror = (event) => {
+      console.error('Transaction error:', event);
+      reject(transaction.error);
+    };
+  });
+}
 
   // Get pending orders for sync
   async getPendingOrders(params?: {
@@ -602,7 +794,7 @@ class IndexedDBService {
       
       getRequest.onsuccess = () => {
         const order = getRequest.result as DBOrder;
-        
+
         if (!order || order.entity_id !== entityId) {
           reject(new Error(`Order not found or entity mismatch`));
           return;
@@ -617,7 +809,6 @@ class IndexedDBService {
           server_created_at: serverCreatedAt || order.server_created_at
         };
 
-        console.log(`🔄 Updating order status: local=${localOrderId}, server=${serverId}, status=${status}`);
 
         const putRequest = store.put(updatedOrder);
         putRequest.onsuccess = () => resolve();
@@ -658,104 +849,115 @@ class IndexedDBService {
     });
   }
 
-  // Cleanup old synced orders
-  async cleanupOldOrders(retentionHours: number = 24): Promise<number> {
+  // ============= PRODUCTS METHODS =============
+  async saveProducts(products: DBProduct[]): Promise<void> {
     const db = await this.ensureDB();
     const entityId = this.entityIdString;
 
     if (!entityId) {
-      return 0;
+      throw new Error('Entity ID is required to save products');
     }
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['orders'], 'readwrite');
-      const store = transaction.objectStore('orders');
-      const entityIndex = store.index('entity_id');
-      
-      const request = entityIndex.openCursor(IDBKeyRange.only(entityId));
+      const transaction = db.transaction(['products'], 'readwrite');
+      const store = transaction.objectStore('products');
+      // eslint-disable-next-line
+      let savedCount = 0;
+      // eslint-disable-next-line
+      let skippedCount = 0;
 
-      const cutoffTime = new Date();
-      cutoffTime.setHours(cutoffTime.getHours() - retentionHours);
-      
-      let deletedCount = 0;
-
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-        if (cursor) {
-          const order = cursor.value as DBOrder;
-          const orderDate = new Date(order.created_at || '');
-          
-          // Delete orders older than retention period AND already synced
-          if (order.status === 'synced' && orderDate < cutoffTime) {
-            cursor.delete();
-            deletedCount++;
-          }
-          cursor.continue();
-        } else {
-          console.log(`🧹 Cleaned up ${deletedCount} old orders`);
-          resolve(deletedCount);
+      products.forEach(product => {
+        if (product.entity_id !== entityId) {
+          skippedCount++;
+          return;
         }
-      };
 
-      request.onerror = () => reject(request.error);
+        const productToSave = {
+          ...product,
+          last_synced: new Date().toISOString()
+        };
+
+        const request = store.put(productToSave);
+        request.onsuccess = () => {
+          savedCount++;
+        };
+      });
+
+      transaction.oncomplete = () => {
+        resolve();
+      };
+      
+      transaction.onerror = (event) => {
+        reject(transaction.error);
+      };
     });
   }
 
-  // Debug method to see all orders
-  async debugAllOrders(): Promise<IResponse> {
+  async getProducts(params: {
+    page?: number;
+    search?: string;
+    category?: string;
+    pageSize?: number;
+  }): Promise<ProductsResponse> {
     const db = await this.ensureDB();
     const entityId = this.entityIdString;
 
     if (!entityId) {
-      return { 
-        success: false, 
-        message: 'Entity ID not found', 
-        results: [], 
-        count: 0, 
-        next: null, 
-        previous: null 
+      return {
+        success: false,
+        results: [],
+        message: 'Entity ID not found',
+        next: null,
+        count: 0,
+        previous: null
       };
     }
 
+    const {
+      page = 1,
+      search = '',
+      category = 'All',
+      pageSize = this.pageSize
+    } = params;
+
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['orders'], 'readonly');
-      const store = transaction.objectStore('orders');
+      const transaction = db.transaction(['products'], 'readonly');
+      const store = transaction.objectStore('products');
       const entityIndex = store.index('entity_id');
       
       const request = entityIndex.getAll(IDBKeyRange.only(entityId));
 
       request.onsuccess = () => {
-        const orders = request.result as DBOrder[];
-        
-        console.log('🔍 All orders in IndexedDB:', orders);
-        
-        orders.forEach((order, index) => {
-          console.log(`Order ${index + 1}:`, {
-            local_id: order.id,
-            server_id: order.server_id,
-            code: order.code,
-            status: order.status,
-            entity_id: order.entity_id,
-            total: order.total,
-            items: order.items?.length,
-            created_at: order.created_at,
-            synced_at: order.synced_at
-          });
-        });
+        let products = request.result as DBProduct[];
 
-        const pendingCount = orders.filter(o => o.status === 'pending').length;
-        const syncedCount = orders.filter(o => o.status === 'synced').length;
-        
-        console.log(`📊 Order counts - Pending: ${pendingCount}, Synced: ${syncedCount}`);
+        if (search.trim()) {
+          const searchLower = search.toLowerCase().trim();
+          products = products.filter((p: DBProduct) =>
+            p.name.toLowerCase().includes(searchLower) ||
+            p.short_name?.toLowerCase().includes(searchLower) ||
+            p.category_name.toLowerCase().includes(searchLower)
+          );
+        }
 
-        resolve({
+        if (category && category !== 'All') {
+          products = products.filter((p: DBProduct) => p.category_name === category);
+        }
+
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedProducts = products.slice(startIndex, endIndex);
+        const hasNext = endIndex < products.length;
+
+        const response: ProductsResponse = {
           success: true,
-          message: `Found ${orders.length} total orders (${pendingCount} pending, ${syncedCount} synced)`,
-          results: orders,
-          count: orders.length,
-          next: null,
-          previous: null
-        });
+          message: 'Products fetched successfully',
+          results: paginatedProducts,
+          next: hasNext ? `page=${page + 1}` : null,
+          count: products.length,
+          previous: page > 1 ? `page=${page - 1}` : null
+        };
+
+        resolve(response);
       };
 
       request.onerror = () => {
@@ -764,9 +966,57 @@ class IndexedDBService {
     });
   }
 
+  async getProductById(id: string): Promise<DBProduct | null> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
 
-  // --- Customer methods ---
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['products'], 'readonly');
+      const store = transaction.objectStore('products');
+      const request = store.get(id);
 
+      request.onsuccess = () => {
+        const product = request.result as DBProduct | undefined;
+        if (product && product.entity_id === entityId) {
+          resolve(product);
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async clearProducts(): Promise<void> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) {
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['products'], 'readwrite');
+      const store = transaction.objectStore('products');
+      const entityIndex = store.index('entity_id');
+      const request = entityIndex.openCursor(IDBKeyRange.only(entityId));
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+
+      request.onerror = () => reject(request.error);
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  // ============= CUSTOMERS METHODS =============
   async saveCustomer(customerData: Omit<DBCustomer, 'created_at' | 'entity_id'> & { created_at?: string, entity_id?: string }): Promise<DBCustomer> {
     const db = await this.ensureDB();
     const entityId = this.entityIdString;
@@ -775,12 +1025,11 @@ class IndexedDBService {
       throw new Error('Entity ID is required to save a customer');
     }
 
-    // CORRECTED: Use the server's id field or generate local ID
     const customerId = customerData.id || this.generateLocalId();
     
     const customerToSave: DBCustomer = {
       ...customerData as DBCustomer,
-      id: customerId,  // ✅ Store the server's id in the id field
+      id: customerId,
       server_id: customerData.server_id || (customerData.status === 'synced' ? customerId : undefined),
       created_at: customerData.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -819,10 +1068,9 @@ class IndexedDBService {
       let savedCount = 0;
 
       customers.forEach(customer => {
-        // CORRECTED: Store server's id in id field
         const customerToSave: DBCustomer = {
           ...customer,
-          id: customer.id, // This comes from server
+          id: customer.id,
           server_id: customer.server_id || customer.id,
           status: customer.status || 'synced',
           synced_at: new Date().toISOString(),
@@ -858,12 +1106,10 @@ class IndexedDBService {
       request.onsuccess = () => {
         let customers = request.result as DBCustomer[];       
 
-        // Sort by creation date (newest first)
         customers.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        // CORRECTED: Use the id field directly (server returns id, not server_id)
         const results: DBCustomer[] = customers.map(c => ({
-          id: c.id,  // ✅ Use c.id directly
+          id: c.id,
           server_id: c.server_id,
           full_name: c.full_name,
           phone_number: c.phone_number,
@@ -919,8 +1165,7 @@ class IndexedDBService {
     return `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   }
 
-  // --- Metadata methods ---
-
+  // ============= METADATA METHODS =============
   async setMetadata(key: string, value: any): Promise<void> {
     const db = await this.ensureDB();
 
@@ -947,8 +1192,7 @@ class IndexedDBService {
     });
   }
 
-  // --- Utility methods ---
-  
+  // ============= UTILITY METHODS =============
   async getLastSyncTime(): Promise<string | null> {
     return this.getMetadata('last_product_sync');
   }

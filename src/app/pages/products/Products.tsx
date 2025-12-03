@@ -38,7 +38,7 @@ export default function ProductsList() {
 
   // 3. BREADCRUMBS: Update breadcrumbs
   const breadcrumbs: IBreadcrumbItem[] = [
-    { label: "Dashboard", url: "/dashboard" },
+    { label: "Store", url: "/store" },
     { label: "Products", url: "/products", isActive: true },
   ];
 
@@ -256,7 +256,6 @@ export default function ProductsList() {
     //   size: "3xl",
     //   side: "right",
     // });
-    console.log("Open Product Details Modal for:", item.name);
   };
 
   const handleDeleteProduct = async (product: IProduct) => {

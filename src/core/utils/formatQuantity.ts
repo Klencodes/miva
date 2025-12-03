@@ -26,3 +26,4 @@ export const formatQuantity = (quantity: number): string => {
 
     return `${wholeString}${fractionString}`;
   };
+  

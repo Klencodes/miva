@@ -41,7 +41,7 @@ export interface DBOrder {
   items: IOrderItem[];
   payment: IOrderPayment;
   entity_id?: string;
-  status?: 'pending' | 'synced' | 'failed';
+  status?: 'pending' | 'synced' | 'failed' | 'hold';
   created_at?: string;
   synced_at?: string;
   server_created_at?: string;

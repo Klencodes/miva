@@ -141,9 +141,9 @@ export const OrderDetailsModal: React.FC = () => {
             <h3 className="text-lg font-semibold text-text border-b border-border pb-2">
               Purchased Items ({order.items.length} unique products)
             </h3>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+            <div className="overflow-x-auto bg-background">
+                <table className="min-w-full">
+                    <thead className="">
                         <tr>
                             <th className="px-3 py-2 text-left text-xs font-medium text-text-light uppercase tracking-wider">Product</th>
                             <th className="px-3 py-2 text-center text-xs font-medium text-text-light uppercase tracking-wider">Qty</th>
@@ -151,7 +151,7 @@ export const OrderDetailsModal: React.FC = () => {
                             <th className="px-3 py-2 text-right text-xs font-medium text-text-light uppercase tracking-wider">Subtotal</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="border border-border">
                         {order.items.map((item: IOrderItem, index: number) => (
                             <tr key={index}>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-text">

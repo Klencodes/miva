@@ -12,334 +12,9 @@ import { useModal } from "../../../core/hooks/useModal";
 import CustomerModal from "./CustomerModal";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
 import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
-import { ICartContentProps } from "../../../core/interfaces/IStore";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
-
-const CartContent: React.FC<ICartContentProps> = ({
-  cartItems,
-  subTotal,
-  total,
-  discount,
-  tenderedCash,
-  paymentMethod,
-  referenceId,
-  balanceDue,
-  balanceLabel,
-  selectedCustomer,
-  paymentOptions,
-  creatingOrder,
-  setDiscount,
-  setTenderedCash,
-  setPaymentMethod,
-  setReferenceId,
-  removeFromCart,
-  updateQuantity,
-  openCustomerModal,
-  submitOrder,
-  holdOrder,
-  addToCart,
-  addQuarterToCart,
-  addHalfToCart,
-  addThreeQuarterToCart,
-}) => {
-  return (
-    <div className="rounded-sm shadow-sm flex flex-col h-full bg-card">
-      {/* Cart Header */}
-      <div className="border-b border-border p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-bold text-text">Cart</h2>
-          <div className="flex items-center gap-2">
-            <span className="bg-primary text-white px-2 py-1 rounded-full text-sm font-semibold">
-              {cartItems.length}
-            </span>
-          </div>
-        </div>
-
-        {/* Customer Selection */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-text-light">Order for</p>
-          </div>
-          {selectedCustomer ? (
-            <div className="flex items-center text-sm">
-              <p className="font-semibold text-text">{selectedCustomer}</p>
-              <p
-                onClick={openCustomerModal}
-                className="underline text-primary ml-1 cursor-pointer"
-              >
-                Change
-              </p>
-            </div>
-          ) : (
-            <Button
-              onClick={openCustomerModal}
-              size="sm"
-              variant="link"
-              className="-mr-2"
-            >
-              Add Customer
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Cart Items - Scrollable Container */}
-      <div className="flex-1 overflow-y-auto bg-background rounded-sm p-4">
-        {cartItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
-            <svg
-              className="w-16 h-16 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1}
-                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <p className="text-md font-medium mb-2">Your cart is empty</p>
-            <p className="text-sm text-center">
-              Add products from the catalog to get started
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {cartItems.map((item) => (
-              <div
-                key={item.id}
-                className="bg-card rounded-sm shadow-sm p-3"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3 flex-1">
-                    <img
-                      src={item.image_url}
-                      alt={item.image_alt}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-text text-sm truncate">
-                        {item.short_name}
-                      </h4>
-                      <p className="text-primary font-semibold text-xs">
-                        GHC {item.price?.toFixed(2)}/{item.selling_unit}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => removeFromCart(item)}
-                    className="text-danger transition-colors duration-200"
-                  >
-                    <i className="ri-trash-3-line"></i>
-                  </button>
-                </div>
-
-                {/* Quantity Controls */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateQuantity(item, item.quantity - 1);
-                      }}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      -
-                    </Button>
-                    <span className="text-sm flex flex-row text-center font-semibold text-text">
-                      {formatQuantity(item.quantity)} {item.selling_unit}
-                    </span>
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateQuantity(item, item.quantity + 1);
-                      }}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      +
-                    </Button>
-                  </div>
-
-                  <span className="font-semibold text-text">
-                    GHC {(item.price * item.quantity)?.toFixed(2)}
-                  </span>
-                </div>
-
-                {/* Fractional Quick Actions */}
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => addQuarterToCart(item)}
-                    className={`flex-1 text-xs py-1 px-2 rounded ${
-                      item.quantity === 0.25
-                        ? "bg-primary text-white"
-                        : "bg-background text-text"
-                    }`}
-                  >
-                    ¼
-                  </button>
-                  <button
-                    onClick={() => addHalfToCart(item)}
-                    className={`flex-1 text-xs py-1 px-2 rounded ${
-                      item.quantity === 0.5
-                        ? "bg-primary text-white"
-                        : "bg-background text-text"
-                    }`}
-                  >
-                    ½
-                  </button>
-                  <button
-                    onClick={() => addThreeQuarterToCart(item)}
-                    className={`flex-1 text-xs py-1 px-2 rounded ${
-                      item.quantity === 0.75
-                        ? "bg-primary text-white"
-                        : "bg-background text-text"
-                    }`}
-                  >
-                    ¾
-                  </button>
-                  <button
-                    onClick={() => addToCart(item)}
-                    className={`flex-1 text-xs py-1 px-2 rounded ${
-                      item.quantity === 1
-                        ? "bg-primary text-white"
-                        : "bg-background text-text"
-                    }`}
-                  >
-                    1
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Cart Footer */}
-      {cartItems.length > 0 && (
-        <div className="border-t border-border p-4">
-          {/* Summary */}
-          <div className="space-y-2 mb-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-text-light">Subtotal</span>
-              <span className="font-semibold text-text">
-                GHC {subTotal?.toFixed(2)}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-text-light">Discount</span>
-
-              <div className="flex items-center gap-4">
-                <div className="w-24 -mb-5">
-                  <Input
-                    type="number"
-                    size="sm"
-                    onChange={(val) => setDiscount(parseFloat(val) || 0)}
-                    min={parseFloat("0")}
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div className="text-danger font-semibold w-20 text-right">
-                  - GHC {discount.toFixed(2)}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between text-lg font-bold border-t pt-2 border-border-light">
-              <span className="text-text">Total</span>
-              <span className="text-primary">GHC {total?.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* Payment Details */}
-          <div className="space-y-3 mb-6 p-3 rounded-sm bg-background">
-            <h3 className="text-md font-semibold text-text mb-2">Payment</h3>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  label="Tendered Cash"
-                  value={tenderedCash}
-                  onChange={(val) => setTenderedCash(parseFloat(val) || 0)}
-                  min={parseFloat("0")}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="flex-1">
-                <Input
-                  type="select"
-                  label="Payment Method"
-                  value={paymentMethod}
-                  selectOptions={paymentOptions}
-                  onChange={(val) => setPaymentMethod(val)}
-                />
-              </div>
-            </div>
-
-            {paymentMethod !== "Cash" && (
-              <Input
-                type="text"
-                label="Reference ID (e.g., Transaction ID)"
-                value={referenceId}
-                onChange={setReferenceId}
-              />
-            )}
-
-            <div
-              className={`flex justify-between text-sm p-2 rounded-sm ${
-                balanceDue >= 0 ? "bg-success-10" : "bg-danger-10"
-              }`}
-            >
-              <span
-                className={`font-medium ${
-                  balanceDue >= 0 ? "text-success" : "text-danger"
-                }`}
-              >
-                {balanceLabel}
-              </span>
-              <span
-                className={`font-bold ${
-                  balanceDue >= 0 ? "text-success" : "text-danger"
-                }`}
-              >
-                GHC {Math.abs(balanceDue)?.toFixed(2)}
-              </span>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-row justify-between w-full">
-            <Button
-              onClick={submitOrder}
-              disabled={
-                cartItems.length === 0 ||
-                total === 0 ||
-                tenderedCash < total ||
-                creatingOrder
-              }
-              className="w-full"
-              loading={creatingOrder}
-            >
-              Complete Order (GHC {total?.toFixed(2)})
-            </Button>
-
-            <Button onClick={holdOrder} variant="outline">
-              <i className="ri-pause-line mr-1 text-primary"></i>
-              Hold
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+import CartContent from "./CartContent";
+import HoldOrdersModal from "./HoldOrders";
 
 const ModernStore: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
@@ -357,19 +32,32 @@ const ModernStore: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [isCartOpen, setIsCartOpen] = useState(false);
-
-  const { user } = useStore();
-  const { openModal } = useModal();
-  const isOnline = useNetworkStatus();
-  // Refs
-  const pageRef = useRef(1);
-  const loadingRef = useRef(false);
-  const paymentOptions = [
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const paymentOptions = [
     { value: "Cash", label: "Cash" },
     { value: "Mobile Money", label: "Mobile Money" },
   ];
+  // const [holdOrders, setHoldOrders] = useState<any[]>([]);
+  const { user } = useStore();
+  const { openModal } = useModal();
+  const isOnline = useNetworkStatus();
 
-  // Keep refs synchronized
+  // Refs
+  const pageRef = useRef(1);
+  const loadingRef = useRef(false);
+  const isOnlineRef = useRef(isOnline);
+  const fetchProductsRef = useRef<
+    | ((
+        pageParam?: number,
+        search?: string,
+        category?: string
+      ) => Promise<void>)
+    | null
+  >(null);
+
+
+
+  // Update refs when state changes
   useEffect(() => {
     pageRef.current = page;
   }, [page]);
@@ -378,7 +66,11 @@ const ModernStore: React.FC = () => {
     loadingRef.current = loading;
   }, [loading]);
 
-  // Fetch products with direct implementation
+  useEffect(() => {
+    isOnlineRef.current = isOnline;
+  }, [isOnline]);
+
+  // Create fetchProducts function with stable dependencies
   const fetchProducts = useCallback(
     async (
       pageParam: number = 1,
@@ -395,7 +87,7 @@ const ModernStore: React.FC = () => {
 
         let response: IResponse;
 
-        if (isOnline) {
+        if (isOnlineRef.current) {
           try {
             const serverResponse: IResponse = await appService.getProducts(
               params
@@ -464,6 +156,11 @@ const ModernStore: React.FC = () => {
 
           setHasMore(!!response.next);
           setPage(pageParam);
+
+          // Mark initial load as complete
+          if (pageParam === 1) {
+            setInitialLoadComplete(true);
+          }
         } else {
           setProducts([]);
         }
@@ -475,11 +172,17 @@ const ModernStore: React.FC = () => {
         setLoading(false);
       }
     },
-    [isOnline]
+    [] // Empty dependencies - using refs instead
   );
 
+  // Store fetchProducts in ref
   useEffect(() => {
-    const getProductExttraData = async () => {
+    fetchProductsRef.current = fetchProducts;
+  }, [fetchProducts]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const getProductExtraData = async () => {
       try {
         const res = await appService.getProductExtraInfo();
         if (res.success) {
@@ -494,8 +197,42 @@ const ModernStore: React.FC = () => {
         console.error("Failed to fetch product categories:", error);
       }
     };
-    getProductExttraData();
+    getProductExtraData();
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    if (fetchProductsRef.current) {
+      fetchProductsRef.current();
+    }
+  }, []); // Run only once on mount
+
+  // Handle network status changes
+  useEffect(() => {
+    if (initialLoadComplete && isOnline) {
+      // Refresh products when coming back online
+      if (fetchProductsRef.current) {
+        fetchProductsRef.current(1, searchTerm, selectedCategory);
+      }
+    }
+  }, [isOnline, initialLoadComplete, searchTerm, selectedCategory]);
+
+  // Event listener for refresh
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (fetchProductsRef.current) {
+        fetchProductsRef.current(1, searchTerm, selectedCategory);
+      }
+    };
+
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, [searchTerm, selectedCategory]);
+
+
 
   // Generate order code
   const generateOrderCode = () => {
@@ -511,7 +248,7 @@ const ModernStore: React.FC = () => {
     return `G-${datePart}${randomPart}`;
   };
 
-  // Submit order with direct implementation
+  // Submit order
   const submitOrder = async () => {
     if (cartItems.length === 0) {
       toast.error("Cart is empty");
@@ -520,58 +257,25 @@ const ModernStore: React.FC = () => {
 
     setCreatingOrder(true);
 
-    const order = {
-      cashier: `${user!.first_name} ${user!.last_name[0]}`, // Assuming user is always defined here
-      customer: selectedCustomer,
-      total: parseFloat(total?.toFixed(2)),
-      subtotal: parseFloat(subTotal?.toFixed(2)),
-      discount: discount,
-      tendered_cash: tenderedCash,
-      balance: parseFloat(balanceDue?.toFixed(2)),
-      balance_label: balanceLabel,
-      code: generateOrderCode(),
-      items: cartItems.map((item) => ({
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        product_name: item.name,
-        short_name: item.short_name,
-        category_name: item.category_name,
-        content_measurement: item.content_measurement,
-        content_unit: item.content_unit,
-        selling_unit_quantity: item.selling_unit_quantity,
-        selling_unit: item.selling_unit,
-        image_url: item.image_url,
-        image_alt: item.image_alt,
-      })),
-      payment: {
-        payment_method: paymentMethod,
-        amount_paid: tenderedCash,
-        reference_id: referenceId,
-      },
-    };
-
     try {
-      console.log("💾 Step 1: Always save to IndexedDB first (offline-first)");
 
       // ALWAYS save to IndexedDB first
-      const localResponse = await indexedDBService.createOrder(order as any);
+      const localResponse = await indexedDBService.createOrder(
+        prepareOrder as any
+      );
 
       if (!localResponse.success) {
         throw new Error("Failed to save order locally");
       }
 
       const localOrderId = localResponse.results?.id;
-      console.log("✅ Order saved locally with ID:", localOrderId);
 
       // If online, try to sync to server immediately
       if (isOnline) {
-        console.log("🌐 Online: Attempting immediate server sync...");
         try {
-          const serverResponse = await appService.createOrder(order);
+          const serverResponse = await appService.createOrder(prepareOrder);
 
           if (serverResponse.success) {
-            console.log("✅ Server accepted order");
 
             // Get server ID from response
             const serverOrderId = serverResponse?.results?.id;
@@ -609,25 +313,6 @@ const ModernStore: React.FC = () => {
       setCreatingOrder(false);
     }
   };
-
-  const holdOrder = () => {};
-
-  // Initial load and event listeners
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  useEffect(() => {
-    const handleRefresh = () => {
-      fetchProducts(1, searchTerm, selectedCategory);
-    };
-
-    eventService.onRefresh(handleRefresh);
-
-    return () => {
-      eventService.offRefresh(handleRefresh);
-    };
-  }, [fetchProducts, searchTerm, selectedCategory]);
 
   // Cart functions
   const addToCart = (product: IProduct, quantity: number = 1) => {
@@ -724,17 +409,23 @@ const ModernStore: React.FC = () => {
   const searchProducts = useCallback(
     async (term: string) => {
       setSearchTerm(term);
-      await fetchProducts(1, term, selectedCategory);
+      if (fetchProductsRef.current) {
+        await fetchProductsRef.current(1, term, selectedCategory);
+      }
     },
-    [selectedCategory, fetchProducts]
-  );
+    [selectedCategory]
+  ); // Only selectedCategory as dependency
 
   // Load more function
   const loadMoreProducts = useCallback(() => {
-    if (!loadingRef.current && hasMore) {
-      fetchProducts(pageRef.current + 1, searchTerm, selectedCategory);
+    if (!loadingRef.current && hasMore && fetchProductsRef.current) {
+      fetchProductsRef.current(
+        pageRef.current + 1,
+        searchTerm,
+        selectedCategory
+      );
     }
-  }, [hasMore, searchTerm, selectedCategory, fetchProducts]);
+  }, [hasMore, searchTerm, selectedCategory]);
 
   // Intersection Observer for infinite scroll
   const observer = useRef<IntersectionObserver | null>(null);
@@ -762,17 +453,15 @@ const ModernStore: React.FC = () => {
     }
 
     try {
-      toast.info("Syncing data...");
-      const result = await syncService.manualSync();
+      toast.info("Syncing products...");
+      const result = await syncService.syncProducts();
 
-      if (result.products) {
+      if (result.success) {
         toast.success("Products synced successfully");
         // Refresh current view
-        fetchProducts(1, searchTerm, selectedCategory);
-      }
-
-      if (result.orders.success > 0) {
-        toast.success(`${result.orders.success} orders synced`);
+        if (fetchProductsRef.current) {
+          fetchProductsRef.current(1, searchTerm, selectedCategory);
+        }
       }
     } catch (error) {
       toast.error("Sync failed");
@@ -780,16 +469,13 @@ const ModernStore: React.FC = () => {
   };
 
   // Calculated values
-  const subTotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const subTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = Math.max(0, subTotal - discount);
 
   const balanceDue = tenderedCash - total;
   const balanceLabel = balanceDue > 0 ? "Change" : "Owings";
-
-  const openCustomerModal = useCallback(async () => {
+  
+  const openCustomerModal = async () => {
     const result = await openModal(CustomerModal, {
       side: "right",
       size: "lg",
@@ -797,8 +483,88 @@ const ModernStore: React.FC = () => {
     if (result) {
       setSelectedCustomer(result?.full_name);
     }
-    //eslint-disable-next-line
-  }, [selectedCustomer]);
+  };
+
+  const prepareOrder = {
+    cashier: `${user?.first_name} ${user?.last_name[0]}`,
+    customer: selectedCustomer || "Walk-in Customer",
+    total: parseFloat(total?.toFixed(2)),
+    subtotal: parseFloat(subTotal?.toFixed(2)),
+    discount: discount,
+    tendered_cash: tenderedCash,
+    balance: parseFloat(balanceDue?.toFixed(2)),
+    balance_label: balanceLabel,
+    code: generateOrderCode(),
+    items: cartItems.map((item) => ({
+      product_id: item.id,
+      quantity: item.quantity,
+      unit_price: item.price,
+      product_name: item.name,
+      short_name: item.short_name,
+      category_name: item.category_name,
+      content_measurement: item.content_measurement,
+      content_unit: item.content_unit,
+      selling_unit_quantity: item.selling_unit_quantity,
+      selling_unit: item.selling_unit,
+      image_url: item.image_url,
+      image_alt: item.image_alt,
+    })),
+    payment: {
+      payment_method: paymentMethod,
+      amount_paid: tenderedCash,
+      reference_id: referenceId,
+    },
+  };
+
+  const openHoldOrdersModal = useCallback(async () => {
+    const result = await openModal(HoldOrdersModal, {
+      side: "right",
+      size: "lg",
+    });
+    if (result?.success && result?.orderId) {
+      try {
+        const holdOrderId = result.orderId;
+        // Get order from IndexedDB
+        const response = await indexedDBService.getHoldOrderById(holdOrderId);
+
+        if (response.success && response.results) {
+          const order = response.results;
+
+          // Convert order items to cart items
+          const cartItemsFromHold = order.items.map((item: any) => ({
+            ...item,
+            expanded: false,
+            quantity: item.quantity,
+          }));
+
+          // Set cart with order items
+          setCartItems(cartItemsFromHold);
+          
+          // Set other order details
+          setSelectedCustomer(
+            order.customer === "Walk-in Customer" ? null : order.customer
+          );
+          setDiscount(order.discount || 0);
+
+          // Show success and close modal
+          toast.success(`Order ${order.code} retrieved`);
+
+          // Delete the hold order from IndexedDB since we're retrieving it
+          await indexedDBService.deleteHoldOrder(holdOrderId);
+
+          //  // Update local hold orders list
+          //  setHoldOrders(prev => prev.filter(order =>
+          //    order.id !== holdOrderId && order.local_id !== holdOrderId
+          //  ));
+        } else {
+          toast.error("Failed to retrieve hold order");
+        }
+      } catch (error) {
+        toast.error("Error retrieving hold order");
+      }
+    }
+    // eslint-disable-next-line 
+  }, [cartItems]);
 
   const cleanupOrderData = async (message: any) => {
     toast.success(message || "Order submitted successfully");
@@ -811,8 +577,8 @@ const ModernStore: React.FC = () => {
     setIsCartOpen(false);
 
     // Refresh products to update stock if online
-    if (isOnline) {
-      fetchProducts(1, searchTerm, selectedCategory);
+    if (isOnline && fetchProductsRef.current) {
+      fetchProductsRef.current(1, searchTerm, selectedCategory);
     }
 
     // Try to sync orders if we're online (for the fallback case)
@@ -821,17 +587,62 @@ const ModernStore: React.FC = () => {
     }
   };
 
+  // Hold Order Function
+  const holdOrder = async () => {
+    if (cartItems.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+
+    try {
+      const localResponse = await indexedDBService.createHoldOrder(
+        prepareOrder
+      );
+
+      if (!localResponse.success) {
+        throw new Error("Failed to save hold order locally");
+      }
+
+      // Update local hold orders list
+      // setHoldOrders(prev => [...prev, {
+      //   ...prepareOrder,
+      //   id: localResponse.results?.id,
+      //   local_id: localResponse.results?.id,
+      // }]);
+
+      // Clear cart and show success
+      toast.success("Order on hold", {
+        description: `Order ${prepareOrder.code} saved for later`,
+        duration: 5000,
+        action: {
+          label: "View Holds",
+          onClick: () => openHoldOrdersModal(),
+        },
+      });
+
+      // Clear the cart
+      setCartItems([]);
+      setDiscount(0);
+      setSelectedCustomer(null);
+      setTenderedCash(0);
+      setPaymentMethod("Cash");
+      setReferenceId("");
+      setIsCartOpen(false);
+    } catch (error) {
+      toast.error("Failed to put order on hold");
+      console.error("Hold order error:", error);
+    }
+  };
+
   return (
-    <div className="w-full h-full">
-      <div className="flex flex-row gap-6 h-full">
+    <div className="h-[calc(100%-120px)] flex flex-col">
+      <div className="flex flex-row gap-6 w-full h-full">
         {/* Products Section */}
         <div className="flex-1 h-full bg-background min-w-0">
-
           {/* Header */}
           <div className="rounded-sm shadow-sm mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0">
-                {" "}
                 {/* Added min-w-0 to prevent text overflow */}
                 <h1 className="text-2xl font-bold text-text truncate">
                   Products
@@ -844,7 +655,6 @@ const ModernStore: React.FC = () => {
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
                 <div className="relative flex-1 sm:flex-none sm:w-64 -mb-5">
-                  {" "}
                   {/* Fixed width on sm+ */}
                   <Input
                     type="text"
@@ -883,14 +693,19 @@ const ModernStore: React.FC = () => {
               <div className="relative">
                 <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-2">
                   <div className="flex items-center space-x-2 py-1 min-w-max">
-                    {" "}
                     {/* Changed to min-w-max */}
                     {categories.map((category: SelectOption) => (
                       <Button
                         key={category.value}
                         onClick={() => {
                           setSelectedCategory(category.value);
-                          fetchProducts(1, searchTerm, category.value);
+                          if (fetchProductsRef.current) {
+                            fetchProductsRef.current(
+                              1,
+                              searchTerm,
+                              category.value
+                            );
+                          }
                         }}
                         variant={
                           selectedCategory === category.value
@@ -911,101 +726,110 @@ const ModernStore: React.FC = () => {
             </div>
           </div>
           {/* Products Grid - Scrollable Container */}
-          <div className="flex-1 overflow-y-auto px-2">
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-4 bg-background rounded-sm">
+          <div className="flex-1 overflow-y-auto h-full px-2">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 bg-background">
               {products.map((product, index) => (
                 <div
                   key={product.id}
                   ref={index === products.length - 1 ? lastProductRef : null}
-                  className={`group bg-card rounded-sm shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden ${
-                    !product.is_available || product.stock === 0
-                      ? "opacity-50"
-                      : "hover:scale-105"
-                  }`}
+                  className="group"
                 >
-                  {/* Product Image */}
-                  <div className="relative aspect-square">
-                    <img
-                      src={product.image_url}
-                      alt={product.image_alt}
-                      className="w-full h-full object-cover"
-                    />
-                    {product.stock === 0 && (
-                      <div className="absolute inset-0 bg-danger-5 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm bg-danger px-2 py-1 rounded-sm">
-                          Out of Stock
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <div
+                    className={`relative bg-background rounded-sm shadow-sm hover:shadow-sm border border-border transition-all duration-400 overflow-hidden ${
+                      !product.is_available || product.stock === 0
+                        ? "opacity-60"
+                        : ""
+                    }`}
+                  >
+                    {/* Image with stock badge overlay */}
+                    <div className="relative h-40 bg-card overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+                      <img
+                        src={product.image_url}
+                        alt={product.image_alt}
+                        className="w-full h-full object-cover"
+                      />
 
-                  {/* Product Info */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-text text-sm line-clamp-2 flex-1 min-w-0">
-                        {product.short_name}
-                      </h3>
-                      <span className="text-xs text-text-light bg-background px-2 py-1 rounded ml-2 whitespace-nowrap flex-shrink-0">
-                        {product.selling_unit_quantity}x
-                        {product.content_measurement}{product.content_unit} / {product.selling_unit}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-text-light mb-3 line-clamp-1">
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
+                      {/* Stock Badge - Overlay at top right */}
+                      <div
+                        className={`absolute top-1 right-1 text-xs px-2 py-1 rounded-full z-10 ${
                           product.stock > 10
-                            ? "bg-success-10 text-success"
+                            ? "bg-success text-white"
                             : product.stock > 0
-                            ? "bg-info-10 text-info"
-                            : "bg-danger-10 text-danger"
+                            ? "bg-info text-white"
+                            : "bg-danger text-white"
                         }`}
                       >
-                        {formatQuantity(product.stock)} {product.selling_unit}s in stock
-                      </span>
-                    </p>
+                        {formatQuantity(product.stock)} left
+                      </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-md font-bold text-primary">
-                        GHC {product.price?.toFixed(2)}
-                      </span>
+                      {product.stock === 0 && (
+                        <div className="absolute inset-0 bg-background backdrop-blur-[2px] flex items-center justify-center">
+                          <div className="bg-card text-text px-3 py-1.5 rounded-full text-xs font-medium">
+                            Sold Out
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Add to Cart Buttons */}
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      <Button
-                        onClick={() => addQuarterToCart(product)}
-                        disabled={!product.is_available || product.stock === 0}
-                        variant="ghost"
-                        size="sm"
-                        className="flex-shrink-0"
-                      >
-                        ¼
-                      </Button>
-                      <Button
-                        onClick={() => addHalfToCart(product)}
-                        disabled={!product.is_available || product.stock === 0}
-                        variant="ghost"
-                        size="sm"
-                        className="flex-shrink-0"
-                      >
-                        ½
-                      </Button>
-                      <Button
-                        onClick={() => addToCart(product)}
-                        disabled={!product.is_available || product.stock === 0}
-                        variant="ghost"
-                        size="sm"
-                        className="flex-1 min-w-0 truncate"
-                      >
-                        Add (1 {product.selling_unit})
-                      </Button>
+                    {/* Content */}
+                    <div className="p-3">
+                      {/* Title & Details */}
+                      <div className="mb-2">
+                        <h3 className="font-medium text-text text-sm line-clamp-1 mb-1">
+                          {product.short_name}
+                        </h3>
+                        <p className="text-xs text-text-light">
+                          {product.selling_unit_quantity}x
+                          {product.content_measurement}
+                          {product.content_unit} / {product.selling_unit}
+                        </p>
+                      </div>
+
+                      {/* Stock & Price */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-right">
+                          <div className="font-bold text-text">
+                            GHC {product.price?.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className={`grid grid-cols-${product.selling_unit_quantity > 1 ? '3': '1'} gap-1.5`}>
+                        {product.selling_unit_quantity > 1 && (<button
+                          onClick={() => addQuarterToCart(product)}
+                          disabled={
+                            !product.is_available || product.stock === 0
+                          }
+                          className="h-8 rounded-sm border border-border text-text rounded-sm text-xs disabled:opacity-30 transition-colors"
+                        >
+                          ¼
+                        </button>)}
+                        {product.selling_unit_quantity > 1 && (<button
+                          onClick={() => addHalfToCart(product)}
+                          disabled={
+                            !product.is_available || product.stock === 0
+                          }
+                          className="h-8 rounded-sm border border-border text-text rounded-sm text-xs disabled:opacity-30 transition-colors"
+                        >
+                          ½
+                        </button>)}
+                        <button
+                          onClick={() => addToCart(product)}
+                          disabled={
+                            !product.is_available || product.stock === 0
+                          }
+                          className="h-8 bg-primary text-white rounded-sm text-xs font-medium disabled:bg-primary-40 transition-colors"
+                        >
+                          Add 1
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-
             {/* Loading indicator */}
             {loading && (
               <div className="flex justify-center items-center py-8">
@@ -1015,7 +839,7 @@ const ModernStore: React.FC = () => {
 
             {/* End of results */}
             {!hasMore && products.length > 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-8 text-text-light">
                 No more products to load
               </div>
             )}
@@ -1023,7 +847,7 @@ const ModernStore: React.FC = () => {
         </div>
 
         {/* Cart Section - DESKTOP ONLY */}
-        <div className="hidden lg:block lg:w-96 h-full border border-border flex-shrink-0">
+        <div className="hidden lg:block lg:w-96 h-full border border-border h-[calc(100%+125px)]">
           <CartContent
             cartItems={cartItems}
             subTotal={subTotal}
@@ -1050,6 +874,7 @@ const ModernStore: React.FC = () => {
             addQuarterToCart={addQuarterToCart}
             addHalfToCart={addHalfToCart}
             addThreeQuarterToCart={addThreeQuarterToCart}
+            openHoldOrdersModal={openHoldOrdersModal}
           />
         </div>
       </div>
@@ -1106,6 +931,7 @@ const ModernStore: React.FC = () => {
                 addQuarterToCart={addQuarterToCart}
                 addHalfToCart={addHalfToCart}
                 addThreeQuarterToCart={addThreeQuarterToCart}
+                openHoldOrdersModal={openHoldOrdersModal}
               />
             </div>
           </div>

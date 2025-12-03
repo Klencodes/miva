@@ -81,7 +81,7 @@ export class AppService {
   /**
    * Get Entities
    */
-  async getEntities(): Promise<any> {
+  async getEntities(): Promise<IResponse> {
     try {
       return await apiService.get<IResponse>(
         apiValues.BUSINESS_ENTITIES_ENDPOINT

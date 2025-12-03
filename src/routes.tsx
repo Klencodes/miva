@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import CommonLayout from "./app/layouts/CommonLayout";
 import FullLayout from "./app/layouts/FullLayout";
-import { getStoredItem, PENDING_ENTITY_KEY, useStore } from "./core/hooks/useStore";
+import { getStoredItem, NO_ENTITY_KEY, useStore } from "./core/hooks/useStore";
 import Loader from "./ui/components/Loader";
 
 const AuthRoutes = lazy(() => import("./app/pages/auth/AuthRoutes"));
@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const currentAuthState = isAuthenticatedRef.current;
 
   // If not authenticated, redirect to login
-  if (!userRef.current && !currentAuthState) {
+  if (!userRef.current && !currentAuthState && initializationComplete) {
     return (
       <Navigate to="/account/login" state={{ from: location }} replace />
     );
@@ -42,7 +42,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const {
-    userRef,
     getRequiredRoute,
     isAuthenticatedRef,
     initializationComplete,
@@ -55,11 +54,11 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }, [initializationComplete, getRequiredRoute]);
 
   const currentAuthState = isAuthenticatedRef.current;
-  const hasPendingEntity = !!getStoredItem(PENDING_ENTITY_KEY, null);
+  const hasPendingEntity = !!getStoredItem(NO_ENTITY_KEY, null);
 
-  // If authenticated and no special requirements, go to dashboard
+  // If authenticated and no special requirements, go to store
   if (currentAuthState && !requiredRoute && !hasPendingEntity) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/store" replace />;
   }
 
   // If authenticated but has requirements, allow the required route logic to handle it

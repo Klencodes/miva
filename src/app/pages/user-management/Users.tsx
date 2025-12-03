@@ -36,7 +36,7 @@ const Users = () => {
   usePageTitle("Users");
 
   const breadcrumbs: IBreadcrumbItem[] = [
-    { label: "Dashboard", url: "/dashboard" },
+    { label: "Store", url: "/store" },
     { label: "Users", url: "/users", isActive: true },
   ];
 
@@ -154,7 +154,6 @@ const Users = () => {
           setTotalCount(res.count!);
         }
       } catch (err: any) {
-        console.log(err, "err");
       } finally {
         setLoading(false);
       }

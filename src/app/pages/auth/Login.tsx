@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button, Input } from "../../../ui";
 import {
   ENTITY_KEY,
+  NO_ENTITY_KEY,
+  removeStoredItem,
   setStoredItem,
   USER_KEY,
   useStore,
@@ -89,14 +91,17 @@ const Login: React.FC = () => {
             }
 
           // FIXED: Ensure setStoreEntities is available and call it
+          await removeStoredItem(NO_ENTITY_KEY);
           setStoredItem(ENTITY_KEY, entitiesToSet[0]);
           setStoreEntities(entitiesToSet);
-          window.location.replace("/dashboard");
+          window.location.replace("/store");
+
         } else {
           if (userData.role === Roles.SUPER_ADMIN) {
 
           navigate("/account/create-business");
           } else{
+            await setStoredItem(NO_ENTITY_KEY, true)
             navigate("/account/access-denied");
           }
         }

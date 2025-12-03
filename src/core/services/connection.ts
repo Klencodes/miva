@@ -8,14 +8,12 @@ class NetworkService {
 
   private handleOnline() {
     this.online = true;
-    console.log('Network: Online');
     // Dispatch custom event for other components to listen to
     window.dispatchEvent(new Event('networkOnline'));
   }
 
   private handleOffline() {
     this.online = false;
-    console.log('Network: Offline');
     window.dispatchEvent(new Event('networkOffline'));
   }
 

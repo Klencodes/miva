@@ -5,7 +5,7 @@ export function usePageTitle(title: string, dependencies = []) {
   const location = useLocation();
 
   useEffect(() => {
-    document.title = title ? `${title} | EV Admin` : 'EV Admin';
+    document.title = title ? `${title} | GOD-DID MART` : 'GOD-DID MART';
      // eslint-disable-next-line
   }, [title, location.pathname, ...dependencies]);
 }

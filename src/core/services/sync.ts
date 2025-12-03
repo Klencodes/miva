@@ -5,15 +5,6 @@ import { appService } from "./app";
 import { networkService } from "./connection";
 import { indexedDBService } from "./indexdb";
 
-// Define the expected response structure from the server's createOrder endpoint
-interface ServerOrderResponse {
-  success: boolean;
-  order_id?: string;
-  code?: string;
-  message?: string;
-  data?: any;
-  created_at?: string;
-}
 
 interface SyncResults {
   success: number;
@@ -25,59 +16,23 @@ class SyncService {
   private isSyncing = false;
   private syncInterval: NodeJS.Timeout | null = null;
 
-  // --- DEBUG METHOD ---
-  async debugSyncIssues(): Promise<void> {
-    console.log('🔍 DEBUG: Starting sync issue diagnosis...');
-    
-    // 1. Check if we have entity ID
-    const entity = indexedDBService['entityIdString'];
-    console.log('Entity ID:', entity);
-    
-    // 2. Check all orders in database
-    const debugResponse = await indexedDBService.debugAllOrders();
-    console.log('Debug response:', debugResponse);
-    
-    // 3. Check pending orders specifically
-    const pendingResponse = await indexedDBService.getPendingOrders();
-    console.log('Pending orders response:', pendingResponse);
-    
-    // 4. Check if orders have correct status
-    if (debugResponse.results && debugResponse.results.length > 0) {
-      const orders = debugResponse.results as DBOrder[];
-      const statuses = orders.map(o => o.status);
-      console.log('All order statuses:', statuses);
-      
-      // Check if any order has no status
-      const noStatusOrders = orders.filter(o => !o.status);
-      if (noStatusOrders.length > 0) {
-        console.log('⚠️ Orders with no status:', noStatusOrders);
-      }
-    }
-    
-    console.log('🔍 DEBUG: Diagnosis complete');
-  }
-
   // --- Product Synchronization ---
 
   async syncProducts(): Promise<{ success: boolean; count: number; error?: string }> {
     if (!networkService.isOnline()) {
-      console.log('📶 Offline - skipping product sync');
       return { success: false, count: 0, error: 'No internet connection' };
     }
 
     if (this.isSyncing) {
-      console.log('🔄 Sync already in progress - skipping');
       return { success: false, count: 0, error: 'Sync already in progress' };
     }
 
     this.isSyncing = true;
-    console.log('🔄 Starting products sync...');
 
     try {
       let allProducts: DBProduct[] = [];
       let page = 1;
       let hasMore = true;
-      let totalFetched = 0;
 
       // Fetch all pages of products
       while (hasMore) {
@@ -86,7 +41,7 @@ class SyncService {
             page,
             search: '',
             category: 'All',
-            pageSize: 100
+            pageSize: 10
           });
 
           if (response.success && response.results && Array.isArray(response.results)) {
@@ -109,13 +64,10 @@ class SyncService {
             }));
             
             allProducts = [...allProducts, ...products];
-            // eslint-disable-next-line 
-            totalFetched += products.length;
             
             hasMore = !!response.next && response.results.length > 0;
             page++;
             
-            console.log(`📦 Fetched page ${page-1}: ${products.length} products`);
           } else {
             console.warn('Invalid response format or no results:', response);
             hasMore = false;
@@ -131,18 +83,14 @@ class SyncService {
           await indexedDBService.saveProducts(allProducts);
           await indexedDBService.setLastSyncTime();
           
-          console.log(`✅ Successfully synced ${allProducts.length} products to IndexedDB`);
           return { success: true, count: allProducts.length };
         } catch (saveError) {
-          console.error('❌ Failed to save products to IndexedDB:', saveError);
           return { success: false, count: 0, error: 'Failed to save products locally' };
         }
       } else {
-        console.log('ℹ️ No products to sync');
         return { success: true, count: 0 };
       }
     } catch (error) {
-      console.error('❌ Product sync failed:', error);
       return { 
         success: false, 
         count: 0, 
@@ -157,17 +105,14 @@ class SyncService {
 
   async syncOrders(): Promise<SyncResults> {
     if (!networkService.isOnline()) {
-      console.log('📶 Offline - skipping order sync');
       return { success: 0, failed: 0, errors: [] };
     }
 
     if (this.isSyncing) {
-      console.log('🔄 Sync already in progress - skipping orders');
       return { success: 0, failed: 0, errors: [] };
     }
 
     this.isSyncing = true;
-    console.log('🔄 Starting orders sync...');
 
     const result: SyncResults = {
       success: 0,
@@ -176,13 +121,8 @@ class SyncService {
     };
 
     try {
-      // DEBUG: First check what's in the database
-      console.log('🔍 Checking database before sync...');
-      await this.debugSyncIssues();
-
       // Fetch orders marked as 'pending'
       const pendingOrdersResponse = await indexedDBService.getPendingOrders();
-      console.log('Pending orders response:', pendingOrdersResponse);
       
       if (!pendingOrdersResponse.success) {
         console.error('❌ Failed to fetch pending orders:', pendingOrdersResponse.message);
@@ -191,21 +131,10 @@ class SyncService {
 
       const pendingOrders = pendingOrdersResponse.results || [];
       
-      console.log(`📋 Found ${pendingOrders.length} pending orders to sync`);
 
       if (pendingOrders.length === 0) {
-        console.log('ℹ️ No pending orders to sync');
         return result;
       }
-
-      console.log('📝 Pending orders details:', pendingOrders.map((o: { id: any; code: any; total: any; status: any; items: string | any[]; entity_id: any; }) => ({
-        id: o.id,
-        code: o.code,
-        total: o.total,
-        status: o.status,
-        items: o.items?.length,
-        entity_id: o.entity_id
-      })));
 
       // Process orders sequentially
       for (const order of pendingOrders) {
@@ -216,8 +145,6 @@ class SyncService {
             result.errors.push({ orderId: -1, error: 'Missing local order ID' });
             continue;
           }
-
-          console.log(`🔄 Syncing order ${order.id} (Local ID) - Code: ${order.code}`);
 
           // Validate required order fields
           const validation = this.validateOrder(order);
@@ -230,18 +157,14 @@ class SyncService {
 
           // Prepare order data for server
           const serverOrder = this.prepareOrderForServer(order);
-          console.log('📤 Prepared order for server:', JSON.stringify(serverOrder, null, 2));
 
           // Submit to server
-          console.log('📤 Submitting order to server...');
-          const response: ServerOrderResponse = await appService.createOrder(serverOrder);
-          
-          console.log('📥 Server response:', response);
+          const response = await appService.createOrder(serverOrder);
           
           if (response.success) {
-            const serverOrderId = response.order_id || response.data?.order_id || response.data?.id;
-            const serverCode = response.code || response.data?.code;
-            const serverCreatedAt = response.data?.created_at || response.created_at;
+            const serverOrderId = response.results?.id;
+            const serverCode = response.results?.code;
+            const serverCreatedAt = response.results?.created_at;
             
             if (serverOrderId) {
               await indexedDBService.updateOrderStatus(
@@ -252,22 +175,17 @@ class SyncService {
                 serverCreatedAt
               );
               result.success++;
-              console.log(`✅ Order ${order.id} synced successfully. Server ID: ${serverOrderId}`);
             } else {
-              console.warn('⚠️ Server responded with success but no order ID. Response:', response);
               await indexedDBService.updateOrderStatus(order.id, 'synced');
               result.success++;
-              console.log(`✅ Order ${order.id} synced (no server ID returned)`);
             }
           } else {
             const errorMessage = response.message || 'Server rejected order';
-            console.error(`❌ Order ${order.id} sync failed: ${errorMessage}`);
             result.failed++;
             result.errors.push({ orderId: order.id, error: errorMessage });
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`❌ Failed to sync order ${order.id}:`, error);
           result.failed++;
           result.errors.push({ 
             orderId: order.id || -1, 
@@ -278,13 +196,8 @@ class SyncService {
         await this.delay(500);
       }
 
-      console.log(`📊 Orders sync completed: ${result.success} successful, ${result.failed} failed`);
       
-      if (result.errors.length > 0) {
-        console.error('❌ Sync errors:', result.errors);
-      }
     } catch (error) {
-      console.error('❌ Orders sync failed:', error);
       result.errors.push({ 
         orderId: -1, 
         error: error instanceof Error ? error.message : 'Unknown sync error' 
@@ -334,7 +247,7 @@ class SyncService {
   private prepareOrderForServer(order: DBOrder): any {
     const serverOrder = {
       cashier: order.cashier || 'Unknown Cashier',
-      customer: order.customer || null,
+      customer: order.customer || "Walk-in Customer",
       total: Number(order.total.toFixed(2)),
       subtotal: order.subtotal ? Number(order.subtotal.toFixed(2)) : Number(order.total.toFixed(2)),
       discount: order.discount ? Number(order.discount.toFixed(2)) : 0,
@@ -382,64 +295,13 @@ class SyncService {
 
   // --- Sync Status and Control ---
 
-  getSyncStatus(): { isSyncing: boolean; lastSync?: string } {
+  getSyncStatus(): { isSyncing: boolean } {
     return {
       isSyncing: this.isSyncing
     };
   }
 
-  // --- Initialization and Control ---
-
-  async initializeSync(): Promise<void> {
-    console.log('🚀 Initializing sync service...');
-
-    if (networkService.isOnline()) {
-      console.log('🌐 Online - performing initial sync');
-      try {
-        await this.syncProducts();
-        await this.syncOrders();
-      } catch (error) {
-        console.error('❌ Initial sync failed:', error);
-      }
-    } else {
-      console.log('📶 Offline - skipping initial sync');
-    }
-
-    this.syncInterval = setInterval(async () => {
-      if (networkService.isOnline() && !this.isSyncing) {
-        console.log('🔄 Periodic sync triggered');
-        try {
-          await this.syncOrders();
-        } catch (error) {
-          console.error('❌ Periodic sync failed:', error);
-        }
-      }
-    }, 5 * 60 * 1000);
-
-    const handleOnline = async () => {
-      console.log('🌐 Connection restored, starting sync...');
-      try {
-        await this.syncOrders();
-      } catch (error) {
-        console.error('❌ Online event sync failed:', error);
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && networkService.isOnline() && !this.isSyncing) {
-        console.log('👀 Page visible, triggering sync...');
-        this.syncOrders().catch(error => {
-          console.error('❌ Visibility change sync failed:', error);
-        });
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-  }
-
-  // Manual sync trigger with improved reporting
+  // Manual sync trigger
   async manualSync(): Promise<{ 
     products: { success: boolean; count: number; error?: string }; 
     orders: SyncResults 
@@ -452,7 +314,6 @@ class SyncService {
       throw new Error('Sync already in progress');
     }
 
-    console.log('👤 Manual sync triggered by user');
     
     const productsResult = await this.syncProducts();
     const ordersResult = await this.syncOrders();
@@ -463,7 +324,7 @@ class SyncService {
     };
   }
 
-  // Force sync specific order (for debugging/retry)
+  // Force sync specific order
   async forceSyncOrder(localOrderId: number): Promise<{ success: boolean; error?: string }> {
     if (!networkService.isOnline()) {
       return { success: false, error: 'No internet connection' };
@@ -474,16 +335,7 @@ class SyncService {
       const order = ordersResponse.results?.find((o: { id: number; }) => o.id === localOrderId);
       
       if (!order) {
-        const allOrders = await indexedDBService.debugAllOrders();
-        const anyOrder = allOrders.results?.find((o: { id: number; }) => o.id === localOrderId);
-        if (anyOrder) {
-          console.log(`Order found but status is ${anyOrder.status}, updating to pending...`);
-          // Update to pending and retry
-          await indexedDBService.updateOrderStatus(localOrderId, 'pending');
-          const updatedOrder = { ...anyOrder, status: 'pending' };
-          return await this.syncSingleOrder(updatedOrder);
-        }
-        return { success: false, error: 'Order not found' };
+        return { success: false, error: 'Order not found or already synced' };
       }
 
       return await this.syncSingleOrder(order);
@@ -494,15 +346,14 @@ class SyncService {
   }
 
   private async syncSingleOrder(order: DBOrder): Promise<{ success: boolean; error?: string }> {
-    console.log(`🔄 Force syncing order ${order.id}...`);
     
     const serverOrder = this.prepareOrderForServer(order);
-    const response: ServerOrderResponse = await appService.createOrder(serverOrder);
+    const response = await appService.createOrder(serverOrder);
     
     if (response.success) {
-      const serverOrderId = response.order_id || response.data?.order_id || response.data?.id;
-      const serverCode = response.code || response.data?.code;
-      const serverCreatedAt = response.data?.created_at || response.created_at;
+      const serverOrderId = response.results?.id;
+      const serverCode = response.results?.code;
+      const serverCreatedAt = response.results?.created_at;
       
       await indexedDBService.updateOrderStatus(
         order.id!,
@@ -524,7 +375,6 @@ class SyncService {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
     }
-    console.log('🧹 Sync service destroyed');
   }
 }
 

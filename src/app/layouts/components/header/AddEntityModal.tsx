@@ -1,8 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { useModal } from "../../../core/hooks/useModal";
-import { Button, Input } from "../../../ui";
-import { appService } from "../../../core/services/app";
-import { SelectOption } from "../../../core/interfaces/ISelectOption";
+import { useModal } from "../../../../core/hooks/useModal";
+import { Button, Input } from "../../../../ui";
+import { appService } from "../../../../core/services/app";
+import { SelectOption } from "../../../../core/interfaces/ISelectOption";
 import { toast } from "sonner";
 
 interface BusinessProfileForm {
@@ -98,9 +98,9 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
       try {
         const res = await appService.getSupportedCountries();
         if (res.success) {
-            const formattedCountries = [{ value: "", label: "Select Country" }, ...res.results.map((country: any) => ({
-            value: country.name,
-            label: country.name,
+            const formattedCountries = [{ value: "", label: "Select Country" }, ...res.results.map((country: SelectOption) => ({
+            value: country.value,
+            label: country.label,
           }))];
           setSupportedCountries(formattedCountries);
         }
@@ -296,24 +296,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         </button>
       </div>
 
-      {!isEditMode && (
-        <div className="bg-info-5 border border-info-20 rounded-sm p-2 mb-6">
-          <div className="flex items-start">
-            <div className="flex flex-row items-center justify-between w-full">
-              <p className="font-medium text-info mb-1">
-                Please note that only verified entities will show at entities list
-              </p>
-              <Button 
-                size="sm" 
-                variant="link" 
-                onClick={() => modalRef!.close({ success: "list_pending_entities" })}
-              >
-                View Pending Entities
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+     
 
       {/* Form Guidance (Modal Style) */}
       <div className="bg-primary-5 border border-primary-20 rounded-sm p-2 mb-6">

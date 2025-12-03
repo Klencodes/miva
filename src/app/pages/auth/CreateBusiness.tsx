@@ -172,7 +172,7 @@ const CreateBusiness: React.FC = () => {
         throw new Error(response.message || "Failed to create business profile.");
       }
       toast.success("Success", {description: response.message || "Business profile created successfully!"});
-      window.location.replace("/dashboard");
+      window.location.replace("/store");
 
     } catch (error: any) {
       toast.error("Error", {description: error.message || "Failed to create business profile."});

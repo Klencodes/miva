@@ -26,4 +26,5 @@ export interface ICartContentProps {
   addQuarterToCart: (product: IProduct) => void;
   addHalfToCart: (product: IProduct) => void;
   addThreeQuarterToCart: (product: IProduct) => void;
+  openHoldOrdersModal: () => void;
 }

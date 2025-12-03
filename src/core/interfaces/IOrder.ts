@@ -11,7 +11,7 @@ export interface IOrderPayment {
  * Interface for a single Item within an Order's item list.
  */
 export interface IOrderItem {
-  order_id: string; 
+  order_id?: string; 
   product_id: string;
   quantity: number;
   unit_price: number;
@@ -24,7 +24,7 @@ export interface IOrderItem {
   selling_unit: string;
   image_url: string;
   image_alt: string;
-  id: string; 
+  id?: string; 
 }
 
 /**

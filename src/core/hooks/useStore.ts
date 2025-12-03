@@ -6,7 +6,7 @@ import { urlConfig } from "../services/url-config";
 
 export const USER_KEY = "USER";
 export const ENTITY_KEY = "ENTITY";
-export const PENDING_ENTITY_KEY = "PENDING_ENTITY";
+export const NO_ENTITY_KEY = "PENDING_ENTITY";
 
 const SECRET_KEY = urlConfig.SECRET;
 
@@ -66,7 +66,6 @@ export const removeStoredItem = (key: string): void => {
 
 // Create a stable reference for empty array/object to prevent unnecessary re-renders
 const EMPTY_ARRAY: IEntityItem[] = [];
-const EMPTY_OBJECT = {};
 
 export const useStore = () => {
   // --- STATE DEFINITIONS ---
@@ -157,7 +156,7 @@ export const useStore = () => {
     isAuthenticatedRef.current = false;
     
     // Clear all storage
-    [USER_KEY, ENTITY_KEY, PENDING_ENTITY_KEY].forEach((key) => {
+    [USER_KEY, ENTITY_KEY, NO_ENTITY_KEY].forEach((key) => {
       removeStoredItem(key);
     });
 
@@ -167,7 +166,9 @@ export const useStore = () => {
   const getRequiredRoute = useCallback((): string | null => {
     const currentUser = userRef.current;
     const needsVerification = currentUser && !currentUser.verified;
+    const  hasNoEntity = currentUser && getStoredItem(NO_ENTITY_KEY, false);
 
+    if (hasNoEntity) return "/account/access-denied";
     if (needsVerification) return "/account/verify";
     if (!isAuthenticatedRef.current) return "/account/login";
 

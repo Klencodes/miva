@@ -3,6 +3,8 @@ import { useModal } from "../../../core/hooks/useModal";
 import { appService } from "../../../core/services/app";
 import { Button, Input } from "../../../ui";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
+import { toast } from "sonner";
+import { Roles } from "../../../core/enums/roles";
 
 interface AssignUserEntityFormData {
   user_id: string;
@@ -20,7 +22,6 @@ const AssignUserEntity: React.FC = () => {
   const [entities, setEntities] = useState<IEntityItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [entitiesLoading, setEntitiesLoading] = useState(true);
-  const [error, setError] = useState<string>("");
 
   // Fetch available entities
   useEffect(() => {
@@ -33,7 +34,6 @@ const AssignUserEntity: React.FC = () => {
         }
       } catch (err) {
         console.error("Error fetching entities:", err);
-        setError("Failed to load entities");
       } finally {
         setEntitiesLoading(false);
       }
@@ -46,26 +46,22 @@ const AssignUserEntity: React.FC = () => {
     e.preventDefault();
 
     if (!formData.entity_id) {
-      setError("Please select an entity");
+      toast.error("Please select an entity");
       return;
     }
 
     setLoading(true);
-    setError("");
 
     try {
       // NOTE: Assuming appService.assignUserToEntity exists and handles the POST request
       const response = await appService.assignUserToEntity(formData);
-
       if (response.success) {
         modalRef?.close({ success: true, user: response.results });
       } else {
-        setError(response?.message || "Failed to assign user to entity");
+        toast.error(response.message);
       }
     } catch (err: any) {
-      // Check if error is an API response with a message or a generic error
-      const errorMessage = err.response?.data?.message || err.message || "An unexpected error occurred during assignment.";
-      setError(errorMessage);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -79,9 +75,12 @@ const AssignUserEntity: React.FC = () => {
       ...prev,
       [field]: value,
     }));
-    // Clear error when user makes a selection
-    if (error) setError("");
   };
+
+  const remCap = (str: string) =>{
+    if (!str) return '';      
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
 
   return (
     // Main container uses flex-col to stack header, body (flex-1), and footer
@@ -162,20 +161,16 @@ const AssignUserEntity: React.FC = () => {
               onChange={(value) => handleChange("role", value)}
               disabled={entitiesLoading}
               selectOptions={[
-                { value: "staff", label: "Staff" },
-                { value: "manager", label: "Manager" },
-                { value: "admin", label: "Admin" },
+                { value: Roles.SUPER_ADMIN, label: remCap(Roles.SUPER_ADMIN)},
+                { value: Roles.OWNER, label: remCap(Roles.OWNER) },
+                { value: Roles.ADMIN, label: remCap(Roles.ADMIN) },
+                { value: Roles.SALES, label: remCap(Roles.SALES) },
+                { value: Roles.STAFF, label: remCap(Roles.ADMIN) },
               ]}
             />
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="p-3 bg-danger-5 border border-danger rounded-sm text-danger text-sm">
-              <i className="ri-error-warning-line mr-2"></i>
-              {error}
-            </div>
-          )}
+        
         </form>
       </div>
       

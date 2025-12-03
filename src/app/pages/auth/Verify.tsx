@@ -119,7 +119,7 @@ const Verify = () => {
 
           setStoredItem(ENTITY_KEY, entityToSet);
           setStoreEntities(entitiesToSet);
-          window.location.replace("/dashboard");
+          window.location.replace("/store");
         } else {
           setStoreEntities([]);
           setStoredItem(ENTITY_KEY, null);

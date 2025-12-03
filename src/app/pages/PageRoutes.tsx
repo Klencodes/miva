@@ -13,18 +13,17 @@ const ProductsRoutes = React.lazy(() => import('./products/ProductsRoutes'));
 export const PagesRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Root path redirects to dashboard */}
+      {/* Root path redirects to store */}
       <Route path="/" element={<Navigate to="/store" replace />} />
       
       {/* Individual pages */}
-      <Route path="/store" element={<StoreRoutes />} />
-      <Route path="/orders" element={<OrdersRoutes />} />
-      <Route path="/products" element={<ProductsRoutes />} />
-      <Route path="/reports" element={<Dashboard />} />
-      
+      <Route path="/orders/*" element={<OrdersRoutes />} />
+      <Route path="/products/*" element={<ProductsRoutes />} />
+      <Route path="/reports/*" element={<Dashboard />} />
+      <Route path="/store/*" element={<StoreRoutes />} />
       {/* Modules with nested routes */}
       <Route path="/settings/*" element={<SettingsRoutes />} />
-      <Route path="/payouts/*" element={<PayoutRoutes />} />
+      <Route path="/payrolls/*" element={<PayoutRoutes />} />
       <Route path="/system-users/*" element={<UserManagementRoutes />} />
 
       {/* Catch all route for protected pages */}
