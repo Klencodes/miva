@@ -73,44 +73,39 @@ const Login: React.FC = () => {
   );
 
   const handleEntitiesAfterLogin = async (userData: IUser) => {
-      try {
-        const entitiesRes = await appService.getEntities();
-        let entitiesToSet: IEntityItem[] = [];
-          entitiesToSet = entitiesRes.results;
-          const hasEntities = entitiesRes?.results?.length > 0;
+    try {
+      const entitiesRes = await appService.getEntities();
+      let entitiesToSet: IEntityItem[] = [];
+      entitiesToSet = entitiesRes.results;
+      const hasEntities = entitiesRes?.results?.length > 0;
 
-          if (hasEntities) {
-            if (userData.role === Roles.SUPER_ADMIN) {
-              entitiesToSet = entitiesRes.results.map((ent: IEntityItem) => ({
-                ...ent,
-                id: ent.name === "All Entities"
-                    ? SUPER_ADMIN_ENTITY_ID
-                    : ent.id,
-              }));
-            
-            }
-
-          // FIXED: Ensure setStoreEntities is available and call it
-          await removeStoredItem(NO_ENTITY_KEY);
-          setStoredItem(ENTITY_KEY, entitiesToSet[0]);
-          setStoreEntities(entitiesToSet);
-          window.location.replace("/store");
-
-        } else {
-          if (userData.role === Roles.SUPER_ADMIN) {
-
-          navigate("/account/create-business");
-          } else{
-            await setStoredItem(NO_ENTITY_KEY, true)
-            navigate("/account/access-denied");
-          }
+      if (hasEntities) {
+        if (userData.role === Roles.SUPER_ADMIN) {
+          entitiesToSet = entitiesRes.results.map((ent: IEntityItem) => ({
+            ...ent,
+            id: ent.name === "All Entities" ? SUPER_ADMIN_ENTITY_ID : ent.id,
+          }));
         }
-        return;
-      } catch (error) {
-        console.error("Error fetching entities:", error);
-        return false;
+
+        // FIXED: Ensure setStoreEntities is available and call it
+        await removeStoredItem(NO_ENTITY_KEY);
+        setStoredItem(ENTITY_KEY, entitiesToSet[0]);
+        setStoreEntities(entitiesToSet);
+        window.location.replace("/store");
+      } else {
+        if (userData.role === Roles.SUPER_ADMIN) {
+          navigate("/account/create-business");
+        } else {
+          await setStoredItem(NO_ENTITY_KEY, true);
+          navigate("/account/access-denied");
+        }
       }
+      return;
+    } catch (error) {
+      console.error("Error fetching entities:", error);
+      return false;
     }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -119,9 +114,9 @@ const Login: React.FC = () => {
       setErrors(newErrors);
 
       if (Object.keys(newErrors).length > 0) {
-        toast.error(
-          "Validation Error",
-          {description: "Please check your email and password"} );
+        toast.error("Validation Error", {
+          description: "Please check your email and password",
+        });
         return;
       }
 
@@ -134,34 +129,32 @@ const Login: React.FC = () => {
         }
         const userData = res?.results;
         setStoredItem(USER_KEY, userData);
-        if(!userData.verified) {
+        if (!userData.verified) {
           navigate("/account/verify", { state: { email: form.email } });
-          toast.error("Info", {description: "Please verify your account to proceed."});
+          toast.error("Info", {
+            description: "Please verify your account to proceed.",
+          });
           return;
         }
 
-        toast.success("Success", {description: "Welcome back!"});
+        toast.success("Success", { description: "Welcome back!" });
         await handleEntitiesAfterLogin(userData);
       } catch (err: any) {
         const errorMessage = err.message || "Invalid email or password";
-        toast.error("Error", {description: errorMessage});
+        toast.error("Error", { description: errorMessage });
       } finally {
         setLoading(false);
       }
-    },
-
-  register =  () => {
-      navigate("/account/register");
-    }
+  };
 
   return (
     <div className="flex items-center justify-center">
-      <div className="w-full max-w-md p-8 space-y-6 card">
+      <div className="w-full max-w-md space-y-6 card">
         <h2 className="text-3xl font-bold text-center text-text mb-8">
           Login to your account
         </h2>
 
-        <form className="space-y-4" onSubmit={onSubmit}>
+        <form className="space-y-6" onSubmit={onSubmit}>
           <Input
             label="Email"
             type="email"
@@ -197,23 +190,23 @@ const Login: React.FC = () => {
           </Input>
 
           <Button
-
             type="submit"
             fullWidth={true}
             disabled={!isFormValid || loading}
             loading={loading}
+            className="mb-6"
           >
             {!loading && <i className="ri-login-box-line mr-2"></i>}
             {loading ? "Logging in..." : "Login"}
           </Button>
         </form>
 
-        <div className="text-center text-text-light text-sm">
+        {/* <div className="text-center text-text-light text-sm">
           Don't have a merchant account yet?
           <Button variant="link" onClick={register} className="-ml-2">
             Register
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

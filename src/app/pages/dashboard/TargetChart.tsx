@@ -29,7 +29,7 @@ const TargetChart: FC<TargetChartProps> = ({ salesOverview, view }) => {
 
   // Generate comparison chart data
   const chartData = useMemo(() => {
-    const { overview_data, overview_data_previous, period, comparison } = salesOverview;
+    const { overview_data_previous, period, comparison } = salesOverview;
     
     return {
       categories: [period.previous_label, period.current_label],
@@ -154,7 +154,7 @@ const TargetChart: FC<TargetChartProps> = ({ salesOverview, view }) => {
 
   if (!salesOverview) return null;
 
-  const { period, comparison } = salesOverview;
+  const { comparison } = salesOverview;
   const title = view === 'daily' 
     ? 'Today vs Yesterday' 
     : view === 'weekly' 

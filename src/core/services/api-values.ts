@@ -14,6 +14,7 @@ export const apiValues = {
   get PRODUCTS_ENDPOINT() { return 'products/' },
   get UPDATE_PRODUCT_AVAILABILITY_ENDPOINT() { return 'products/update-availability/' },
   get UPDATE_PRODUCT_STOCK_ENDPOINT() { return 'products/update-stock/' },
+  get UPDATE_PRODUCT_PRICE_ENDPOINT() { return 'products/update-price/' },
   get GET_PRODUCT_EXTRA_INFO_ENDPOINT() { return 'products/extra-product-data/' },
   get GET_ORDERS_ENDPOINT() { return 'orders/' },
   get CREATE_ORDER_ENDPOINT() { return 'orders/create/' },

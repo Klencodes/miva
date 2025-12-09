@@ -7,7 +7,7 @@ const PayoutsList = React.lazy(() => import('./PayoutsList'));
 function PayoutRoutes() {
   return (
     <Routes>
-      <Route path="/list" element={<PayoutsList />} />
+      <Route path="/" element={<PayoutsList />} />
     </Routes>
   );
 }

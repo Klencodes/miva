@@ -18,6 +18,7 @@ import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import UpdateStockModal from "./UpdateStockModal";
 import UpdateAvailabilityModal from "./UpdateAvailabilityModal";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
+import UpdatePriceModal from "./UpdatePriceModal";
 
 export default function ProductsList() {
   // 1. STATE ADJUSTMENTS: Use IProduct interface
@@ -136,6 +137,12 @@ export default function ProductsList() {
         title: "Update Stock", 
         handler: () => handleUpdateStock(item),
         icon: "truck-line",
+        classes: "",
+    },
+      {
+        title: "Update Price", 
+        handler: () => handleUpdatePrice(item),
+        icon: "money-dollar-circle-line",
         classes: "",
     },
     {
@@ -374,10 +381,7 @@ export default function ProductsList() {
     backdropClose: false,
   });
   if (result?.success && result?.product) {
-    if (products) {
-      products.push(result.product);
-      setProducts([...products]);
-    }
+   fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory)
   }
 };
 
@@ -396,6 +400,19 @@ const handleEditProduct = async (product: IProduct) => {
 
 const handleUpdateStock = async (product: IProduct) => {
     const result = await openModal(UpdateStockModal, {
+        data: { product },
+        size: "md",
+        side: "right",
+        backdropClose: false,
+    });
+    if (result?.success && result?.product) {
+      if(products)
+        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+    }
+
+  };
+const handleUpdatePrice = async (product: IProduct) => {
+    const result = await openModal(UpdatePriceModal, {
         data: { product },
         size: "md",
         side: "right",

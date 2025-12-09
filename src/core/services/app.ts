@@ -274,6 +274,20 @@ export class AppService {
     } catch (error: any) {
       throw new Error(handleError(error));
     }
+  }  
+  /**
+   * Update product price level
+   */
+
+  async updateProductPrice(payload: any): Promise<any> {
+    try {
+      return await apiService.patch<IResponse>(
+        apiValues.UPDATE_PRODUCT_PRICE_ENDPOINT,
+        payload
+      );
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
   }
   /**
    * Create new order

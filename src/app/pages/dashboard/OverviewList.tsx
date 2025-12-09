@@ -1,5 +1,4 @@
 import { FC, useMemo } from "react";
-import { useStore } from "../../../core/hooks/useStore";
 import { IOverviewData } from "../../../core/interfaces/IDashboard";
 
 interface ISalesOverview {
@@ -22,7 +21,6 @@ interface OverviewListProps {
 }
 
 const OverviewList: FC<OverviewListProps> = ({ salesOverview }) => {
-  const { user } = useStore();
 
   const overviewData = useMemo((): ISalesOverview[] => {
     if (!salesOverview) return [];

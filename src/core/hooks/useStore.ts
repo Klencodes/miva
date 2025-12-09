@@ -226,7 +226,9 @@ const userDerived = useMemo(() => {
     setStoreEntities,
     checkAuthStatus,
     getRequiredRoute,
-  }), [
+  }), 
+  // eslint-disable-next-line 
+  [
     user,
     entity,
     stableStoreEntities,

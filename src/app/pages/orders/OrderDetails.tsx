@@ -60,7 +60,7 @@ export const OrderDetailsModal: React.FC = () => {
   // const totalItemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="p-4 max-h-[90vh] overflow-y-auto">
+    <div className="flex flex-col h-full w-full px-2">
       {/* Modal Header */}
       <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 bg-card z-10">
         <div className="flex flex-col">
@@ -77,7 +77,7 @@ export const OrderDetailsModal: React.FC = () => {
       </div>
 
       {/* Order Details Content */}
-      <div className="space-y-6 mb-6">
+      <div className="flex flex-col flex-1 overflow-hidden">
         
         {/* Summary Block */}
         <div className="bg-primary-50 text-white rounded-lg p-4 flex justify-between items-center">
@@ -155,7 +155,7 @@ export const OrderDetailsModal: React.FC = () => {
                         {order.items.map((item: IOrderItem, index: number) => (
                             <tr key={index}>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-text">
-                                    {item.product_name}
+                                    {item.short_name}{" "} <span className="text-text-light">{item.selling_unit_quantity}x{item.content_measurement}{item.content_unit}/{item.selling_unit}</span>
                                     <div className="text-xs text-text-light">{item.category_name}</div>
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-center">
@@ -174,21 +174,10 @@ export const OrderDetailsModal: React.FC = () => {
             </div>
         </div>
 
-        {/* Informational Note */}
-        <div className="bg-info-10 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-info font-semibold mb-2">
-            <i className="ri-information-line"></i>
-            Receipt Information
-          </div>
-          <p className="text-info text-sm">
-            You can download the official receipt for this transaction using the button below.
-          </p>
-        </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-between gap-3 pt-4 border-t border-border sticky bottom-0 bg-card">
-        {/* Always show Download Receipt for Orders */}
+      <div className="flex justify-between gap-3 pt-4 border-t border-border mt-auto">
        <div className="flex gap-x-3">
          <Button
             onClick={handlePrintReceipt}

@@ -53,9 +53,10 @@ const AssignUserEntity: React.FC = () => {
     setLoading(true);
 
     try {
-      // NOTE: Assuming appService.assignUserToEntity exists and handles the POST request
       const response = await appService.assignUserToEntity(formData);
       if (response.success) {
+        toast.success(response.message);
+
         modalRef?.close({ success: true, user: response.results });
       } else {
         toast.error(response.message);

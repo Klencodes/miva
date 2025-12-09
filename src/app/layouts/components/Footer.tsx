@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
     >
       <div className="flex justify-between items-center h-full w-full text-sm">
         <div className="footer-left">
-          <span className="text-text"> &copy; {currentYear} EV3 Africa.</span> All rights reserved.
+          <span className="text-text"> &copy; {currentYear} God-Did Mart.</span> All rights reserved.
         </div>
         <div className="flex gap-4">
           <a 

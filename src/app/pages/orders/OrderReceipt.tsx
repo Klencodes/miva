@@ -1,13 +1,16 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { IOrder, IOrderItem } from "../../../core/interfaces/IOrder";
 import { useModal } from "../../../core/hooks/useModal";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
 import { DateFormatEnums, dateUtils } from "../../../core/utils/date-format";
-
-// --- REQUIRED LIBRARIES FOR PDF DOWNLOAD (You must install these) ---
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { Button } from "../../../ui";
+import {
+  ENTITY_KEY,
+  getStoredItem,
+} from "../../../core/hooks/useStore";
+import { IEntityItem } from "../../../core/interfaces/IEntity";
+import { downloadReceiptAsPDF, printReceiptDirectly } from "../../../core/utils/receipt";
+import { toast } from "sonner";
 // -------------------------------------------------------------------
 
 /**
@@ -27,11 +30,10 @@ const ReceiptContainer: React.FC<{
   <div
     ref={receiptRef}
     className="
-            w-full p-4 bg-white shadow-sm 
-            border border-border rounded-sm font-mono 
-            text-[11px] text-gray-800 break-words print:shadow-none print:border-0 print:p-0
-            receipt-content
-        "
+      w-full max-w-[300px] p-4 bg-white shadow-sm border border-border 
+      rounded-sm font-mono text-[11px] text-gray-800 break-words
+      mx-auto print:p-2 print:shadow-none print:border-0
+    "
   >
     {children}
   </div>
@@ -44,20 +46,17 @@ const ReceiptHeader: React.FC<{
   contact: string;
 }> = ({ storeName, tagline, contact }) => (
   <header className="text-center mb-4">
-    {/* <div className="text-base mb-1 text-pink-500">
-      <i className="ri-shopping-bag-line"></i>
-    </div> */}
-    <h1 className="text-xl font-extrabold tracking-wider text-gray-900 uppercase">
+    <h1 className="text-xl font-extrabold tracking-wider text-gray-900 uppercase mb-1">
       {storeName}
     </h1>
-    <p className="text-xs mt-1 text-gray-500">{contact}</p>
-    <div className="w-full h-px bg-gray-200 my-4 pattern"></div>
+    <p className="text-xs text-gray-500 leading-tight">{contact}</p>
+    <div className="w-full h-px bg-gray-200 my-3"></div>
   </header>
 );
 
 // Component for a dividing line
 const Divider = () => (
-  <div className="border-t border-dashed border-gray-900 my-3"></div>
+  <div className="border-t border-dashed border-gray-400 my-2"></div>
 );
 
 /**
@@ -70,7 +69,7 @@ const formatMeasurementDetails = (item: IOrderItem): string => {
     let measurementPart = item.content_measurement;
 
     if (item.content_unit && item.content_unit !== item.selling_unit) {
-      measurementPart += ` ${item.content_unit}`;
+      measurementPart += `${item.content_unit}`;
     }
     parts.push(measurementPart);
   } else if (item.content_unit) {
@@ -79,71 +78,44 @@ const formatMeasurementDetails = (item: IOrderItem): string => {
 
   if (item.selling_unit) {
     if (item.selling_unit_quantity) {
-      parts.push(`${item.selling_unit_quantity} per ${item.selling_unit}`);
+      parts.push(`${item.selling_unit_quantity}/${item.selling_unit}`);
     } else {
-      parts.push(`per ${item.selling_unit}`);
+      parts.push(`/${item.selling_unit}`);
     }
   }
 
-  return parts.join(" • ");
+  return parts.join(" × ");
 };
 
-const formatQuantityWithUnit = (quantity: number, item: IOrderItem): string => {
-  const baseQuantity = formatQuantity(quantity);
-
-  if (item.selling_unit && item.selling_unit_quantity) {
-    const totalUnits = quantity * item.selling_unit_quantity;
-    const contentUnit = item.content_unit || "units";
-
-    return `${baseQuantity} ${item.selling_unit} (${formatQuantity(
-      totalUnits
-    )} ${contentUnit})`;
-  }
-
-  if (item.content_unit) {
-    return `${baseQuantity} ${item.content_unit}`;
-  }
-
-  return baseQuantity;
-};
 // Component for Item Row
 const ItemRow: React.FC<{ item: IOrderItem }> = ({ item }) => {
   const itemTotal = item.unit_price * item.quantity;
   const measurementDetails = formatMeasurementDetails(item);
-  const displayQuantity = formatQuantityWithUnit(item.quantity, item);
 
   return (
-    <div className="flex justify-between items-start mb-3">
-      <div className="flex flex-col text-left text-[11px] w-3/6">
-        <span className="font-semibold text-gray-900 text-[11px]">
-          {item.short_name}{" "}
-          <span className="text-[11px] text-gray-500">
-            {item.content_measurement}
-          </span>
-        </span>
-
-        {/* Measurement details */}
-        {displayQuantity && (
-          <span className="text-[11px] text-gray-500 mb-1">
-            {displayQuantity}
-          </span>
+    <div className="flex justify-between items-start mb-2">
+      <div className="flex-1 pr-2">
+        <div className="font-semibold text-gray-900 text-[11px]">
+          {item.short_name}
+        </div>
+        {measurementDetails && (
+          <div className="text-gray-500 text-[10px] mt-0.5">
+            {`[${measurementDetails}]`}
+          </div>
         )}
       </div>
 
-      {/* Unit Price */}
-      <span className="w-1/6 text-left text-[11px] text-gray-500">{`${formatCurrency(
-        item.unit_price
-      )}/${item.selling_unit}`}</span>
-
-      {/* Quantity */}
-      <span className="w-1/6 text-right text-[11px] text-gray-500 text-[11px]">
-        {`${formatQuantity(item.quantity)} ${item.selling_unit}`}
-      </span>
-
-      {/* Total */}
-      <span className="w-1/6 text-right text-[11px] font-bold text-gray-900">
-        {formatCurrency(itemTotal)}
-      </span>
+      <div className="flex items-center justify-end space-x-2 min-w-[120px]">
+        <span className="text-gray-500 text-[11px] w-12 text-right">
+          {`${formatCurrency(item.unit_price)}/${item.selling_unit}`}
+        </span>
+        <span className="text-gray-500 text-[11px] w-10 text-right">
+          {`${formatQuantity(item.quantity)} ${item.selling_unit}`}
+        </span>
+        <span className="font-bold text-gray-900 text-[11px] w-12 text-right">
+          {formatCurrency(itemTotal)}
+        </span>
+      </div>
     </div>
   );
 };
@@ -157,19 +129,19 @@ const SummaryRow: React.FC<{
 }> = ({ label, value, isTotal = false, color = "text-gray-800" }) => (
   <div
     className={`flex justify-between ${
-      isTotal ? "mt-3 pt-2 border-t border-dashed border-gray-400" : ""
+      isTotal ? "mt-2 pt-2 border-t border-dashed border-gray-300" : ""
     }`}
   >
     <span
-      className={`text-left ${
-        isTotal ? "text-[11px] font-bold" : "text-[11px] font-medium"
+      className={`text-left text-[11px] ${
+        isTotal ? "font-bold" : "font-medium"
       } ${color}`}
     >
       {label}
     </span>
     <span
-      className={`text-left ${
-        isTotal ? "text-md font-bold" : "text-[11px] font-medium"
+      className={`text-right text-[11px] ${
+        isTotal ? "font-bold" : "font-medium"
       } ${color}`}
     >
       {value}
@@ -181,52 +153,63 @@ const SummaryRow: React.FC<{
  * Main Receipt Component combining all elements.
  */
 const OrderReceiptContent: React.FC<{ order: IOrder }> = ({ order }) => {
+  const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null)
+
   return (
     <>
       <ReceiptHeader
-        storeName="GOD-DID MART"
+        storeName={entity?.name || "God-Did Mart"}
         tagline="Fresh finds and happy times!"
-        contact="No 1 Junction St, Michel Camp - Tema | 055283923923"
+        contact={`${entity?.address} | ${entity?.phone_number}`}
       />
 
       {/* Transaction Details */}
-      <section className="text-left mb-3 space-y-1 text-[11px]">
-        <p className="font-bold text-sm text-center mb-3 text-gray-500">
+      <section className="mb-3">
+        <p className="font-bold text-xs text-center mb-2 text-gray-500">
           SALES RECEIPT
         </p>
-        <div className="flex justify-between">
-          <span className="text-gray-500 text-[11px]">Date/Time:</span>
-          <span className="font-semibold text-[11px]">
-            {dateUtils.formatDate(order.created_at, DateFormatEnums.DATE_TIME)}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500 text-[11px]">Order Code:</span>
-          <span className="font-bold text-[11px]">{order.code}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Customer:</span>
-          <span className="font-semibold">{order.customer}</span>
-        </div>
-        <div className="flex justify-between ">
-          <span className="text-gray-500 text-[11px]">Cashier:</span>
-          <span className="font-semibold text-[11px]">{order.cashier}</span>
+        <div className="space-y-1 text-[11px]">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Date/Time:</span>
+            <span className="font-semibold">
+              {dateUtils.formatDate(
+                order.created_at,
+                DateFormatEnums.DATE_TIME
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Order Code:</span>
+            <span className="font-bold">{order.code}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Customer:</span>
+            <span className="font-semibold">{order?.customer}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Cashier:</span>
+            <span className="font-semibold">{order.cashier}</span>
+          </div>
         </div>
       </section>
 
       <Divider />
 
       {/* Items Purchased */}
-      <section className="mb-5">
-        <div className="flex justify-between font-bold text-[10px] uppercase mb-2 text-gray-500 border-b border-gray-200 pb-1">
-          <span className="w-3/6 text-left">Item Name</span>
-          <span className="w-1/6 text-left">Unit Price</span>
-          <span className="w-1/6 text-right">Qty</span>
-          <span className="w-1/6 text-right">Total</span>
+      <section className="mb-4">
+        <div className="flex justify-between font-bold text-[10px] uppercase mb-1 text-gray-500 border-b border-gray-200 pb-1">
+          <div className="flex-1">Item Name</div>
+          <div className="flex items-center justify-end space-x-2 min-w-[120px]">
+            <span className="w-12 text-right">Unit Price</span>
+            <span className="w-10 text-right">Qty</span>
+            <span className="w-12 text-right">Total</span>
+          </div>
         </div>
-        {order.items.map((item, index) => (
-          <ItemRow key={index} item={item} />
-        ))}
+        <div className="max-h-60 overflow-y-auto">
+          {order.items.map((item, index) => (
+            <ItemRow key={index} item={item} />
+          ))}
+        </div>
       </section>
 
       <Divider />
@@ -239,7 +222,6 @@ const OrderReceiptContent: React.FC<{ order: IOrder }> = ({ order }) => {
           value={`-${formatCurrency(order.discount)}`}
           color="text-red-500"
         />
-
         <SummaryRow
           label="TOTAL"
           value={formatCurrency(order.total)}
@@ -252,33 +234,28 @@ const OrderReceiptContent: React.FC<{ order: IOrder }> = ({ order }) => {
 
       {/* Payment Summary */}
       <section className="text-center mb-4">
-         <SummaryRow
+        <SummaryRow
           label="Amount Tendered"
           value={formatCurrency(order.tendered_cash)}
-        /> 
+        />
         <SummaryRow
           label={order.balance_label}
           value={formatCurrency(order.balance)}
-          color="text-black font-bold mt-2"
+          color="text-black font-bold"
         />
 
-        <p className="text-[11px] font-semibold mb-1">Payment Method</p>
-        <p className="text-md font-bold text-green-600 mb-4">
+        <p className="text-[11px] font-semibold mb-1 mt-2">Payment Method</p>
+        <p className="text-xs font-bold text-green-600">
           {order.payment.payment_method.toUpperCase()}
         </p>
-
-      
       </section>
 
       {/* Footer */}
-      <footer className="text-center mt-6">
-        <h3 className="text-xl font-extrabold text-gray-900 mb-2">
-          {" "}
+      <footer className="text-center mt-4">
+        <h3 className="text-lg font-extrabold text-gray-900 mb-2">
           THANK YOU!
         </h3>
-
-        <div className="text-2xl text-gray-400">
-          {/* Placeholder for Barcode or QR Code */}
+        <div className="mt-3">
           <img
             src={`https://barcode.tec-it.com/barcode.ashx?data=${order.code}&code=Code128&multiplebarcodes=false&unit=mm&dpi=96&imagetype=Gif&rotation=0&color=%23000000&bgcolor=%23ffffff&qunit=mm&quiet=0`}
             alt="Order Barcode"
@@ -295,144 +272,113 @@ const OrderReceipt = () => {
   const receiptRef = useRef<HTMLDivElement>(null);
   const { modalData, modalRef } = useModal();
   const orderData: IOrder = modalData?.order;
+  const store = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
 
-  /**
-   * Handles the print action, leveraging browser's print dialogue
-   * and print-specific CSS to isolate the 'receipt-content'.
-   */
-  const handlePrint = () => {
-    // We don't need the 'printing' state/timeout here because the modal and buttons
-    // are hidden using the 'no-print' class in the print CSS.
-    window.print();
-  };
-
-  /**
-   * Handles downloading the receipt as a PDF using html2canvas and jsPDF.
-   * NOTE: html2canvas and jsPDF must be installed and imported.
-   */
-  const handleDownload = async () => {
-    if (receiptRef.current && orderData) {
-      try {
-        await html2canvas(receiptRef.current, { scale: 3 }).then((canvas) => {
-          const imgData = canvas.toDataURL("image/png");
-          const imgWidth = 80; // 80mm width for thermal paper
-          const pageHeight = 295; // A4 height (max, used for initial setup)
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          let heightLeft = imgHeight;
-
-          // Use 'mm' unit for precise receipt size simulation
-          const pdf = new jsPDF("p", "mm", [
-            imgWidth,
-            imgHeight > pageHeight ? imgHeight + 20 : pageHeight,
-          ]);
-
-          let position = 0;
-
-          pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-
-          // Logic for multi-page PDF (if receipt is very long)
-          while (heightLeft >= 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-          }
-
-          pdf.save(`Receipt-${orderData.code}.pdf`);
-        });
-        console.log(
-          "PDF Download initiated. Requires html2canvas and jsPDF libraries."
-        );
-      } catch (error) {
-        console.error("Error generating PDF:", error);
-      }
+ const handlePrint = () => {
+    if (!orderData) return;
+    
+    const success = printReceiptDirectly(orderData, store!);
+    
+    if (success) {
+      toast.success("Opening print preview...");
+    } else {
+      toast.error("Failed to open print window");
     }
   };
 
+  const handleDownload = async () => {
+    if (!orderData) return;
+    
+    toast.warning("Generating PDF...");
+    const success = await downloadReceiptAsPDF(orderData, store!);
+    
+    if (success) {
+      toast.success("Receipt downloaded successfully");
+    } else {
+      toast.error("Failed to generate PDF");
+    }
+  };
+
+
   return (
-    <div className="h-full flex flex-col items-center">
-      {/* Tailwind CSS print styling injection */}
+    <div className="h-full flex flex-col">
+      {/* Print styles */}
       <style>{`
-                /* Print styles optimized for narrow receipt paper */
-                @media print {
-                    @page {
-                        size: 80mm auto; /* Typical thermal receipt width */
-                        margin: 0;
-                    }
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                        background-color: transparent !important;
-                    }
-                
-                    /* Class to hide everything except the receipt content */
-                    body > :not(.receipt-content) {
-                        display: none !important;
-                    }
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .receipt-print-container,
+          .receipt-print-container * {
+            visibility: visible;
+          }
+          .receipt-print-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 80mm;
+            padding: 8px;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
 
-                    /* Ensure the receipt content is visible and fills the print area */
-                    .receipt-content {
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 80mm;
-                        max-width: none;
-                        box-shadow: none;
-                        border: none;
-                        padding: 10px;
-                        margin: 0;
-                    }
-                }
-            `}</style>
-
-      <div className="h-full overflow-y-auto w-full">
-        {/* Modal Header and Action Buttons */}
-        <div className="flex flex-col mb-6 border-b border-border pb-4 sticky top-0 bg-card z-10 no-print">
-          <div className="flex flex-row justify-between items-start mb-4">
-            <div className="flex flex-col">
-              <h2 className="text-2xl text-text font-bold">
-                {modalData?.title}
-              </h2>
-              <h4 className="text-md text-text-light mt-1">
-                {modalData?.subtitle}
-              </h4>
-            </div>
-            <button
-              onClick={() => modalRef!.dismiss()}
-              className="w-8 h-8 rounded-full text-text-light transition-colors flex items-center justify-center"
-              aria-label="Close modal"
-            >
-              <i className="ri-close-line text-xl"></i>
-            </button>
+      {/* Modal Header and Action Buttons - Hidden during print */}
+      <div className="no-print flex flex-col mb-6 border-b border-border sticky top-0 bg-white z-10">
+        <div className="flex flex-row justify-between items-start mb-4">
+          <div className="flex flex-col">
+            <h2 className="text-2xl font-bold text-gray-700">
+              {modalData?.title}
+            </h2>
+            <h4 className="text-md text-gray-500 mt-1">
+              {modalData?.subtitle}
+            </h4>
           </div>
-
-          {/* Action Buttons (Download and Print) */}
-          <div className="flex justify-start space-x-4">
-            <Button onClick={handleDownload} variant="ghost">
-              <i className="ri-download-2-line"></i>
-              <span>Download Receipt (PDF)</span>
-            </Button>
-            <Button onClick={handlePrint}>
-              <i className="ri-printer-line"></i>
-              <span>Print Receipt</span>
-            </Button>
-          </div>
+          <button
+            onClick={() => modalRef!.dismiss()}
+            className="w-8 h-8 rounded-full text-gray-500 hover:text-gray-700 transition-colors flex items-center justify-center hover:bg-gray-100"
+            aria-label="Close modal"
+          >
+            <i className="ri-close-line text-xl"></i>
+          </button>
         </div>
+      </div>
 
-        {/* Order Details Content */}
-        <div className="flex justify-center">
-          {/* Receipt Display */}
+      {/* Receipt Container - This is what gets printed */}
+      <div className="flex-1 overflow-y-auto flex justify-center items-start">
+        <div className="receipt-print-container">
           <ReceiptContainer receiptRef={receiptRef}>
             {orderData ? (
               <OrderReceiptContent order={orderData} />
             ) : (
-              <p>Loading Order Data...</p>
+              <p className="text-center text-gray-500 py-8">
+                Loading receipt data...
+              </p>
             )}
           </ReceiptContainer>
         </div>
+      </div>
+      {/* Action Buttons (Download and Print) */}
+      <div className="flex justify-between gap-3 pt-4 border-t border-border mt-auto">
+        <div className="flex gap-x-3">
+          <Button onClick={handleDownload} variant="outline" className="gap-2">
+            <i className="ri-download-2-line"></i>
+            <span>Download PDF</span>
+          </Button>
+          <Button onClick={handlePrint} className="gap-2"  variant="outline" >
+            <i className="ri-printer-line"></i>
+            <span>Print Receipt</span>
+          </Button>
+        </div>
+
+        <Button
+          onClick={() => modalRef!.dismiss()}
+          variant="primary" // Changed to primary for main close action
+        >
+          Close
+        </Button>
       </div>
     </div>
   );

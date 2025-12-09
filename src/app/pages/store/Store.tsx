@@ -7,7 +7,7 @@ import { appService } from "../../../core/services/app";
 import { IProduct, CartItem } from "../../../core/interfaces/IProduct";
 import { indexedDBService } from "../../../core/services/indexdb";
 import { syncService } from "../../../core/services/sync";
-import { useStore } from "../../../core/hooks/useStore";
+import { ENTITY_KEY, getStoredItem, useStore } from "../../../core/hooks/useStore";
 import { useModal } from "../../../core/hooks/useModal";
 import CustomerModal from "./CustomerModal";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
@@ -15,6 +15,8 @@ import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import CartContent from "./CartContent";
 import HoldOrdersModal from "./HoldOrders";
+import { printReceiptDirectly } from "../../../core/utils/receipt";
+import { IEntityItem } from "../../../core/interfaces/IEntity";
 
 const ModernStore: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
@@ -33,7 +35,7 @@ const ModernStore: React.FC = () => {
   const [page, setPage] = useState(1);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-    const paymentOptions = [
+  const paymentOptions = [
     { value: "Cash", label: "Cash" },
     { value: "Mobile Money", label: "Mobile Money" },
   ];
@@ -41,7 +43,7 @@ const ModernStore: React.FC = () => {
   const { user } = useStore();
   const { openModal } = useModal();
   const isOnline = useNetworkStatus();
-
+  const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null)
   // Refs
   const pageRef = useRef(1);
   const loadingRef = useRef(false);
@@ -54,8 +56,6 @@ const ModernStore: React.FC = () => {
       ) => Promise<void>)
     | null
   >(null);
-
-
 
   // Update refs when state changes
   useEffect(() => {
@@ -232,8 +232,6 @@ const ModernStore: React.FC = () => {
     };
   }, [searchTerm, selectedCategory]);
 
-
-
   // Generate order code
   const generateOrderCode = () => {
     const now = new Date();
@@ -243,7 +241,7 @@ const ModernStore: React.FC = () => {
 
     const datePart = `${yy}${MM}${dd}`;
 
-    const randomPart = Math.random().toString(36).substring(2, 9).toUpperCase();
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
 
     return `G-${datePart}${randomPart}`;
   };
@@ -258,17 +256,15 @@ const ModernStore: React.FC = () => {
     setCreatingOrder(true);
 
     try {
-
       // ALWAYS save to IndexedDB first
-      const localResponse = await indexedDBService.createOrder(
-        prepareOrder as any
-      );
+      const localResponse = await indexedDBService.createOrder(prepareOrder);
 
       if (!localResponse.success) {
         throw new Error("Failed to save order locally");
       }
 
       const localOrderId = localResponse.results?.id;
+      let orderDataForPrint = localResponse.results; 
 
       // If online, try to sync to server immediately
       if (isOnline) {
@@ -276,7 +272,6 @@ const ModernStore: React.FC = () => {
           const serverResponse = await appService.createOrder(prepareOrder);
 
           if (serverResponse.success) {
-
             // Get server ID from response
             const serverOrderId = serverResponse?.results?.id;
             const serverCode = serverResponse?.results?.code;
@@ -291,21 +286,35 @@ const ModernStore: React.FC = () => {
                 serverCode,
                 serverCreatedAt
               );
+              
+              // Update order data for printing with server info
+              orderDataForPrint = {
+                ...orderDataForPrint,
+                id: serverOrderId,
+                code: serverCode,
+                created_at: serverCreatedAt
+              };
             }
 
+            // Print receipt after successful sync
             await cleanupOrderData("Order submitted successfully!");
+            printReceiptDirectly(orderDataForPrint, entity!);
+
           } else {
+            // Print receipt for locally saved order
             await cleanupOrderData("Order saved locally - will retry sync");
+            printReceiptDirectly(orderDataForPrint, entity!);
+
           }
         } catch (serverError) {
-          await cleanupOrderData(
-            "Order saved locally - sync failed, will retry"
-          );
+          // Print receipt for locally saved order even if sync failed
+          await cleanupOrderData("Order saved locally - sync failed, will retry");
+          printReceiptDirectly(orderDataForPrint, entity!);
         }
       } else {
-        await cleanupOrderData(
-          "Order saved offline - will sync when back online"
-        );
+        // Print receipt for offline order
+        await cleanupOrderData("Order saved offline - will sync when back online");
+        printReceiptDirectly(orderDataForPrint, entity!);
       }
     } catch (error) {
       toast.error("Failed to save order");
@@ -469,12 +478,15 @@ const ModernStore: React.FC = () => {
   };
 
   // Calculated values
-  const subTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subTotal = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
   const total = Math.max(0, subTotal - discount);
 
   const balanceDue = tenderedCash - total;
   const balanceLabel = balanceDue > 0 ? "Change" : "Owings";
-  
+
   const openCustomerModal = async () => {
     const result = await openModal(CustomerModal, {
       side: "right",
@@ -539,7 +551,7 @@ const ModernStore: React.FC = () => {
 
           // Set cart with order items
           setCartItems(cartItemsFromHold);
-          
+
           // Set other order details
           setSelectedCustomer(
             order.customer === "Walk-in Customer" ? null : order.customer
@@ -563,8 +575,8 @@ const ModernStore: React.FC = () => {
         toast.error("Error retrieving hold order");
       }
     }
-    // eslint-disable-next-line 
-  }, [cartItems]);
+    // eslint-disable-next-line
+  }, []);
 
   const cleanupOrderData = async (message: any) => {
     toast.success(message || "Order submitted successfully");
@@ -603,13 +615,6 @@ const ModernStore: React.FC = () => {
         throw new Error("Failed to save hold order locally");
       }
 
-      // Update local hold orders list
-      // setHoldOrders(prev => [...prev, {
-      //   ...prepareOrder,
-      //   id: localResponse.results?.id,
-      //   local_id: localResponse.results?.id,
-      // }]);
-
       // Clear cart and show success
       toast.success("Order on hold", {
         description: `Order ${prepareOrder.code} saved for later`,
@@ -635,10 +640,10 @@ const ModernStore: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100%-120px)] flex flex-col">
-      <div className="flex flex-row gap-6 w-full h-full">
+    <div className="h-full flex flex-col">
+      <div className="flex flex-row gap-6 w-full h-[calc(100%-120px)]">
         {/* Products Section */}
-        <div className="flex-1 h-full bg-background min-w-0">
+        <div className="flex-1 bg-background min-w-0">
           {/* Header */}
           <div className="rounded-sm shadow-sm mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -796,25 +801,40 @@ const ModernStore: React.FC = () => {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className={`grid grid-cols-${product.selling_unit_quantity > 1 ? '3': '1'} gap-1.5`}>
-                        {product.selling_unit_quantity > 1 && (<button
-                          onClick={() => addQuarterToCart(product)}
-                          disabled={
-                            !product.is_available || product.stock === 0
-                          }
-                          className="h-8 rounded-sm border border-border text-text rounded-sm text-xs disabled:opacity-30 transition-colors"
-                        >
-                          ¼
-                        </button>)}
-                        {product.selling_unit_quantity > 1 && (<button
-                          onClick={() => addHalfToCart(product)}
-                          disabled={
-                            !product.is_available || product.stock === 0
-                          }
-                          className="h-8 rounded-sm border border-border text-text rounded-sm text-xs disabled:opacity-30 transition-colors"
-                        >
-                          ½
-                        </button>)}
+                      <div
+                        className={
+                          product.selling_unit_quantity > 1
+                            ? "grid grid-cols-3 gap-1.5"
+                            : "grid grid-cols-1 gap-1.5"
+                        }
+                      >
+                        {/* The ¼ button */}
+                        {product.selling_unit_quantity > 1 && (
+                          <button
+                            onClick={() => addQuarterToCart(product)}
+                            disabled={
+                              !product.is_available || product.stock === 0
+                            }
+                            className="h-8 rounded-sm border border-border text-text text-xs disabled:opacity-30 transition-colors"
+                          >
+                            ¼
+                          </button>
+                        )}
+
+                        {/* The ½ button */}
+                        {product.selling_unit_quantity > 1 && (
+                          <button
+                            onClick={() => addHalfToCart(product)}
+                            disabled={
+                              !product.is_available || product.stock === 0
+                            }
+                            className="h-8 rounded-sm border border-border text-text text-xs disabled:opacity-30 transition-colors"
+                          >
+                            ½
+                          </button>
+                        )}
+
+                        {/* The Add 1 button */}
                         <button
                           onClick={() => addToCart(product)}
                           disabled={
@@ -847,7 +867,7 @@ const ModernStore: React.FC = () => {
         </div>
 
         {/* Cart Section - DESKTOP ONLY */}
-        <div className="hidden lg:block lg:w-96 h-full border border-border h-[calc(100%+125px)]">
+        <div className="hidden lg:block lg:w-96 h-full border border-border h-[calc(100%+120px)] ">
           <CartContent
             cartItems={cartItems}
             subTotal={subTotal}

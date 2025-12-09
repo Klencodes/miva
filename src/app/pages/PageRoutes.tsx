@@ -23,7 +23,7 @@ export const PagesRoutes: React.FC = () => {
       <Route path="/store/*" element={<StoreRoutes />} />
       {/* Modules with nested routes */}
       <Route path="/settings/*" element={<SettingsRoutes />} />
-      <Route path="/payrolls/*" element={<PayoutRoutes />} />
+      <Route path="/payouts/*" element={<PayoutRoutes />} />
       <Route path="/system-users/*" element={<UserManagementRoutes />} />
 
       {/* Catch all route for protected pages */}

@@ -1,8 +1,6 @@
 import { FC, useState, useEffect } from "react";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
-import { useStore } from "../../../core/hooks/useStore";
-import { Button } from "../../../ui";
 import { IChartData } from "../../../core/interfaces/IDashboard";
 
 interface SalesRevenueProps {
@@ -11,7 +9,6 @@ interface SalesRevenueProps {
 }
 
 const SalesRevenue: FC<SalesRevenueProps> = ({ chartData, view }) => {
-  const [sellingTab, setSellingTab] = useState(view);
   
   const [chartOptions, setChartOptions] = useState<ApexOptions>({
     series: [],
@@ -31,9 +28,6 @@ const SalesRevenue: FC<SalesRevenueProps> = ({ chartData, view }) => {
     return val.toFixed(2);
   };
 
-  useEffect(() => {
-    setSellingTab(view);
-  }, [view]);
 
   useEffect(() => {
     // Robust check for data

@@ -167,7 +167,13 @@ const CartContent: React.FC<ICartContentProps> = ({
                 </div>
 
                 {/* Fractional Quick Actions */}
-                <div className="flex gap-2 mt-2">
+                <div
+                  className={
+                    item.selling_unit_quantity > 1
+                      ? "grid grid-cols-4 gap-1.5"
+                      : "grid grid-cols-1 gap-1.5"
+                  }
+                >
                   {item?.selling_unit_quantity > 1 && (
                     <button
                       onClick={() => addQuarterToCart(item)}
@@ -180,6 +186,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                       ¼
                     </button>
                   )}
+
                   {item?.selling_unit_quantity > 1 && (
                     <button
                       onClick={() => addHalfToCart(item)}

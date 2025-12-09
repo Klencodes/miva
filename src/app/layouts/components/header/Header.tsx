@@ -113,28 +113,24 @@ const fetchEntities = useCallback(
             if (isSuperAdmin) {
               entitiesToSet = res.results.map((ent: IEntityItem) => ({
                 ...ent,
-                id:
-                  ent.name === "All Entities"
+                id: ent.name === "All Entities"
                     ? SUPER_ADMIN_ENTITY_ID
                     : ent.id,
               }));
             }
-
             setStoreEntities(entitiesToSet);
 
             if (!entity) {
               setEntity(storedEntity || entitiesToSet[0]);
             }
           }
-        } else {
-          setStoreEntities([]);
-        }
+        } 
       } catch (error) {
 
         if (isManualRefetch) {
             hasFetchedEntities.current = false;
-            console.warn("Manual refetch failed. Will retry on next render.");
-            setStoreEntities([]);
+            // console.warn("Manual refetch failed. Will retry on next render.");
+            // setStoreEntities([]);
         } else {
              console.warn("Automatic fetch failed (Server Unreachable). Loop stopped.");
         }
@@ -143,7 +139,8 @@ const fetchEntities = useCallback(
         setIsEntityLoading(false);
       }
     },
-    [isOnline, isSuperAdmin, entity, setEntity, setStoreEntities, storedEntity, isEntityLoading, storeEntities]
+    // eslint-disable-next-line 
+    [isOnline, isSuperAdmin, entity, setEntity, setStoreEntities, storedEntity, isEntityLoading]
   );
 
   // Fetch entities only once on mount and when coming back online

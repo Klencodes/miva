@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePageTitle } from "../../../core/hooks/usePageTitle";
-import {
-  Breadcrumb,
-  Button,
-  DataTable,
-  Input,
-} from "../../../ui";
+import { Breadcrumb, Button, DataTable, Input } from "../../../ui";
 import { CustomAction, TableColumn } from "../../../core/interfaces/table";
 import { DateFormatEnums } from "../../../core/utils/date-format";
 import { useModal } from "../../../core/hooks/useModal";
@@ -16,7 +11,10 @@ import AddUserModal from "./AddUserModal";
 import { Roles } from "../../../core/enums/roles";
 import { useStore } from "../../../core/hooks/useStore";
 import { eventService } from "../../../core/services/events";
-import { IBreadcrumbAction, IBreadcrumbItem } from "../../../ui/components/Breadcrumb";
+import {
+  IBreadcrumbAction,
+  IBreadcrumbItem,
+} from "../../../ui/components/Breadcrumb";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import { toast } from "sonner";
 import { IUser } from "../../../core/interfaces/IUser";
@@ -66,10 +64,7 @@ const Users = () => {
     },
     {
       header: "Contact",
-      value: (item: IUser) => [
-        item.email,
-        item.phone_number,
-      ],
+      value: (item: IUser) => [item.email, item.phone_number],
       type: "column",
     },
     // {
@@ -78,7 +73,7 @@ const Users = () => {
     //     item.has_access
     //       ? "Access Granted"
     //       : "Access Denied",
-          
+
     //   type: "status",
     //   statusClasses: (item: IEntity) =>
     //     item.has_access
@@ -88,8 +83,7 @@ const Users = () => {
 
     {
       header: "Verified",
-      value: (item: IUser) =>
-        item.verified ? "Yes" : "No",
+      value: (item: IUser) => (item.verified ? "Yes" : "No"),
       type: "status",
       statusClasses: (item: IUser) =>
         item.verified
@@ -98,10 +92,7 @@ const Users = () => {
     },
     {
       header: "Status",
-      value: (item: IUser) =>
-        item.deactivated
-          ? "Deactivated"
-          : "Active",
+      value: (item: IUser) => (item.deactivated ? "Deactivated" : "Active"),
       type: "status",
       statusClasses: (item: IUser) =>
         item.deactivated
@@ -110,8 +101,7 @@ const Users = () => {
     },
     {
       header: "Role",
-      value: (item: IUser) =>
-        initialCap(item.role || "") || "N/A",
+      value: (item: IUser) => initialCap(item.role || "") || "N/A",
       type: "column",
     },
     {
@@ -131,7 +121,7 @@ const Users = () => {
     await openModal(StaffDetailsModal, {
       data: item,
       size: "xl",
-      side: 'right',
+      side: "right",
     });
   };
 
@@ -139,7 +129,7 @@ const Users = () => {
     await openModal(AssignUserEntity, {
       data: item,
       size: "xl",
-      side: 'right',
+      side: "right",
     });
   };
 
@@ -161,22 +151,20 @@ const Users = () => {
     []
   );
 
-
   useEffect(() => {
     getUsers(currentPage, debouncedSearchTerm);
   }, [getUsers, currentPage, debouncedSearchTerm]);
 
-    useEffect(() => {
-        const handleRefresh = () => {
-          getUsers(currentPage, debouncedSearchTerm);
-        };
-        eventService.onRefresh(handleRefresh);
-      
-        return () => {
-          eventService.offRefresh(handleRefresh);
-        };
-      }, [getUsers, currentPage, debouncedSearchTerm]); 
-  
+  useEffect(() => {
+    const handleRefresh = () => {
+      getUsers(currentPage, debouncedSearchTerm);
+    };
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, [getUsers, currentPage, debouncedSearchTerm]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -190,7 +178,7 @@ const Users = () => {
     const result = await openModal(AddUserModal, {
       data: item,
       size: "xl",
-      side: 'right',
+      side: "right",
       backdropClose: false,
     });
     if (result?.success) {
@@ -205,27 +193,24 @@ const Users = () => {
         deactivated: !item.deactivated,
       });
       if (res.success) {
-        toast.success(
-          "Success",
-          {description: res.message || "User state updated successfully!",
-          }
-        );
+        toast.success("Success", {
+          description: res.message || "User state updated successfully!",
+        });
         //look for update user in the list and updated user
         setUsers((prevUsers) =>
           prevUsers.map((u) =>
-            u.id === item.id
-              ? { ...u, deactivated: !item.deactivated  }
-              : u
+            u.id === item.id ? { ...u, deactivated: !item.deactivated } : u
           )
         );
       } else {
         throw new Error(res.message || "Failed to update user state");
       }
     } catch (error: any) {
-      toast.success("Error", {description: error.message || "Failed to update user state", });
+      toast.success("Error", {
+        description: error.message || "Failed to update user state",
+      });
     }
   };
-
 
   const handleRoleUpdate = async (item: IUser) => {
     try {
@@ -234,7 +219,7 @@ const Users = () => {
           role: item.role,
           user: item,
         },
-        side: 'right',
+        side: "right",
         size: "xl",
         backdropClose: false,
       });
@@ -249,27 +234,28 @@ const Users = () => {
         const response = await authService.updateUserRole(updateData);
 
         if (response.success) {
-          toast.success("Success", {description: response.message, });
+          toast.success("Success", { description: response.message });
           getUsers(currentPage, debouncedSearchTerm);
-
         } else {
           throw new Error(response.message || "Failed to update role");
         }
       }
     } catch (error: any) {
       console.error("Error updating role:", error);
-      toast.error("Error", {description: error.message || "Failed to update user role", });
+      toast.error("Error", {
+        description: error.message || "Failed to update user role",
+      });
     }
   };
 
- const getCustomActions = (item: IUser): CustomAction[] => {
+  const getCustomActions = (item: IUser): CustomAction[] => {
     const actions: CustomAction[] = [
       {
         title: "Edit User",
         handler: () => openAddModal(item),
         icon: "edit-line",
         classes: "",
-      }, 
+      },
       {
         title: "View User",
         handler: () => onView(item),
@@ -288,7 +274,6 @@ const Users = () => {
         icon: "user-shared-line",
         classes: "text-info hover:bg-info-50",
       },
-     
     ];
 
     if (user?.role === Roles.SUPER_ADMIN) {
@@ -357,11 +342,11 @@ const RoleUpdateModal = () => {
   };
   const roleOptions = useMemo(
     () => [
-      { value: "", label: "Select Role" },
-      // { value: "owner", label: "Owner" },
-      { value: "admin", label: "Administrator" },
-      { value: "sales", label: "Sales" },
-      { value: "operator", label: "Operator" },
+      { value: Roles.SUPER_ADMIN, label: initialCap(Roles.SUPER_ADMIN) },
+      { value: Roles.OWNER, label: initialCap(Roles.OWNER) },
+      { value: Roles.ADMIN, label: initialCap(Roles.ADMIN) },
+      { value: Roles.SALES, label: initialCap(Roles.SALES) },
+      { value: Roles.STAFF, label: initialCap(Roles.ADMIN) },
     ],
     []
   );
@@ -385,62 +370,62 @@ const RoleUpdateModal = () => {
         </button>
       </div>
 
-     <div className=" flex-1">
-       {/* Current Information */}
-      <div className="bg-background rounded-sm p-3 mb-4">
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-text-light">Current Role:</span>
-            <p className="font-medium">
-              {initialCap(modalData?.role || "N/A")}
-            </p>
+      <div className=" flex-1">
+        {/* Current Information */}
+        <div className="bg-background rounded-sm p-3 mb-4">
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <span className="text-text-light">Current Role:</span>
+              <p className="font-medium">
+                {initialCap(modalData?.role || "N/A")}
+              </p>
+            </div>
+            <div>
+              <span className="text-text-light">Entity:</span>
+              <p className="font-medium">{modalData.entity?.name || "N/A"}</p>
+            </div>
           </div>
-          <div>
-            <span className="text-text-light">Entity:</span>
-            <p className="font-medium">{modalData.entity?.name || "N/A"}</p>
+        </div>
+
+        {/* Role Selection */}
+        <div className="grid grid-cols-1 gap-4">
+          <Input
+            label="Select Role"
+            type="select"
+            value={selectedRole}
+            onChange={(value) => setSelectedRole(value)}
+            selectOptions={roleOptions}
+            required={true}
+          />
+        </div>
+
+        {/* Role Descriptions */}
+        <div className="bg-info-5 border border-info-20 rounded-sm p-3 mb-6">
+          <div className="flex items-start">
+            <i className="ri-information-line text-info text-sm mr-2 mt-0.5"></i>
+            <div className="text-xs text-info">
+              <p className="font-medium mb-1">Role Permissions:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>
+                  <strong>Owner:</strong> Full system access and administration
+                </li>
+                <li>
+                  <strong>Admin:</strong> Administrative privileges
+                </li>
+                <li>
+                  <strong>Manager:</strong> Management level access
+                </li>
+                <li>
+                  <strong>Operator:</strong> Operational tasks and basic access
+                </li>
+                <li>
+                  <strong>Finance:</strong> Financial reporting and transactions
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Role Selection */}
-      <div className="grid grid-cols-1 gap-4">
-        <Input
-          label="Select Role"
-          type="select"
-          value={selectedRole}
-          onChange={(value) => setSelectedRole(value)}
-          selectOptions={roleOptions}
-          required={true}
-        />
-      </div>
-
-      {/* Role Descriptions */}
-      <div className="bg-info-5 border border-info-20 rounded-sm p-3 mb-6">
-        <div className="flex items-start">
-          <i className="ri-information-line text-info text-sm mr-2 mt-0.5"></i>
-          <div className="text-xs text-info">
-            <p className="font-medium mb-1">Role Permissions:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>
-                <strong>Owner:</strong> Full system access and administration
-              </li>
-              <li>
-                <strong>Admin:</strong> Administrative privileges
-              </li>
-              <li>
-                <strong>Manager:</strong> Management level access
-              </li>
-              <li>
-                <strong>Operator:</strong> Operational tasks and basic access
-              </li>
-              <li>
-                <strong>Finance:</strong> Financial reporting and transactions
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-     </div>
 
       {/* Footer */}
       <div className="flex justify-between items-center pt-4 border-t border-border">

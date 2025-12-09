@@ -21,6 +21,9 @@ import { syncService } from "../../../core/services/sync";
 import { indexedDBService } from "../../../core/services/indexdb";
 import { DBOrder } from "../../../core/interfaces/IDBTypes";
 import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
+import { downloadReceiptAsPDF, printReceiptDirectly } from "../../../core/utils/receipt";
+import { ENTITY_KEY, getStoredItem } from "../../../core/hooks/useStore";
+import { IEntityItem } from "../../../core/interfaces/IEntity";
 
 export default function OrdersList() {
   // 1. STATE ADJUSTMENTS: Use IOrder interface and remove Payout/Wallet state
@@ -35,7 +38,7 @@ export default function OrdersList() {
   const { openModal } = useModal();
   const loadingRef = useRef(false);
   const isOnline = useNetworkStatus();
-
+  const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null)
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
@@ -102,7 +105,7 @@ export default function OrdersList() {
     },
     {
       header: "Cashier",
-      value: (item: IOrder) => item.cashier, // In a real app, you'd look up the user's name
+      value: (item: IOrder) => item.cashier, 
       type: "column",
     },
     {
@@ -137,10 +140,22 @@ export default function OrdersList() {
   const getCustomActions = (item: IOrder): CustomAction[] => [
     {
       title: "Print Receipt",
-      handler: () => handleOpenReceipt(item),
+      handler: () => handlePrint(item),
       icon: "printer-line",
       classes: "",
     },
+    {
+      title: "Download Receipt",
+      handler: () => handleDownload(item),
+      icon: "download-line",
+      
+    },
+  {
+    title: "Preview Receipt",
+    handler: () => handleOpenReceipt(item),
+    icon: "eye-line",
+    classes: "",
+  },
     {
       title: "View Details",
       handler: () => onViewDetails(item),
@@ -148,6 +163,28 @@ export default function OrdersList() {
       classes: "",
     },
   ];
+
+  const handlePrint = (item: IOrder) => {
+    const success = printReceiptDirectly(item, entity!);
+    
+    if (success) {
+      // toast.success("Opening print preview...");
+    } else {
+      toast.error("Failed to open print window. Please check popup blocker.");
+    }
+  };
+
+  const handleDownload = async (item: IOrder) => {
+    toast.info("Generating PDF...");
+    
+    const success = await downloadReceiptAsPDF(item, entity!);
+    
+    if (success) {
+      toast.success("Receipt downloaded successfully");
+    } else {
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   // 8. DATA FETCHING: Update function to fetch Orders
 const convertDBOrderToIOrder = (dbOrder: DBOrder): IOrder => {
