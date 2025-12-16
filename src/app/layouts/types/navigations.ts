@@ -17,6 +17,7 @@ export const NAVBAR_CONFIG: NavItem[] = [
     title: "Store",
     icon: "store-line",
     link: "/store",
+    roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.SALES, Roles.OWNER],
   },
   {
     id: "orders",
@@ -26,11 +27,18 @@ export const NAVBAR_CONFIG: NavItem[] = [
     roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.SALES, Roles.OWNER],
   },
   {
+    id: "suppliers",
+    title: "Suppliers",
+    icon: "user-settings-line",
+    link: "/suppliers",
+    roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.SALES, Roles.OWNER],
+  },
+  {
     id: "reports",
     title: "Reports",
     icon: "dashboard-line",
     link: "/reports",
-    roles: [Roles.SUPER_ADMIN, Roles.OWNER],
+    roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.SALES, Roles.OWNER],
   },
   {
     id: "products",

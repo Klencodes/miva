@@ -107,10 +107,10 @@ const ItemRow: React.FC<{ item: IOrderItem }> = ({ item }) => {
 
       <div className="flex items-center justify-end space-x-2 min-w-[120px]">
         <span className="text-gray-500 text-[11px] w-12 text-right">
-          {`${formatCurrency(item.unit_price)}/${item.selling_unit}`}
+          {`${formatCurrency(item.unit_price)}`}
         </span>
         <span className="text-gray-500 text-[11px] w-10 text-right">
-          {`${formatQuantity(item.quantity)} ${item.selling_unit}`}
+          {`${formatQuantity(item.quantity)}`}
         </span>
         <span className="font-bold text-gray-900 text-[11px] w-12 text-right">
           {formatCurrency(itemTotal)}

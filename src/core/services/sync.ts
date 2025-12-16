@@ -264,7 +264,7 @@ class SyncService {
           : order.tendered_cash 
             ? Number(order.tendered_cash.toFixed(2))
             : Number(order.total.toFixed(2)),
-        reference_id: order.payment?.reference_id || null
+        transaction_id: order.payment?.transaction_id || null
       },
       
       items: order.items.map((item: IOrderItem) => ({

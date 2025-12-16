@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const navigate = useNavigate();
 
   return (
     <div className="bg-card text-text-light h-14 px-6 z-40 border-t border-border flex items-center isolate-parts"
@@ -12,17 +14,12 @@ const Footer: React.FC = () => {
         </div>
         <div className="flex gap-4">
           <a 
-            href="/terms"
+            onClick={()=> navigate("/terms-conditions")}
             className="text-text-light no-underline transition-colors duration-200 hover:text-primary-50 "
           >
             Terms of Service
           </a>
-          <a 
-            href="/contact-us"
-            className="text-text-light no-underline transition-colors duration-200 hover:text-primary-50 "
-          >
-            Contact Us
-          </a>
+          
         </div>
       </div>
     </div>

@@ -23,7 +23,7 @@ export interface DBProduct {
 export interface DBPayment {
   payment_method: string;
   amount_paid: number;
-  reference_id?: string;
+  transaction_id?: string;
 }
 
 export interface DBOrder {

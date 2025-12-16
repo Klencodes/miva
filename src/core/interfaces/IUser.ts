@@ -1,4 +1,6 @@
-export type UserRole = "super_admin" | "admin" | "user";
+import { Roles } from "../enums/roles";
+
+export type UserRole = Roles.ADMIN | Roles.SALES | Roles.STAFF | Roles.OWNER | Roles.SUPER_ADMIN;
 export type UserGender = "male" | "female" | "other";
 
 export interface IUser {

@@ -72,6 +72,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
       <div className="relative flex-grow">
         <Input
           type="text"
+          id="search"
           label={searchLabel}
           placeholder={placeholder}
           value={searchTerm}
@@ -85,6 +86,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           <div className="flex items-center gap-2">
             <Input
               type="date"
+              id="date_start"
               label="Start Date"
               value={startDate}
               onChange={(e: any) => {
@@ -97,6 +99,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
 
             <Input
               type="date"
+              id='date_end'
               label="End Date"
               value={endDate}
               onChange={(e: any) => {
@@ -114,6 +117,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           <Input
             type="select"
             label="Sort By"
+            id='sort'
             value={selectedSort}
             onChange={handleSortChange}
             selectOptions={[
@@ -130,6 +134,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           <Input
             type="select"
             label="Filter By"
+            id='filter'
             value={selectedFilter}
             onChange={handleFilterChange}
             selectOptions={[

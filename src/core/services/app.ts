@@ -132,6 +132,19 @@ export class AppService {
     }
   }
   /**
+   * Create bulk products
+   */
+  async bulkAddProducts(payload: any): Promise<any> {
+    try {
+      return await apiService.post<IResponse>(
+        apiValues.PRODUCTS_ENDPOINT,
+        payload
+      );
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+  /**
    * Assign user entity
    */
   async assignUserToEntity(payload: any): Promise<any> {

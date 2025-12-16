@@ -8,6 +8,7 @@ import { appService } from "../../../core/services/app";
 import { IOverviewData, IChartData, IDashboardData } from "../../../core/interfaces/IDashboard";
 import { eventService } from "../../../core/services/events";
 import { Button } from "../../../ui";
+import { Roles } from "../../../core/enums/roles";
 
 
 const Dashboard: FC = () => {
@@ -98,7 +99,8 @@ const Dashboard: FC = () => {
           </div>
           <p className="text-sm text-text-light">Business overview</p>
         </div>
-
+      
+      {user && [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.OWNER].includes(user.role) && (
         <div className="flex items-center justify-end w-full">
           <ul className="flex items-center mb-0 gap-x-2">
             <li>
@@ -111,7 +113,7 @@ const Dashboard: FC = () => {
                 Today
               </Button>
             </li>
-            <li>
+              <li>
               <Button
                 type="button"
                 size="sm"
@@ -133,6 +135,8 @@ const Dashboard: FC = () => {
             </li>
           </ul>
         </div>
+      )}
+
         {/* Overview List */}
         <div className="w-full">
           {showContent && salesOverview ? (

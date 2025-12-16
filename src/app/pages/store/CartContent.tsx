@@ -1,4 +1,7 @@
+import { Roles } from "../../../core/enums/roles";
+import { getStoredItem, USER_KEY } from "../../../core/hooks/useStore";
 import { ICartContentProps } from "../../../core/interfaces/IStore";
+import { IUser } from "../../../core/interfaces/IUser";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
 import { Button, Input } from "../../../ui";
 
@@ -9,7 +12,7 @@ const CartContent: React.FC<ICartContentProps> = ({
   discount,
   tenderedCash,
   paymentMethod,
-  referenceId,
+  transactionId,
   balanceDue,
   balanceLabel,
   selectedCustomer,
@@ -18,7 +21,7 @@ const CartContent: React.FC<ICartContentProps> = ({
   setDiscount,
   setTenderedCash,
   setPaymentMethod,
-  setReferenceId,
+  setTransactionId,
   removeFromCart,
   updateQuantity,
   openCustomerModal,
@@ -29,7 +32,29 @@ const CartContent: React.FC<ICartContentProps> = ({
   addHalfToCart,
   addThreeQuarterToCart,
   openHoldOrdersModal,
+  formErrors = {},
+  handleFormBlur,
 }) => {
+  // Helper function to handle discount change
+  const handleDiscountChange = (value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) || value === "") {
+      setDiscount(value);
+    }
+  };
+
+  // Helper function to handle tendered cash change
+  const handleTenderedCashChange = (value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) || value === "") {
+      setTenderedCash(value);
+    }
+  };
+
+  // Convert discount to number for display calculations
+  const discountValue = parseFloat(discount || "0") || 0;
+  const user = getStoredItem<IUser | null>(USER_KEY, null)
+
   return (
     <div className="rounded-sm shadow-sm flex flex-col h-full bg-card">
       {/* Cart Header */}
@@ -114,9 +139,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                       <h4 className="font-semibold text-text text-sm truncate">
                         {item.short_name} -{" "}
                         <span className="text-text-light text-xs">
-                          ({item.content_measurement}x
-                          {item.selling_unit_quantity}
-                          {item.content_unit})
+                          ({item.selling_unit_quantity}x{item.content_measurement}{item.content_unit})
                         </span>
                       </h4>
                       <p className="text-primary font-semibold text-xs">
@@ -162,7 +185,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                   </div>
 
                   <span className="font-semibold text-text">
-                    GHC {(item.price * item.quantity)?.toFixed(2)}
+                    GHC {((item.price || 0) * (item.quantity || 0))?.toFixed(2)}
                   </span>
                 </div>
 
@@ -236,7 +259,7 @@ const CartContent: React.FC<ICartContentProps> = ({
             <div className="flex justify-between text-sm">
               <span className="text-text-light">Subtotal</span>
               <span className="font-semibold text-text">
-                GHC {subTotal?.toFixed(2)}
+                GHC {(subTotal || 0)?.toFixed(2)}
               </span>
             </div>
 
@@ -248,21 +271,26 @@ const CartContent: React.FC<ICartContentProps> = ({
                   <Input
                     type="number"
                     size="sm"
-                    onChange={(val) => setDiscount(parseFloat(val) || 0)}
-                    min={parseFloat("0")}
+                    value={discount}
+                    onChange={(value) => handleDiscountChange(value as string)}
+                    onBlur={() => handleFormBlur?.("discount")}
+                    min={0}
+                    step={0.01}
                     placeholder="0.00"
+                    error={formErrors?.discount}
+                    disabled={[Roles.STAFF, Roles.SALES, Roles.ADMIN].includes(user!.role)}
                   />
                 </div>
 
-                <div className="text-danger font-semibold w-20 text-right">
-                  - GHC {discount.toFixed(2)}
+                <div className="text-danger font-semibold w-24 text-right">
+                  - GHC {discountValue.toFixed(2)}
                 </div>
               </div>
             </div>
 
             <div className="flex justify-between text-lg font-bold border-t pt-2 border-border-light">
               <span className="text-text">Total</span>
-              <span className="text-primary">GHC {total?.toFixed(2)}</span>
+              <span className="text-primary">GHC {(total || 0)?.toFixed(2)}</span>
             </div>
           </div>
 
@@ -275,9 +303,12 @@ const CartContent: React.FC<ICartContentProps> = ({
                   type="number"
                   label="Tendered Cash"
                   value={tenderedCash}
-                  onChange={(val) => setTenderedCash(parseFloat(val) || 0)}
-                  min={parseFloat("0")}
+                  onChange={handleTenderedCashChange}
+                  onBlur={() => handleFormBlur?.("tenderedCash")}
+                  min={0}
+                  step={0.01}
                   placeholder="0.00"
+                  error={formErrors?.tenderedCash}
                 />
               </div>
 
@@ -287,7 +318,9 @@ const CartContent: React.FC<ICartContentProps> = ({
                   label="Payment Method"
                   value={paymentMethod}
                   selectOptions={paymentOptions}
-                  onChange={(val) => setPaymentMethod(val)}
+                  onChange={setPaymentMethod}
+                  onBlur={() => handleFormBlur?.("paymentMethod")}
+                  error={formErrors?.paymentMethod}
                 />
               </div>
             </div>
@@ -295,48 +328,50 @@ const CartContent: React.FC<ICartContentProps> = ({
             {paymentMethod !== "Cash" && (
               <Input
                 type="text"
-                label="Reference ID (e.g., Transaction ID)"
-                value={referenceId}
-                onChange={setReferenceId}
+                label="Transaction ID / Reference"
+                value={transactionId}
+                onChange={setTransactionId}
+                onBlur={() => handleFormBlur?.("transactionId")}
+                error={formErrors?.transactionId}
               />
             )}
 
             <div
               className={`flex justify-between text-sm p-2 rounded-sm ${
-                balanceDue >= 0 ? "bg-success-10" : "bg-danger-10"
+                (balanceDue || 0) >= 0 ? "bg-success-10" : "bg-danger-10"
               }`}
             >
               <span
                 className={`font-medium ${
-                  balanceDue >= 0 ? "text-success" : "text-danger"
+                  (balanceDue || 0) >= 0 ? "text-success" : "text-danger"
                 }`}
               >
                 {balanceLabel}
               </span>
               <span
                 className={`font-bold ${
-                  balanceDue >= 0 ? "text-success" : "text-danger"
+                  (balanceDue || 0) >= 0 ? "text-success" : "text-danger"
                 }`}
               >
-                GHC {Math.abs(balanceDue)?.toFixed(2)}
+                GHC {Math.abs(balanceDue || 0)?.toFixed(2)}
               </span>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-row justify-between w-full">
+          <div className="flex flex-row justify-between w-full gap-2">
             <Button
               onClick={submitOrder}
               disabled={
                 cartItems.length === 0 ||
-                total === 0 ||
-                tenderedCash < total ||
+                (total || 0) === 0 ||
+                (tenderedCash && parseFloat(tenderedCash) < (total || 0)) ||
                 creatingOrder
               }
-              className="w-full"
+              className="flex-1"
               loading={creatingOrder}
             >
-              Complete Order (GHC {total?.toFixed(2)})
+              Complete Order (GHC {(total || 0)?.toFixed(2)})
             </Button>
 
             <Button onClick={holdOrder} variant="outline" className="flex-1">

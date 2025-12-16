@@ -3,6 +3,7 @@ import { IUser } from "./IUser";
 export interface IEntityItem {
   id: string | null;
   name: string;
+  branch?: string;
   address: string;
   phone_number: string;
   email: string;

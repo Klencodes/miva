@@ -17,6 +17,9 @@ import CartContent from "./CartContent";
 import HoldOrdersModal from "./HoldOrders";
 import { printReceiptDirectly } from "../../../core/utils/receipt";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
+import { FormErrors, OrderFormData } from "../../../core/interfaces/IStore";
+import { useOrderCalculations } from "../../../core/hooks/useOrderCalculations";
+
 
 const ModernStore: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
@@ -24,10 +27,6 @@ const ModernStore: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
-  const [discount, setDiscount] = useState(0);
-  const [tenderedCash, setTenderedCash] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [referenceId, setReferenceId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
@@ -35,15 +34,27 @@ const ModernStore: React.FC = () => {
   const [page, setPage] = useState(1);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  
+  // Order Form Data
+  const [orderFormData, setOrderFormData] = useState<OrderFormData>({
+    discount: "0",
+    tenderedCash: "0",
+    paymentMethod: "Cash",
+    transactionId: "",
+  });
+  
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  
   const paymentOptions = [
     { value: "Cash", label: "Cash" },
     { value: "Mobile Money", label: "Mobile Money" },
   ];
-  // const [holdOrders, setHoldOrders] = useState<any[]>([]);
+  
   const { user } = useStore();
   const { openModal } = useModal();
   const isOnline = useNetworkStatus();
-  const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null)
+  const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
+
   // Refs
   const pageRef = useRef(1);
   const loadingRef = useRef(false);
@@ -69,6 +80,81 @@ const ModernStore: React.FC = () => {
   useEffect(() => {
     isOnlineRef.current = isOnline;
   }, [isOnline]);
+
+const handleFormChange = (name: keyof OrderFormData) => (value: any) => {
+  // Validate before updating state
+  if (name === 'tenderedCash' || name === 'discount') {
+    // Parse the value first
+    const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+    
+    // Validate numeric values immediately
+    if (name === 'tenderedCash') {
+      if (isNaN(numericValue) || numericValue < 0) {
+        value = "0";
+      } else {
+        value = numericValue.toString();
+      }
+    }
+    
+    if (name === 'discount') {
+      if (isNaN(numericValue) || numericValue < 0) {
+        value = "0";
+      } else {
+        value = numericValue.toString();
+      }
+    }
+  }
+
+  setOrderFormData((prev) => ({ ...prev, [name]: value }));
+
+  // Clear error for this field when user starts typing
+  if (formErrors[name]) {
+    setFormErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
+  }
+};
+
+const handleFormBlur = (field: keyof OrderFormData) => {
+  // Use current orderFormData for validation
+  const currentDiscount = orderFormData.discount;
+  const currentTenderedCash = orderFormData.tenderedCash;
+  
+  const errors: FormErrors = {};
+  
+  if (field === 'discount') {
+    const discountValue = parseFloat(currentDiscount);
+    if (isNaN(discountValue) || discountValue < 0) {
+      errors.discount = "Discount must be a positive number";
+    } else if (discountValue > subTotal) {
+      errors.discount = "Discount cannot exceed subtotal";
+    }
+  }
+  
+  if (field === 'tenderedCash') {
+    const tenderedCashValue = parseFloat(currentTenderedCash);
+    if (isNaN(tenderedCashValue) || tenderedCashValue < 0) {
+      errors.tenderedCash = "Amount must be a positive number";
+    }
+  }
+  
+  if (field === 'paymentMethod') {
+    if (!orderFormData.paymentMethod?.trim()) {
+      errors.paymentMethod = "Payment method is required";
+    }
+  }
+  
+  if (field === 'transactionId' && orderFormData.paymentMethod !== 'Cash') {
+    if (!orderFormData.transactionId?.trim()) {
+      errors.transactionId = "Reference ID is required for non-cash payments";
+    }
+  }
+  
+  setFormErrors(prev => ({ ...prev, ...errors }));
+};
+
 
   // Create fetchProducts function with stable dependencies
   const fetchProducts = useCallback(
@@ -246,6 +332,15 @@ const ModernStore: React.FC = () => {
     return `G-${datePart}${randomPart}`;
   };
 
+const {
+  subTotal,
+  discountValue,
+  total,
+  tenderedCashValue,
+  balanceDue,
+  balanceLabel,
+} = useOrderCalculations(cartItems, orderFormData);
+
   // Submit order
   const submitOrder = async () => {
     if (cartItems.length === 0) {
@@ -253,11 +348,34 @@ const ModernStore: React.FC = () => {
       return;
     }
 
+    // Validate form
+    const errors: FormErrors = {};
+    
+    if (discountValue < 0) {
+      errors.discount = "Discount cannot be negative";
+    }
+    
+    if (discountValue > subTotal) {
+      errors.discount = "Discount cannot exceed subtotal";
+    }
+    
+    if (tenderedCashValue < 0) {
+      errors.tenderedCash = "Amount cannot be negative";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error("Please fix form errors");
+      return;
+    }
+
     setCreatingOrder(true);
 
     try {
+      const orderData = prepareOrder();
+      
       // ALWAYS save to IndexedDB first
-      const localResponse = await indexedDBService.createOrder(prepareOrder);
+      const localResponse = await indexedDBService.createOrder(orderData);
 
       if (!localResponse.success) {
         throw new Error("Failed to save order locally");
@@ -269,7 +387,7 @@ const ModernStore: React.FC = () => {
       // If online, try to sync to server immediately
       if (isOnline) {
         try {
-          const serverResponse = await appService.createOrder(prepareOrder);
+          const serverResponse = await appService.createOrder(orderData);
 
           if (serverResponse.success) {
             // Get server ID from response
@@ -304,7 +422,6 @@ const ModernStore: React.FC = () => {
             // Print receipt for locally saved order
             await cleanupOrderData("Order saved locally - will retry sync");
             printReceiptDirectly(orderDataForPrint, entity!);
-
           }
         } catch (serverError) {
           // Print receipt for locally saved order even if sync failed
@@ -318,9 +435,44 @@ const ModernStore: React.FC = () => {
       }
     } catch (error) {
       toast.error("Failed to save order");
+      console.error("Order submission error:", error);
     } finally {
       setCreatingOrder(false);
     }
+  };
+
+  // Prepare order data with NaN protection
+  const prepareOrder = () => {
+    return {
+      cashier: `${user?.first_name} ${user?.last_name?.[0] || ""}`.trim() || "Cashier",
+      customer: selectedCustomer || "Walk-in Customer",
+      total: parseFloat(total?.toFixed(2)) || 0,
+      subtotal: parseFloat(subTotal?.toFixed(2)) || 0,
+      discount: discountValue || 0,
+      tendered_cash: tenderedCashValue || 0,
+      balance: parseFloat(balanceDue?.toFixed(2)) || 0,
+      balance_label: balanceLabel,
+      code: generateOrderCode(),
+      items: cartItems.map((item) => ({
+        product_id: item.id,
+        quantity: item.quantity || 0,
+        unit_price: item.price || 0,
+        product_name: item.name || "",
+        short_name: item.short_name || "",
+        category_name: item.category_name || "",
+        content_measurement: item.content_measurement || "",
+        content_unit: item.content_unit || "",
+        selling_unit_quantity: item.selling_unit_quantity || 1,
+        selling_unit: item.selling_unit || "",
+        image_url: item.image_url || "",
+        image_alt: item.image_alt || "",
+      })),
+      payment: {
+        payment_method: orderFormData.paymentMethod || "Cash",
+        amount_paid: tenderedCashValue || 0,
+        transaction_id: orderFormData.transactionId || "",
+      },
+    };
   };
 
   // Cart functions
@@ -423,7 +575,7 @@ const ModernStore: React.FC = () => {
       }
     },
     [selectedCategory]
-  ); // Only selectedCategory as dependency
+  );
 
   // Load more function
   const loadMoreProducts = useCallback(() => {
@@ -477,16 +629,6 @@ const ModernStore: React.FC = () => {
     }
   };
 
-  // Calculated values
-  const subTotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const total = Math.max(0, subTotal - discount);
-
-  const balanceDue = tenderedCash - total;
-  const balanceLabel = balanceDue > 0 ? "Change" : "Owings";
-
   const openCustomerModal = async () => {
     const result = await openModal(CustomerModal, {
       side: "right",
@@ -497,96 +639,113 @@ const ModernStore: React.FC = () => {
     }
   };
 
-  const prepareOrder = {
-    cashier: `${user?.first_name} ${user?.last_name[0]}`,
-    customer: selectedCustomer || "Walk-in Customer",
-    total: parseFloat(total?.toFixed(2)),
-    subtotal: parseFloat(subTotal?.toFixed(2)),
-    discount: discount,
-    tendered_cash: tenderedCash,
-    balance: parseFloat(balanceDue?.toFixed(2)),
-    balance_label: balanceLabel,
-    code: generateOrderCode(),
-    items: cartItems.map((item) => ({
-      product_id: item.id,
-      quantity: item.quantity,
-      unit_price: item.price,
-      product_name: item.name,
-      short_name: item.short_name,
-      category_name: item.category_name,
-      content_measurement: item.content_measurement,
-      content_unit: item.content_unit,
-      selling_unit_quantity: item.selling_unit_quantity,
-      selling_unit: item.selling_unit,
-      image_url: item.image_url,
-      image_alt: item.image_alt,
-    })),
-    payment: {
-      payment_method: paymentMethod,
-      amount_paid: tenderedCash,
-      reference_id: referenceId,
-    },
+// Create a utility function for hold order calculations
+const calculateHoldOrderTotals = (order: any) => {
+  // Calculate subtotal from items
+  const subTotal = order.items.reduce((sum: number, item: any) => {
+    const price = parseFloat(item.unit_price) || parseFloat(item.price) || 0;
+    const quantity = parseFloat(item.quantity) || 0;
+    return sum + (price * quantity);
+  }, 0);
+
+  // Calculate discount (ensure it doesn't exceed subtotal)
+  const discount = parseFloat(order.discount) || 0;
+  const safeDiscount = Math.min(Math.max(0, discount), subTotal);
+
+  // Calculate total
+  const total = Math.max(0, subTotal - safeDiscount);
+
+  // Get tendered cash
+  const tenderedCash = Math.max(0, parseFloat(order.tendered_cash) || 0);
+
+  // Calculate balance
+  const balance = tenderedCash - total;
+
+  return {
+    subTotal,
+    discount: safeDiscount,
+    total,
+    tenderedCash,
+    balance,
+    balanceLabel: balance >= 0 ? "Change" : "Owings"
   };
+};
 
-  const openHoldOrdersModal = useCallback(async () => {
-    const result = await openModal(HoldOrdersModal, {
-      side: "right",
-      size: "lg",
-    });
-    if (result?.success && result?.orderId) {
-      try {
-        const holdOrderId = result.orderId;
-        // Get order from IndexedDB
-        const response = await indexedDBService.getHoldOrderById(holdOrderId);
+// Use it in your function
+const openHoldOrdersModal = useCallback(async () => {
+  const result = await openModal(HoldOrdersModal, {
+    side: "right",
+    size: "lg",
+  });
+  
+  if (result?.success && result?.orderId) {
+    try {
+      const response = await indexedDBService.getHoldOrderById(result.orderId);
 
-        if (response.success && response.results) {
-          const order = response.results;
+      if (response.success && response.results) {
+        const order = response.results;
+        const totals = calculateHoldOrderTotals(order);
 
-          // Convert order items to cart items
-          const cartItemsFromHold = order.items.map((item: any) => ({
-            ...item,
-            expanded: false,
-            quantity: item.quantity,
-          }));
+        // Convert items
+        const cartItemsFromHold = order.items.map((item: any) => ({
+          id: item.product_id || item.id,
+          name: item.product_name || item.name || '',
+          short_name: item.short_name || item.product_name || '',
+          price: parseFloat(item.unit_price) || parseFloat(item.price) || 0,
+          quantity: parseFloat(item.quantity) || 0,
+          stock: parseFloat(item.stock) || 0,
+          is_available: true,
+          image_url: item.image_url || '',
+          image_alt: item.image_alt || '',
+          category_name: item.category_name || '',
+          content_measurement: item.content_measurement || '',
+          content_unit: item.content_unit || '',
+          selling_unit_quantity: parseInt(item.selling_unit_quantity) || 1,
+          selling_unit: item.selling_unit || '',
+          expanded: false
+        }));
 
-          // Set cart with order items
-          setCartItems(cartItemsFromHold);
+        // Update state
+        setCartItems(cartItemsFromHold);
+        setSelectedCustomer(
+          order.customer === "Walk-in Customer" ? null : order.customer
+        );
+        
+        setOrderFormData({
+          discount: totals.discount.toString(),
+          tenderedCash: totals.tenderedCash.toString(),
+          paymentMethod: order.payment?.payment_method || "Cash",
+          transactionId: order.payment?.transaction_id || "",
+        });
 
-          // Set other order details
-          setSelectedCustomer(
-            order.customer === "Walk-in Customer" ? null : order.customer
-          );
-          setDiscount(order.discount || 0);
-
-          // Show success and close modal
-          toast.success(`Order ${order.code} retrieved`);
-
-          // Delete the hold order from IndexedDB since we're retrieving it
-          await indexedDBService.deleteHoldOrder(holdOrderId);
-
-          //  // Update local hold orders list
-          //  setHoldOrders(prev => prev.filter(order =>
-          //    order.id !== holdOrderId && order.local_id !== holdOrderId
-          //  ));
-        } else {
-          toast.error("Failed to retrieve hold order");
+        toast.success(`Order ${order.code} retrieved`);
+        await indexedDBService.deleteHoldOrder(result.orderId);
+        
+        if (window.innerWidth < 1024) {
+          setIsCartOpen(true);
         }
-      } catch (error) {
-        toast.error("Error retrieving hold order");
       }
+    } catch (error) {
+      toast.error("Error retrieving hold order");
+      console.error("Retrieve hold order error:", error);
     }
-    // eslint-disable-next-line
-  }, []);
+  }
+}, 
+// eslint-disable-next-line
+[]);
 
   const cleanupOrderData = async (message: any) => {
     toast.success(message || "Order submitted successfully");
     setCartItems([]);
-    setDiscount(0);
+    setOrderFormData({
+      discount: "0",
+      tenderedCash: "0",
+      paymentMethod: "Cash",
+      transactionId: "",
+    });
     setSelectedCustomer(null);
-    setTenderedCash(0);
-    setPaymentMethod("Cash");
-    setReferenceId("");
     setIsCartOpen(false);
+    setFormErrors({});
 
     // Refresh products to update stock if online
     if (isOnline && fetchProductsRef.current) {
@@ -607,9 +766,8 @@ const ModernStore: React.FC = () => {
     }
 
     try {
-      const localResponse = await indexedDBService.createHoldOrder(
-        prepareOrder
-      );
+      const orderData = prepareOrder();
+      const localResponse = await indexedDBService.createHoldOrder(orderData);
 
       if (!localResponse.success) {
         throw new Error("Failed to save hold order locally");
@@ -617,7 +775,7 @@ const ModernStore: React.FC = () => {
 
       // Clear cart and show success
       toast.success("Order on hold", {
-        description: `Order ${prepareOrder.code} saved for later`,
+        description: `Order ${orderData.code} saved for later`,
         duration: 5000,
         action: {
           label: "View Holds",
@@ -627,12 +785,15 @@ const ModernStore: React.FC = () => {
 
       // Clear the cart
       setCartItems([]);
-      setDiscount(0);
+      setOrderFormData({
+        discount: "0",
+        tenderedCash: "0",
+        paymentMethod: "Cash",
+        transactionId: "",
+      });
       setSelectedCustomer(null);
-      setTenderedCash(0);
-      setPaymentMethod("Cash");
-      setReferenceId("");
       setIsCartOpen(false);
+      setFormErrors({});
     } catch (error) {
       toast.error("Failed to put order on hold");
       console.error("Hold order error:", error);
@@ -641,9 +802,9 @@ const ModernStore: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-row gap-6 w-full h-[calc(100%-120px)]">
+      <div className="flex flex-row gap-6 w-full h-full">
         {/* Products Section */}
-        <div className="flex-1 bg-background min-w-0">
+        <div className="flex-1 bg-background min-w-0 h-[calc(100%-120px)]">
           {/* Header */}
           <div className="rounded-sm shadow-sm mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -735,7 +896,7 @@ const ModernStore: React.FC = () => {
             <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 bg-background">
               {products.map((product, index) => (
                 <div
-                  key={product.id}
+                  key={`${product.id}-${index}`}
                   ref={index === products.length - 1 ? lastProductRef : null}
                   className="group"
                 >
@@ -872,19 +1033,19 @@ const ModernStore: React.FC = () => {
             cartItems={cartItems}
             subTotal={subTotal}
             total={total}
-            discount={discount}
-            tenderedCash={tenderedCash}
-            paymentMethod={paymentMethod}
-            referenceId={referenceId}
+            discount={discountValue.toString()}
+            tenderedCash={tenderedCashValue.toString()}
+            paymentMethod={orderFormData.paymentMethod}
+            transactionId={orderFormData.transactionId}
             balanceDue={balanceDue}
             balanceLabel={balanceLabel}
             selectedCustomer={selectedCustomer}
             paymentOptions={paymentOptions}
             creatingOrder={creatingOrder}
-            setDiscount={setDiscount}
-            setTenderedCash={setTenderedCash}
-            setPaymentMethod={setPaymentMethod}
-            setReferenceId={setReferenceId}
+            setDiscount={(value) => handleFormChange('discount')(value.toString())}
+            setTenderedCash={(value) => handleFormChange('tenderedCash')(value.toString())}
+            setPaymentMethod={(value) => handleFormChange('paymentMethod')(value)}
+            setTransactionId={(value) => handleFormChange('transactionId')(value)}
             removeFromCart={removeFromCart}
             updateQuantity={updateQuantity}
             openCustomerModal={openCustomerModal}
@@ -895,6 +1056,8 @@ const ModernStore: React.FC = () => {
             addHalfToCart={addHalfToCart}
             addThreeQuarterToCart={addThreeQuarterToCart}
             openHoldOrdersModal={openHoldOrdersModal}
+            formErrors={formErrors}
+            handleFormBlur={handleFormBlur}
           />
         </div>
       </div>
@@ -912,8 +1075,7 @@ const ModernStore: React.FC = () => {
           {/* Modal/Drawer Content (Slide from right or bottom) */}
           <div className="absolute right-0 top-0 w-full h-full sm:w-3/4 md:w-1/2 lg:w-96 bg-card shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out">
             {/* Modal Header with Close Button */}
-            <div className="flex justify-between items-center p-4 border-b border-border bg-card">
-              <h2 className="text-2xl font-bold text-text">Your Cart</h2>
+            <div className="flex justify-end items-center p-4 border-b border-border bg-card mt-12">
               <button
                 onClick={() => setIsCartOpen(false)}
                 className="text-text-light hover:text-text transition-colors"
@@ -929,19 +1091,19 @@ const ModernStore: React.FC = () => {
                 cartItems={cartItems}
                 subTotal={subTotal}
                 total={total}
-                discount={discount}
-                tenderedCash={tenderedCash}
-                paymentMethod={paymentMethod}
-                referenceId={referenceId}
+                discount={discountValue.toString()}
+                tenderedCash={tenderedCashValue.toString()}
+                paymentMethod={orderFormData.paymentMethod}
+                transactionId={orderFormData.transactionId}
                 balanceDue={balanceDue}
                 balanceLabel={balanceLabel}
                 selectedCustomer={selectedCustomer}
                 paymentOptions={paymentOptions}
                 creatingOrder={creatingOrder}
-                setDiscount={setDiscount}
-                setTenderedCash={setTenderedCash}
-                setPaymentMethod={setPaymentMethod}
-                setReferenceId={setReferenceId}
+                setDiscount={(value) => handleFormChange('discount')(value.toString())}
+                setTenderedCash={(value) => handleFormChange('tenderedCash')(value.toString())}
+                setPaymentMethod={(value) => handleFormChange('paymentMethod')(value)}
+                setTransactionId={(value) => handleFormChange('transactionId')(value)}
                 removeFromCart={removeFromCart}
                 updateQuantity={updateQuantity}
                 openCustomerModal={openCustomerModal}
@@ -952,6 +1114,8 @@ const ModernStore: React.FC = () => {
                 addHalfToCart={addHalfToCart}
                 addThreeQuarterToCart={addThreeQuarterToCart}
                 openHoldOrdersModal={openHoldOrdersModal}
+                formErrors={formErrors}
+                handleFormBlur={handleFormBlur}
               />
             </div>
           </div>

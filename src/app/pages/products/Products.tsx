@@ -305,73 +305,76 @@ export default function ProductsList() {
 
   // 11. EXPORT LOGIC: Update export logic for Products
   const handleExport = async (): Promise<void> => {
-    setExportLoading(true);
-    try {
-      const payload = {
-        page: currentPage,
-        search: debouncedSearchTerm,
-        category: selectedCategory,
-      };
-      // NOTE: Replace getOrders with getProducts
-      const res = await appService.getProducts(payload);
+  setExportLoading(true);
+  try {
+    const payload = {
+      page: currentPage,
+      search: debouncedSearchTerm,
+      category: selectedCategory,
+    };
+    
+    const res = await appService.getProducts(payload);
 
-      if (res.success && res.results && res.results.length > 0) {
-        const exportData: IProduct[] = res.results as IProduct[];
+    if (res.success && res.results && res.results.length > 0) {
+      const exportData: IProduct[] = res.results as IProduct[];
 
-        const csvHeaders = [
-          { key: "name", label: "Product Name" },
-          { key: "short_name", label: "Short Name" },
-          { key: "category_name", label: "Category" },
-          { key: "price", label: "Unit Price" },
-          { key: "stock", label: "Current Stock" },
-          { key: "selling_unit", label: "Selling Unit" },
-          { key: "content_measurement", label: "Content Measurement" },
-          { key: "content_unit", label: "Content Unit" },
-          { key: "selling_unit_quantity", label: "Selling Unit Quantity" },
-          { key: "is_available", label: "Available" },
-          { key: "updated_at", label: "Last Updated" },
-        ];
+      const csvHeaders = [
+        { key: "name", label: "name" },
+        { key: "category_name", label: "category_name" },
+        { key: "stock", label: "stock" },
+        { key: "price", label: "price" },
+        { key: "content_measurement", label: "content_measurement" },
+        { key: "content_unit", label: "content_unit" },
+        { key: "selling_unit_quantity", label: "selling_unit_quantity" },
+        { key: "selling_unit", label: "selling_unit" },
+        { key: "image_url", label: "image_url" }
+      ];
 
-        const csvData = exportData.map((product: IProduct) => {
-          return {
-            name: product.name,
-            short_name: product.short_name,
-            category_name: product.category_name,
-            price: product.price,
-            stock: product.stock,
-            selling_unit: product.selling_unit,
-            content_measurement: product.content_measurement,
-            content_unit: product.content_unit,
-            selling_unit_quantity: product.selling_unit_quantity,
-            is_available: product.is_available ? "Yes" : "No",
-            updated_at: new Date(product.updated_at).toLocaleString(),
-          };
-        });
+      const csvData = exportData.map((product: IProduct) => {
+        return {
+          // name: product.name,
+          name: product.short_name,
+          category_name: product.category_name,
+          stock: String(product.stock),
+          price: product.price,
+          content_measurement: product.content_measurement,
+          content_unit: product.content_unit,
+          selling_unit_quantity: String(product.selling_unit_quantity),
+          selling_unit: product.selling_unit,
+          image_url: product.image_url || "https://placehold.co/300?text=No+Image"
+        };
+      });
 
-        const csvContent = await convertToCSV(csvData, csvHeaders);
+      const csvContent = await convertToCSV(csvData, csvHeaders);
 
-        const timestamp = new Date().toISOString().split("T")[0];
-        const filename = `products-export-${timestamp}.csv`;
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `products-import-template-${timestamp}.csv`;
 
-        await downloadCSV(csvContent, filename);
+      await downloadCSV(csvContent, filename);
 
-        toast.success(
-          "Export Successful",
-          {description: `${exportData.length} product records exported successfully.`,}
-        );
-      } else {
-        toast.error("No Data", {description: "No product records found to export.", });
-      }
-    } catch (error) {
-      console.error("Error exporting products:", error);
-      toast.error(
-        "Export Error",
-        {description: "Failed to export products. Please try again.",}
+      toast.success(
+        "Export Successful",
+        {
+          description: `${exportData.length} product records exported in import format.`,
+        }
       );
-    } finally {
-      setExportLoading(false);
+    } else {
+      toast.error("No Data", { 
+        description: "No product records found to export.", 
+      });
     }
-  };
+  } catch (error) {
+    console.error("Error exporting products:", error);
+    toast.error(
+      "Export Error",
+      {
+        description: "Failed to export products. Please try again.",
+      }
+    );
+  } finally {
+    setExportLoading(false);
+  }
+};
 
   const handleAddProduct = async () => {
   const result = await openModal(AddProductModal, {

@@ -9,6 +9,7 @@ const UserManagementRoutes = React.lazy(() => import('./user-management/UserMana
 const StoreRoutes = React.lazy(() => import('./store/StoreRoutes'));
 const OrdersRoutes = React.lazy(() => import('./orders/OrdersRoutes'));
 const ProductsRoutes = React.lazy(() => import('./products/ProductsRoutes'));
+const GeneralRoutes = React.lazy(() => import('./general/GeneralRoutes'));
 
 export const PagesRoutes: React.FC = () => {
   return (
@@ -18,6 +19,7 @@ export const PagesRoutes: React.FC = () => {
       
       {/* Individual pages */}
       <Route path="/orders/*" element={<OrdersRoutes />} />
+      <Route path="/*" element={<GeneralRoutes />} />
       <Route path="/products/*" element={<ProductsRoutes />} />
       <Route path="/reports/*" element={<Dashboard />} />
       <Route path="/store/*" element={<StoreRoutes />} />
