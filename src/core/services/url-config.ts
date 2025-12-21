@@ -8,7 +8,7 @@ const getEnvConfig = (): UrlConfig => {
   const env: UrlConfig = {
     API_BASE_URL: process.env.REACT_APP_API_BASE_URL || "",
     SECRET: process.env.REACT_APP_SECRET || "",
-    NODE_ENV: process.env.REACT_APP_NODE_ENV || "development", 
+    NODE_ENV: process.env.REACT_APP_ENV || "development", 
   };
   return env;
 };
