@@ -61,7 +61,7 @@ const Header: React.FC<HeaderProps> = memo(({
       ? isEntityLoading
         ? "Loading Entities..."
         : entity
-        ? entity.name
+        ? `${entity.name} ${entity?.name === "All Entities" ? "" : " | " + entity.branch}`
         : "Select Entity"
       : storedEntity
       ? storedEntity.name
@@ -466,7 +466,7 @@ const fetchEntities = useCallback(
                       role="option"
                       aria-selected={!!(entity && entity.id === ent.id)}
                     >
-                      {ent.name}
+                      {ent.name} {ent?.name === "All Entities" ? "" : " | " + ent.branch}
                       {entity && entity.id === ent.id && (
                         <i className="ri-check-line ml-auto"></i>
                       )}

@@ -17,13 +17,13 @@ interface RequestConfigWithAuth extends InternalAxiosRequestConfig {
 
 class ApiService {
   private client: AxiosInstance;
-  private baseUrl: string;
+  private baseApi: string;
 
   constructor() {
-    this.baseUrl = urlConfig.API_BASE_URL;
+    this.baseApi = urlConfig.API_BASE_URL;
 
     this.client = axios.create({
-      baseURL: this.baseUrl,
+      baseURL: this.baseApi,
       timeout: 20000,
       headers: { Accept: "application/json" },
     });
@@ -82,12 +82,12 @@ class ApiService {
         } else {
           delete config.headers["X-Entity-Context"];
         }
-        // this._logRequest(
-        //     config.method ? config.method.toUpperCase() : 'UNKNOWN', 
-        //     config.url || 'UNKNOWN_URL', 
-        //     config.data, 
-        //     config.headers 
-        // );
+        this._logRequest(
+            config.method ? config.method.toUpperCase() : 'UNKNOWN', 
+            config.url || 'UNKNOWN_URL', 
+            config.data, 
+            config.headers 
+        );
 
         return config;
       },
@@ -119,7 +119,7 @@ class ApiService {
   ): void {
     if (process.env.NODE_ENV !== "production") {
       console.group(`🌐 ${method} Request`);
-      console.log(`URL: ${this.baseUrl}${url}`);
+      console.log(`URL: ${this.baseApi}${url}`);
       console.log(`Method: ${method}`);
       console.log(`Headers: ${header}`);
       if (data) console.log(`Body:`, data);
