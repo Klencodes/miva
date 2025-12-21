@@ -20,7 +20,7 @@ class ApiService {
   private baseApi: string;
 
   constructor() {
-    this.baseApi = urlConfig.API_BASE_URL;
+    this.baseApi = `${urlConfig.API_BASE_URL}api/`;
 
     this.client = axios.create({
       baseURL: this.baseApi,
