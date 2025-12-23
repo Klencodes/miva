@@ -1,4 +1,3 @@
-// src/index.tsx - Update the service worker registration
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -17,7 +16,6 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000,
     },
     mutations: {
       retry: 1,
@@ -28,40 +26,12 @@ const queryClient = new QueryClient({
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Failed to find the root element");
 
-// Add modal root
+// Add modal root if it doesn't exist
 if (!document.getElementById('modal-root')) {
   const modalRoot = document.createElement('div');
   modalRoot.id = 'modal-root';
   document.body.appendChild(modalRoot);
 }
-
-// ✅ FIXED: Service Worker Registration
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // Only register in production
-    if (process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then(registration => {
-          console.log('SW registered:', registration);
-        })
-        .catch(error => {
-          console.log('SW registration failed:', error);
-        });
-    } else {
-      // In development, unregister any existing service workers
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(registration => {
-          registration.unregister();
-        });
-      });
-    }
-  });
-}
-}
-
-// Register the service worker
-registerServiceWorker();
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
