@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = memo(({
   onLogoClick,
   currentSidebarState = "standard",
 }) => {
-  const [isFullscreen, setIsFullscreen] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showEntityDropdown, setShowEntityDropdown] = useState(false);
   const [isEntityLoading, setIsEntityLoading] = useState(false);
@@ -143,6 +143,7 @@ const fetchEntities = useCallback(
     [isOnline, isSuperAdmin, entity, setEntity, setStoreEntities, storedEntity, isEntityLoading]
   );
 
+  
   // Fetch entities only once on mount and when coming back online
   useEffect(() => {
     // 1. Set/restore the current entity immediately from local storage on mount
@@ -179,46 +180,89 @@ const fetchEntities = useCallback(
   }, [setEntity]);
 
   // --- UI/Event Handlers ---
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowUserMenu(false);
-      }
-      if (
-        entityDropdownRef.current &&
-        !entityDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowEntityDropdown(false);
-      }
-    };
-    
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    document.addEventListener("mousedown", handleClickOutside);
-    
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+// Change the initial state to false
+
+useEffect(() => {
+  const handleFullscreenChange = () => {
+    setIsFullscreen(!!document.fullscreenElement);
+  };
+  
+  const handleFullscreenError = (e: Event) => {
+    console.error('Fullscreen error:', e);
+    setIsFullscreen(!!document.fullscreenElement);
+  };
+  
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      userMenuRef.current &&
+      !userMenuRef.current.contains(event.target as Node)
+    ) {
+      setShowUserMenu(false);
+    }
+    if (
+      entityDropdownRef.current &&
+      !entityDropdownRef.current.contains(event.target as Node)
+    ) {
+      setShowEntityDropdown(false);
+    }
+  };
+  
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("fullscreenerror", handleFullscreenError);
+  document.addEventListener("mousedown", handleClickOutside);
+  
+  // Auto-enter fullscreen when component mounts
+  const enterFullscreenOnMount = () => {
+    // Only enter fullscreen if not already in fullscreen
+    if (!document.fullscreenElement) {
+      // Small delay to ensure component is fully rendered
+      setTimeout(() => {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.error(`Auto fullscreen failed: ${err.message}`);
+          setIsFullscreen(false);
+        });
+      }, 300); // 300ms delay
+    } else {
+      setIsFullscreen(true);
+    }
+  };
+  
+  // Only auto-enter fullscreen if user hasn't interacted with it before
+  // You might want to store a preference in localStorage
+  const shouldAutoFullscreen = !localStorage.getItem('fullscreenDisabled');
+  
+  if (shouldAutoFullscreen) {
+    enterFullscreenOnMount();
+  } else {
+    setIsFullscreen(!!document.fullscreenElement);
+  }
+  
+  return () => {
+    document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    document.removeEventListener("fullscreenerror", handleFullscreenError);
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   const toggleFullScreen = useCallback(() => {
-    if (!isFullscreen) {
-      document.documentElement.requestFullscreen().catch((err) => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+  if (!document.fullscreenElement) {
+    // Not in fullscreen, so request it
+    document.documentElement.requestFullscreen().catch((err) => {
+      console.error(`Error attempting to enable fullscreen: ${err.message}`);
+    });
+    // User manually enabled fullscreen, don't auto-enter next time
+    localStorage.removeItem('fullscreenDisabled');
+  } else {
+    // Already in fullscreen, so exit it
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch((err) => {
+        console.error(`Error attempting to exit fullscreen: ${err.message}`);
       });
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
+      // User manually exited, remember this preference
+      localStorage.setItem('fullscreenDisabled', 'true');
     }
-  }, [isFullscreen]);
+  }
+}, []);
 
   const toggleUserMenu = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
