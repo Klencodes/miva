@@ -4,7 +4,6 @@
   "installCommand": "npm install",
   "outputDirectory": "build",
   "framework": "create-react-app",
-  "vercel-build": "npm run build && cp _redirects build/ && cp vercel.json build/",
   "rewrites": [
     {
       "source": "/(.*)",
