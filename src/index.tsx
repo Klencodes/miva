@@ -37,35 +37,27 @@ if (!document.getElementById('modal-root')) {
 
 // ✅ FIXED: Service Worker Registration
 function registerServiceWorker() {
-  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-    window.addEventListener('load', () => {
-      const swUrl = `${process.env.PUBLIC_URL || ''}/service-worker.js`;
-      
-      navigator.serviceWorker.register(swUrl)
+  if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // Only register in production
+    if (process.env.NODE_ENV === 'production') {
+      navigator.serviceWorker.register('/service-worker.js')
         .then(registration => {
-          console.log('✅ SW registered: ', registration.scope);
-          
-          // Check for updates
-          registration.onupdatefound = () => {
-            const installingWorker = registration.installing;
-            if (installingWorker) {
-              installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    console.log('New content available; please refresh.');
-                  } else {
-                    console.log('Content is cached for offline use.');
-                  }
-                }
-              };
-            }
-          };
+          console.log('SW registered:', registration);
         })
         .catch(error => {
-          console.error('❌ Error during service worker registration:', error);
+          console.log('SW registration failed:', error);
         });
-    });
-  }
+    } else {
+      // In development, unregister any existing service workers
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(registration => {
+          registration.unregister();
+        });
+      });
+    }
+  });
+}
 }
 
 // Register the service worker
