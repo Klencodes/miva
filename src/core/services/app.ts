@@ -205,6 +205,29 @@ export class AppService {
     } catch (error: any) {
       throw new Error(handleError(error));
     }
+  }  
+  /**
+   * Get all products
+   */
+  async getAllProducts(payload: any): Promise<any> {
+    try {
+      const params: Record<string, string> = {
+        page: payload?.page.toString(),
+      };
+      if (payload?.search) {
+        params.search = payload?.search;
+      }
+      if (payload?.category && payload?.category.toLowerCase() !== "all") {
+        params.category = payload?.category;
+      }
+
+      const queryParams = new URLSearchParams(params).toString();
+      return await apiService.get<IResponse>(
+        `${apiValues.ALL_PRODUCTS_ENDPOINT}?${queryParams}`
+      );
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
   }
   /**
    * Get Order

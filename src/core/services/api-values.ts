@@ -12,6 +12,7 @@ export const apiValues = {
   get CREATE_BUSINESS_ENTITY_ENDPOINT() { return 'entities/' },
   get DASHBOARD_ANALYTICS_ENDPOINT() { return 'analytics/business-dashboard/' },
   get PRODUCTS_ENDPOINT() { return 'products/' },
+  get ALL_PRODUCTS_ENDPOINT() { return 'products/all/' },
   get UPDATE_PRODUCT_AVAILABILITY_ENDPOINT() { return 'products/update-availability/' },
   get UPDATE_PRODUCT_STOCK_ENDPOINT() { return 'products/update-stock/' },
   get UPDATE_PRODUCT_PRICE_ENDPOINT() { return 'products/update-price/' },

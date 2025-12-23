@@ -175,7 +175,7 @@ const handleFormBlur = (field: keyof OrderFormData) => {
 
         if (isOnlineRef.current) {
           try {
-            const serverResponse: IResponse = await appService.getProducts(
+            const serverResponse: IResponse = await appService.getAllProducts(
               params
             );
 

@@ -6,7 +6,7 @@ import { IResponse } from "../interfaces/IResponse";
 
 class IndexedDBService {
   private dbName = 'GodDidMart';
-  private version = 9; // Incremented version for new hold_orders store
+  private version = 10; // Incremented version for new hold_orders store
   private db: IDBDatabase | null = null;
   private readonly pageSize = 10;
 
@@ -73,6 +73,24 @@ class IndexedDBService {
         // Sync metadata store
         if (!db.objectStoreNames.contains('metadata')) {
           db.createObjectStore('metadata', { keyPath: 'key' });
+        }
+
+        // Sync queue store for offline operations
+        if (!db.objectStoreNames.contains('sync_queue')) {
+          const syncQueueStore = db.createObjectStore('sync_queue', { 
+            keyPath: 'id',
+            autoIncrement: true 
+          });
+          syncQueueStore.createIndex('type', 'type', { unique: false });
+          syncQueueStore.createIndex('status', 'status', { unique: false });
+          syncQueueStore.createIndex('entity_id', 'entity_id', { unique: false });
+          syncQueueStore.createIndex('created_at', 'created_at', { unique: false });
+        }
+
+        // Cache store for API responses
+        if (!db.objectStoreNames.contains('api_cache')) {
+          const cacheStore = db.createObjectStore('api_cache', { keyPath: 'key' });
+          cacheStore.createIndex('expires_at', 'expires_at', { unique: false });
         }
       };
     });
@@ -893,78 +911,97 @@ async saveOrders(orders: IOrder[]): Promise<void> {
     });
   }
 
-  async getProducts(params: {
-    page?: number;
-    search?: string;
-    category?: string;
-    pageSize?: number;
-  }): Promise<ProductsResponse> {
-    const db = await this.ensureDB();
-    const entityId = this.entityIdString;
+async getProducts(params: {
+  page?: number;
+  search?: string;
+  category?: string;
+  pageSize?: number;
+  getAll?: boolean; // New parameter to bypass pagination
+}): Promise<ProductsResponse> {
+  const db = await this.ensureDB();
+  const entityId = this.entityIdString;
 
-    if (!entityId) {
-      return {
-        success: false,
-        results: [],
-        message: 'Entity ID not found',
-        next: null,
-        count: 0,
-        previous: null
-      };
-    }
+  if (!entityId) {
+    return {
+      success: false,
+      results: [],
+      message: 'Entity ID not found',
+      next: null,
+      count: 0,
+      previous: null
+    };
+  }
 
-    const {
-      page = 1,
-      search = '',
-      category = 'All',
-      pageSize = this.pageSize
-    } = params;
+  const {
+    page = 1,
+    search = '',
+    category = 'All',
+    pageSize = this.pageSize,
+    getAll = true // Default to paginated for backward compatibility
+  } = params;
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['products'], 'readonly');
-      const store = transaction.objectStore('products');
-      const entityIndex = store.index('entity_id');
-      
-      const request = entityIndex.getAll(IDBKeyRange.only(entityId));
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['products'], 'readonly');
+    const store = transaction.objectStore('products');
+    const entityIndex = store.index('entity_id');
+    
+    const request = entityIndex.getAll(IDBKeyRange.only(entityId));
 
-      request.onsuccess = () => {
-        let products = request.result as DBProduct[];
+    request.onsuccess = () => {
+      let products = request.result as DBProduct[];
 
-        if (search.trim()) {
-          const searchLower = search.toLowerCase().trim();
-          products = products.filter((p: DBProduct) =>
-            p.name.toLowerCase().includes(searchLower) ||
-            p.short_name?.toLowerCase().includes(searchLower) ||
-            p.category_name.toLowerCase().includes(searchLower)
-          );
-        }
+      if (search.trim()) {
+        const searchLower = search.toLowerCase().trim();
+        products = products.filter((p: DBProduct) =>
+          p.name.toLowerCase().includes(searchLower) ||
+          p.short_name?.toLowerCase().includes(searchLower) ||
+          p.content_measurement.toLowerCase().includes(searchLower)
+        );
+      }
 
-        if (category && category !== 'All') {
-          products = products.filter((p: DBProduct) => p.category_name === category);
-        }
+      if (category && category !== 'All') {
+        products = products.filter((p: DBProduct) => p.category_name === category);
+      }
 
+      let results: DBProduct[];
+      let next: string | null = null;
+      let previous: string | null = null;
+
+      if (getAll) {
+        // Return all products without pagination
+        results = products;
+        next = null;
+        previous = null;
+      } else {
+        // Apply pagination
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
-        const paginatedProducts = products.slice(startIndex, endIndex);
+        results = products.slice(startIndex, endIndex);
         const hasNext = endIndex < products.length;
+        
+        next = hasNext ? `page=${page + 1}` : null;
+        previous = page > 1 ? `page=${page - 1}` : null;
+      }
 
-        const response: ProductsResponse = {
-          success: true,
-          message: 'Products fetched successfully',
-          results: paginatedProducts,
-          next: hasNext ? `page=${page + 1}` : null,
-          count: products.length,
-          previous: page > 1 ? `page=${page - 1}` : null
-        };
-
-        resolve(response);
+      const response: ProductsResponse = {
+        success: true,
+        message: getAll 
+          ? `Fetched all ${products.length} products` 
+          : `Products fetched successfully (page ${page})`,
+        results: results,
+        next: next,
+        count: products.length,
+        previous: previous
       };
 
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
+      resolve(response);
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+}
 
   async getProductById(id: string): Promise<DBProduct | null> {
     const db = await this.ensureDB();
@@ -1255,6 +1292,300 @@ async saveOrders(orders: IOrder[]): Promise<void> {
       this.db = null;
     }
   }
+
+  // Add operation to sync queue
+  async queueForSync(operation: {
+    type: 'create_order' | 'update_order' | 'create_customer' | 'update_customer';
+    data: any;
+    endpoint: string;
+    method: 'POST' | 'PUT' | 'DELETE';
+    retryCount?: number;
+  }): Promise<number> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) {
+      throw new Error('Entity ID is required');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['sync_queue'], 'readwrite');
+      const store = transaction.objectStore('sync_queue');
+      
+      const syncItem = {
+        type: operation.type,
+        data: operation.data,
+        endpoint: operation.endpoint,
+        method: operation.method,
+        entity_id: entityId,
+        status: 'pending' as 'pending' | 'syncing' | 'synced' | 'failed',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        retryCount: operation.retryCount || 0,
+        last_error: null as string | null
+      };
+
+      const request = store.add(syncItem);
+      
+      request.onsuccess = () => {
+        resolve(request.result as number);
+      };
+      
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
+  }
+
+  // Get pending sync items
+  async getPendingSyncItems(limit = 50): Promise<any[]> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) return [];
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['sync_queue'], 'readonly');
+      const store = transaction.objectStore('sync_queue');
+      const statusIndex = store.index('status');
+      const entityIndex = store.index('entity_id');
+      
+      // Get pending items for this entity
+      const request = IDBKeyRange.bound(
+        [entityId, 'pending'],
+        [entityId, 'pending']
+      );
+      
+      const cursorRequest = entityIndex.openCursor(request);
+      const items: any[] = [];
+
+      cursorRequest.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor && items.length < limit) {
+          items.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(items);
+        }
+      };
+
+      cursorRequest.onerror = () => reject(cursorRequest.error);
+    });
+  }
+
+  // Update sync item status
+  async updateSyncItemStatus(id: number, status: 'syncing' | 'synced' | 'failed', error?: string): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['sync_queue'], 'readwrite');
+      const store = transaction.objectStore('sync_queue');
+      
+      const getRequest = store.get(id);
+      
+      getRequest.onsuccess = () => {
+        const item = getRequest.result;
+        if (!item) {
+          reject(new Error('Sync item not found'));
+          return;
+        }
+
+        const updatedItem = {
+          ...item,
+          status,
+          updated_at: new Date().toISOString(),
+          last_error: error || item.last_error,
+          retryCount: status === 'failed' ? (item.retryCount || 0) + 1 : item.retryCount
+        };
+
+        const putRequest = store.put(updatedItem);
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject(putRequest.error);
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  // Remove synced items
+  async removeSyncedItems(): Promise<void> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['sync_queue'], 'readwrite');
+      const store = transaction.objectStore('sync_queue');
+      const statusIndex = store.index('status');
+      
+      const cursorRequest = statusIndex.openCursor(IDBKeyRange.only('synced'));
+
+      cursorRequest.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const item = cursor.value;
+          if (item.entity_id === entityId) {
+            cursor.delete();
+          }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+
+      cursorRequest.onerror = () => reject(cursorRequest.error);
+    });
+  }
+
+  // ============= API CACHE METHODS =============
+
+  // Cache API response
+  async cacheApiResponse(key: string, data: any, ttlMinutes = 60): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['api_cache'], 'readwrite');
+      const store = transaction.objectStore('api_cache');
+      
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + ttlMinutes);
+
+      const cacheItem = {
+        key,
+        data,
+        cached_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString()
+      };
+
+      const request = store.put(cacheItem);
+      
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // Get cached API response
+  async getCachedApiResponse(key: string): Promise<any | null> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['api_cache'], 'readonly');
+      const store = transaction.objectStore('api_cache');
+      
+      const request = store.get(key);
+      
+      request.onsuccess = () => {
+        const item = request.result;
+        if (!item) {
+          resolve(null);
+          return;
+        }
+
+        // Check if cache is expired
+        const now = new Date();
+        const expiresAt = new Date(item.expires_at);
+        
+        if (now > expiresAt) {
+          // Remove expired cache
+          transaction.objectStore('api_cache').delete(key);
+          resolve(null);
+        } else {
+          resolve(item.data);
+        }
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // Clear expired cache
+  async clearExpiredCache(): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['api_cache'], 'readwrite');
+      const store = transaction.objectStore('api_cache');
+      const expiresIndex = store.index('expires_at');
+      
+      const now = new Date().toISOString();
+      const cursorRequest = expiresIndex.openCursor(IDBKeyRange.upperBound(now));
+
+      cursorRequest.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+
+      cursorRequest.onerror = () => reject(cursorRequest.error);
+    });
+  }
+
+  // ============= DATABASE HEALTH METHODS =============
+
+  async checkDatabaseHealth(): Promise<{
+    isHealthy: boolean;
+    size: number;
+    syncQueueSize: number;
+    cacheSize: number;
+  }> {
+    try {
+      const size = await this.getDatabaseSize();
+      const syncQueueSize = await this.getSyncQueueSize();
+      const cacheSize = await this.getCacheSize();
+
+      return {
+        isHealthy: size > 0 || syncQueueSize > 0 || cacheSize > 0,
+        size,
+        syncQueueSize,
+        cacheSize
+      };
+    } catch (error) {
+      return {
+        isHealthy: false,
+        size: 0,
+        syncQueueSize: 0,
+        cacheSize: 0
+      };
+    }
+  }
+
+  private async getSyncQueueSize(): Promise<number> {
+    const db = await this.ensureDB();
+    const entityId = this.entityIdString;
+
+    if (!entityId) return 0;
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['sync_queue'], 'readonly');
+      const store = transaction.objectStore('sync_queue');
+      const entityIndex = store.index('entity_id');
+      
+      const request = entityIndex.count(IDBKeyRange.only(entityId));
+      
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  private async getCacheSize(): Promise<number> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['api_cache'], 'readonly');
+      const store = transaction.objectStore('api_cache');
+      
+      const request = store.count();
+      
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
 }
 
 export const indexedDBService = new IndexedDBService();

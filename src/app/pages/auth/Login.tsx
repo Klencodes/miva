@@ -22,8 +22,8 @@ export interface LoginFormState {
 }
 
 const initialFormState: LoginFormState = {
-  email: "shine@gmart.com",
-  password: "pass123",
+  email: "",
+  password: "",
 };
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;

@@ -1,4 +1,6 @@
+import { ENTITY_KEY, getStoredItem } from "../hooks/useStore";
 import { DBProduct, DBOrder } from "../interfaces/IDBTypes";
+import { IEntityItem } from "../interfaces/IEntity";
 import { IOrderItem } from "../interfaces/IOrder";
 import { IResponse } from "../interfaces/IResponse";
 import { appService } from "./app";
@@ -15,6 +17,340 @@ interface SyncResults {
 class SyncService {
   private isSyncing = false;
   private syncInterval: NodeJS.Timeout | null = null;
+  private isOnline = navigator.onLine;
+
+  constructor() {
+    this.setupNetworkListeners();
+    this.startAutoSync();
+  }
+
+  private setupNetworkListeners(): void {
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.onNetworkRestored();
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.onNetworkLost();
+    });
+  }
+
+  private async onNetworkRestored(): Promise<void> {
+    console.log('🌐 Network restored, starting sync...');
+    
+    // Show toast notification
+    if ('toast' in window) {
+      (window as any).toast?.success('Connection restored', {
+        description: 'Syncing offline data...',
+        duration: 3000
+      });
+    }
+
+    // Start syncing
+    await this.processSyncQueue();
+    
+    // Sync products if needed
+    const lastSync = await indexedDBService.getLastSyncTime();
+    if (!lastSync || this.shouldRefreshProducts(lastSync)) {
+      await this.syncProducts();
+    }
+  }
+
+  private onNetworkLost(): void {
+    console.log('📴 Network lost, switching to offline mode');
+    
+    if ('toast' in window) {
+      (window as any).toast?.warning('Offline Mode', {
+        description: 'Working offline. Changes will sync when connection is restored.',
+        duration: 5000
+      });
+    }
+  }
+
+  private shouldRefreshProducts(lastSync: string): boolean {
+    const lastSyncDate = new Date(lastSync);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - lastSyncDate.getTime()) / (1000 * 60 * 60);
+    return hoursDiff > 1; // Refresh if more than 1 hour old
+  }
+
+  // Process sync queue
+  async processSyncQueue(): Promise<SyncResults> {
+    if (!this.isOnline || this.isSyncing) {
+      return { success: 0, failed: 0, errors: [] };
+    }
+
+    this.isSyncing = true;
+
+    const result: SyncResults = {
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+
+    try {
+      const pendingItems = await indexedDBService.getPendingSyncItems();
+      
+      for (const item of pendingItems) {
+        try {
+          // Update status to syncing
+          await indexedDBService.updateSyncItemStatus(item.id, 'syncing');
+          
+          let response;
+          
+          switch (item.type) {
+            case 'create_order':
+              response = await appService.createOrder(item.data);
+              break;
+            // case 'update_order':
+            //   response = await appService.updateOrder(item.data.id, item.data);
+            //   break;
+            case 'create_customer':
+              response = await appService.createCustomer(item.data);
+              break;
+            // case 'update_customer':
+            //   response = await appService.updateCustomer(item.data.id, item.data);
+            //   break;
+            default:
+              throw new Error(`Unknown sync type: ${item.type}`);
+          }
+
+          if (response.success) {
+            await indexedDBService.updateSyncItemStatus(item.id, 'synced');
+            result.success++;
+          } else {
+            await indexedDBService.updateSyncItemStatus(item.id, 'failed', response.message);
+            result.failed++;
+            result.errors.push({ 
+              orderId: item.data.id || -1, 
+              error: response.message || 'Unknown error' 
+            });
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          await indexedDBService.updateSyncItemStatus(item.id, 'failed', errorMsg);
+          result.failed++;
+          result.errors.push({ 
+            orderId: item.data.id || -1, 
+            error: errorMsg 
+          });
+        }
+
+        // Small delay to avoid overwhelming server
+        await this.delay(100);
+      }
+
+      // Clean up successfully synced items
+      await indexedDBService.removeSyncedItems();
+
+    } catch (error) {
+      console.error('❌ Error processing sync queue:', error);
+    } finally {
+      this.isSyncing = false;
+    }
+
+    return result;
+  }
+
+  // Create order with offline support
+  async createOrderWithOfflineSupport(orderData: any): Promise<IResponse> {
+    const entityId = await this.getEntityId();
+    
+    if (!entityId) {
+      return {
+        success: false,
+        message: 'Entity ID not found',
+        results: null,
+        count: 0,
+        next: null,
+        previous: null
+      };
+    }
+
+    // Always save to IndexedDB first
+    const localResponse = await indexedDBService.createOrder({
+      ...orderData,
+      entity_id: entityId
+    });
+
+    if (!localResponse.success) {
+      return localResponse;
+    }
+
+    const localOrder = localResponse.results as DBOrder;
+
+    if (this.isOnline) {
+      // Try to sync immediately if online
+      try {
+        const syncResult = await this.syncSingleOrder(localOrder);
+        
+        if (syncResult.success) {
+          return {
+            ...localResponse,
+            message: 'Order created and synced successfully'
+          };
+        } else {
+          // If sync fails, queue for later
+          await indexedDBService.queueForSync({
+            type: 'create_order',
+            data: orderData,
+            endpoint: '/api/orders',
+            method: 'POST'
+          });
+          
+          return {
+            ...localResponse,
+            message: 'Order created locally. Will sync when connection is restored.'
+          };
+        }
+      } catch (error) {
+        // Queue for sync on error
+        await indexedDBService.queueForSync({
+          type: 'create_order',
+          data: orderData,
+          endpoint: '/api/orders',
+          method: 'POST'
+        });
+        
+        return {
+          ...localResponse,
+          message: 'Order created locally. Will sync when connection is restored.'
+        };
+      }
+    } else {
+      // Queue for sync when offline
+      await indexedDBService.queueForSync({
+        type: 'create_order',
+        data: orderData,
+        endpoint: '/api/orders',
+        method: 'POST'
+      });
+      
+      return {
+        ...localResponse,
+        message: 'Order created offline. Will sync when connection is restored.'
+      };
+    }
+  }
+
+  // Create customer with offline support
+  async createCustomerWithOfflineSupport(customerData: any): Promise<IResponse> {
+    if (this.isOnline) {
+      try {
+        return await appService.createCustomer(customerData);
+      } catch (error) {
+        // Fallback to offline
+        return this.createCustomerOffline(customerData);
+      }
+    } else {
+      return this.createCustomerOffline(customerData);
+    }
+  }
+
+  private async createCustomerOffline(customerData: any): Promise<IResponse> {
+    const entityId = await this.getEntityId();
+    
+    if (!entityId) {
+      return {
+        success: false,
+        message: 'Entity ID not found',
+        results: null,
+        count: 0,
+        next: null,
+        previous: null
+      };
+    }
+
+    try {
+      const customer = await indexedDBService.saveCustomer({
+        ...customerData,
+        entity_id: entityId,
+        status: 'pending'
+      });
+
+      await indexedDBService.queueForSync({
+        type: 'create_customer',
+        data: customerData,
+        endpoint: '/api/customers',
+        method: 'POST'
+      });
+
+      return {
+        success: true,
+        message: 'Customer created offline. Will sync when connection is restored.',
+        results: customer,
+        count: 1,
+        next: null,
+        previous: null
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to save customer locally',
+        results: null,
+        count: 0,
+        next: null,
+        previous: null
+      };
+    }
+  }
+
+  // Get products with cache fallback
+  async getProductsWithCache(params: any): Promise<IResponse> {
+    const cacheKey = `products_${JSON.stringify(params)}`;
+    
+    // Try to get from cache first
+    const cachedData = await indexedDBService.getCachedApiResponse(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    if (this.isOnline) {
+      try {
+        const response = await appService.getProducts(params);
+        
+        // Cache the response
+        if (response.success) {
+          await indexedDBService.cacheApiResponse(cacheKey, response, 30); // 30 minutes TTL
+        }
+        
+        return response;
+      } catch (error) {
+        // Fallback to IndexedDB if API fails
+        return await indexedDBService.getProducts(params);
+      }
+    } else {
+      // Offline: get from IndexedDB
+      return await indexedDBService.getProducts(params);
+    }
+  }
+
+  private async getEntityId(): Promise<string | null> {
+    // Helper to get entity ID
+    try {
+      const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
+      return entity?.id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private startAutoSync(): void {
+    // Auto-sync every 5 minutes when online
+    this.syncInterval = setInterval(() => {
+      if (this.isOnline && !this.isSyncing) {
+        this.processSyncQueue();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    // Also sync on page visibility change
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.isOnline && !this.isSyncing) {
+        this.processSyncQueue();
+      }
+    });
+  }
 
   // --- Product Synchronization ---
 
