@@ -146,7 +146,7 @@ const AssignUserEntity: React.FC = () => {
                 { value: "", label: entitiesLoading ? "Loading entities..." : "Choose an entity..." } as any,
                 ...entities.map((entity: IEntityItem) => ({
                   value: entity.id,
-                  label: entity.name,
+                  label: `${entity.name} | ${entity.branch}`,
                 })),
               ]}
             />
