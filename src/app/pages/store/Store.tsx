@@ -481,6 +481,10 @@ const {
       toast.error("Product is out of stock", { duration: 3000 });
       return;
     }
+      if (Number(product.price) < 1) {
+      toast.error("Product price is not set, contact owner", { duration: 3000 });
+      return;
+    }
 
     setCartItems((prev) => {
       const existingItem = prev.find((item) => item.id === product.id);
