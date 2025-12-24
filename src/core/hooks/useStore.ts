@@ -3,6 +3,7 @@ import { IEntityItem } from "../interfaces/IEntity";
 import { IUser } from "../interfaces/IUser";
 import * as CryptoJS from "crypto-js";
 import { urlConfig } from "../services/url-config";
+import { syncService } from "../services/sync";
 
 export const USER_KEY = "USER";
 export const ENTITY_KEY = "ENTITY";
@@ -147,7 +148,8 @@ export const useStore = () => {
     return { isValid: !!userRef.current?.auth_token };
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async() => {
+    await syncService.syncOrders();
     setUserState(null);
     setEntityState(null);
     setStoreEntitiesState(null);

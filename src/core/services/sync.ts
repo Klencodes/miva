@@ -37,11 +37,11 @@ class SyncService {
       // Fetch all pages of products
       while (hasMore) {
         try {
-          const response: IResponse = await appService.getProducts({
+          const response: IResponse = await appService.getAllProducts({
             page,
             search: '',
             category: 'All',
-            pageSize: 10
+            
           });
 
           if (response.success && response.results && Array.isArray(response.results)) {

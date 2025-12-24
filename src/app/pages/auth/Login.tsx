@@ -15,6 +15,7 @@ import { IUser } from "../../../core/interfaces/IUser";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
 import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../core/enums/roles";
 import { toast } from "sonner";
+import { syncService } from "../../../core/services/sync";
 
 export interface LoginFormState {
   email: string;
@@ -91,6 +92,7 @@ const Login: React.FC = () => {
         await removeStoredItem(NO_ENTITY_KEY);
         setStoredItem(ENTITY_KEY, entitiesToSet[0]);
         setStoreEntities(entitiesToSet);
+        // await syncService.syncProducts();
         window.location.replace("/store");
       } else {
         if (userData.role === Roles.SUPER_ADMIN) {
