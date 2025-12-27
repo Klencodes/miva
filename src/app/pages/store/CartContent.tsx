@@ -53,7 +53,7 @@ const CartContent: React.FC<ICartContentProps> = ({
 
   // Convert discount to number for display calculations
   const discountValue = parseFloat(discount || "0") || 0;
-  const user = getStoredItem<IUser | null>(USER_KEY, null)
+  const user = getStoredItem<IUser | null>(USER_KEY, null);
 
   return (
     <div className="rounded-sm shadow-sm flex flex-col h-full bg-card">
@@ -139,7 +139,9 @@ const CartContent: React.FC<ICartContentProps> = ({
                       <h4 className="font-semibold text-text text-sm truncate">
                         {item.short_name} -{" "}
                         <span className="text-text-light text-xs">
-                          ({item.selling_unit_quantity}x{item.content_measurement}{item.content_unit})
+                          ({item.selling_unit_quantity}x
+                          {item.content_measurement}
+                          {item.content_unit})
                         </span>
                       </h4>
                       <p className="text-primary font-semibold text-xs">
@@ -255,7 +257,7 @@ const CartContent: React.FC<ICartContentProps> = ({
       {cartItems.length > 0 && (
         <div className="border-t border-border p-4">
           {/* Summary */}
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 mb-1">
             <div className="flex justify-between text-sm">
               <span className="text-text-light">Subtotal</span>
               <span className="font-semibold text-text">
@@ -263,6 +265,7 @@ const CartContent: React.FC<ICartContentProps> = ({
               </span>
             </div>
 
+            {user?.role === Roles.SUPER_ADMIN && 
             <div className="flex justify-between items-center text-sm">
               <span className="text-text-light">Discount</span>
 
@@ -286,19 +289,21 @@ const CartContent: React.FC<ICartContentProps> = ({
                   - GHC {discountValue.toFixed(2)}
                 </div>
               </div>
-            </div>
+            </div>}
 
-            <div className="flex justify-between text-lg font-bold border-t pt-2 border-border-light">
+            <div className="flex justify-between text-lg font-bold border-t border-border-light">
               <span className="text-text">Total</span>
-              <span className="text-primary">GHC {(total || 0)?.toFixed(2)}</span>
+              <span className="text-primary">
+                GHC {(total || 0)?.toFixed(2)}
+              </span>
             </div>
           </div>
 
           {/* Payment Details */}
-          <div className="space-y-3 mb-6 p-3 rounded-sm bg-background">
-            <h3 className="text-md font-semibold text-text mb-2">Payment</h3>
+          <div className="space-y-3 mb-3 p-3 rounded-sm bg-background">
+            {/* <h3 className="text-md font-semibold text-text mb-2">Payment</h3> */}
             <div className="flex gap-3">
-              <div className="flex-1">
+              <div className="flex-1 -mb-4">
                 <Input
                   type="number"
                   label="Tendered Cash"
@@ -312,7 +317,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                 />
               </div>
 
-              <div className="flex-1">
+              <div className="flex-1 -mb-4">
                 <Input
                   type="select"
                   label="Payment Method"
@@ -326,14 +331,31 @@ const CartContent: React.FC<ICartContentProps> = ({
             </div>
 
             {paymentMethod !== "Cash" && (
-              <Input
-                type="text"
-                label="Transaction ID / Reference"
-                value={transactionId}
-                onChange={setTransactionId}
-                onBlur={() => handleFormBlur?.("transactionId")}
-                error={formErrors?.transactionId}
-              />
+              <>
+                <div className="flex-1 -mb-4">
+                  <Input
+                    type="number"
+                    label="Tendered Cash"
+                    value={tenderedCash}
+                    onChange={handleTenderedCashChange}
+                    onBlur={() => handleFormBlur?.("tenderedCash")}
+                    min={0}
+                    step={0.01}
+                    placeholder="0.00"
+                    error={formErrors?.tenderedCash}
+                  />
+                </div>
+                <div className="flex-1 -mb-4">
+                  <Input
+                    type="text"
+                    label="Transaction ID / Reference"
+                    value={transactionId}
+                    onChange={setTransactionId}
+                    onBlur={() => handleFormBlur?.("transactionId")}
+                    error={formErrors?.transactionId}
+                  />
+                </div>
+              </>
             )}
 
             <div
@@ -371,12 +393,12 @@ const CartContent: React.FC<ICartContentProps> = ({
               className="flex-1"
               loading={creatingOrder}
             >
-              Complete Order (GHC {(total || 0)?.toFixed(2)})
+              Complete (GHC {(total || 0)?.toFixed(2)})
             </Button>
 
             <Button onClick={holdOrder} variant="outline" className="flex-1">
               <i className="ri-save-line mr-1 text-primary"></i>
-              Hold This Order
+              Hold
             </Button>
           </div>
         </div>

@@ -71,7 +71,7 @@ export const generateReceiptHTML = (
   return `
     <div class="receipt-container" style="
       width: 100%;
-      max-width: 300px;
+      max-width: 305px;
       padding: 16px;
       background: white;
       font-family: Courier;
