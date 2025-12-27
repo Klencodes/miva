@@ -255,9 +255,11 @@ const CartContent: React.FC<ICartContentProps> = ({
 
       {/* Cart Footer */}
       {cartItems.length > 0 && (
-        <div className="border-t border-border p-4">
+        <div className="">
           {/* Summary */}
           <div className="space-y-2 mb-1">
+          {user?.role === Roles.SUPER_ADMIN && 
+            <>
             <div className="flex justify-between text-sm">
               <span className="text-text-light">Subtotal</span>
               <span className="font-semibold text-text">
@@ -265,7 +267,6 @@ const CartContent: React.FC<ICartContentProps> = ({
               </span>
             </div>
 
-            {user?.role === Roles.SUPER_ADMIN && 
             <div className="flex justify-between items-center text-sm">
               <span className="text-text-light">Discount</span>
 
@@ -289,7 +290,9 @@ const CartContent: React.FC<ICartContentProps> = ({
                   - GHC {discountValue.toFixed(2)}
                 </div>
               </div>
-            </div>}
+            </div>
+            </>
+            }
 
             <div className="flex justify-between text-lg font-bold border-t border-border-light">
               <span className="text-text">Total</span>
