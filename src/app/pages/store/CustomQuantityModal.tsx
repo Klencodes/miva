@@ -187,6 +187,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
   };
 
   // Handle increment/decrement
+  // eslint-disable-next-line
   const handleIncrement = () => {
     const currentValue = parseFloat(quantity) || 0;
     const step = isPiecesMode ? 1 : 1;
@@ -200,6 +201,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
     }
   };
 
+  // eslint-disable-next-line
   const handleDecrement = () => {
     const currentValue = parseFloat(quantity) || 0;
     const step = isPiecesMode ? 1 : 1;

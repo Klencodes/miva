@@ -403,44 +403,46 @@ const ModernStore: React.FC = () => {
   };
 
   const prepareOrder = () => {
-    return {
-      cashier: `${user?.first_name} ${user?.last_name?.[0] || ""}`.trim() || "Cashier",
-      customer: selectedCustomer || "Walk-in Customer",
-      total: parseFloat(total?.toFixed(2)) || 0,
-      subtotal: parseFloat(subTotal?.toFixed(2)) || 0,
-      discount: discountValue || 0,
-      tendered_cash: tenderedCashValue || 0,
-      balance: parseFloat(balanceDue?.toFixed(2)) || 0,
-      balance_label: balanceLabel,
-      code: generateOrderCode(),
-      items: cartItems.map((item) => {
-        const pricePerPiece = getPricePerPiece(item);
-        const unitPrice = pricePerPiece * item.selling_unit_quantity;
-        
-        return {
-          product_id: item.id,
-          quantity: item.quantity || 0,
-          quantity_type: item.isPieces ? 'pieces' : 'units',
-          unit_price: parseFloat(unitPrice.toFixed(2)),
-          price_per_piece: pricePerPiece,
-          product_name: item.name || "",
-          short_name: item.short_name || "",
-          category_name: item.category_name || "",
-          content_measurement: item.content_measurement || "",
-          content_unit: item.content_unit || "",
-          selling_unit_quantity: item.selling_unit_quantity || 1,
-          selling_unit: item.selling_unit || "",
-          image_url: item.image_url || "",
-          image_alt: item.image_alt || "",
-        };
-      }),
-      payment: {
-        payment_method: orderFormData.paymentMethod || "Cash",
-        amount_paid: tenderedCashValue || 0,
-        transaction_id: orderFormData.transactionId || "",
-      },
-    };
+  return {
+    cashier: `${user?.first_name} ${user?.last_name?.[0] || ""}`.trim() || "Cashier",
+    customer: selectedCustomer || "Walk-in Customer",
+    total: parseFloat(total?.toFixed(2)) || 0,
+    subtotal: parseFloat(subTotal?.toFixed(2)) || 0,
+    discount: discountValue || 0,
+    tendered_cash: tenderedCashValue || 0,
+    balance: parseFloat(balanceDue?.toFixed(2)) || 0,
+    balance_label: balanceLabel,
+    code: generateOrderCode(),
+    items: cartItems.map((item) => {
+      const pricePerPiece = getPricePerPiece(item);
+      const isPiece = item.isPieces; // or item.quantity_type === 'pieces'
+      
+      return {
+        product_id: item.id,
+        quantity: item.quantity || 0,
+        // Backend expects 'pieces' or 'units'
+        quantity_type: isPiece ? 'pieces' : 'units',
+        // If units, use price_per_unit; if pieces, use price_per_piece
+        unit_price: isPiece ? pricePerPiece : (item.price_per_unit || pricePerPiece * item.selling_unit_quantity),
+        price_per_piece: pricePerPiece,
+        product_name: item.name || "",
+        short_name: item.short_name || "",
+        category_name: item.category_name || "",
+        content_measurement: item.content_measurement || "",
+        content_unit: item.content_unit || "",
+        selling_unit_quantity: item.selling_unit_quantity || 1,
+        selling_unit: item.selling_unit || "",
+        image_url: item.image_url || "",
+        image_alt: item.image_alt || "",
+      };
+    }),
+    payment: {
+      payment_method: orderFormData.paymentMethod || "Cash",
+      amount_paid: tenderedCashValue || 0,
+      transaction_id: orderFormData.transactionId || "",
+    },
   };
+};
 
   const addToCart = (product: IProduct, quantity: number = 1, isPieces: boolean = true) => {
     if (!product.is_available || product.stock === 0) {
@@ -535,6 +537,7 @@ const ModernStore: React.FC = () => {
             ...product, 
             quantity: quantity,
             isPieces: isPieces,
+            quantity_type: isPieces ? 'pieces' : 'units',
             price_per_piece: pricePerPiece,
             price_per_unit: product.price_per_unit
           }
@@ -752,7 +755,9 @@ const ModernStore: React.FC = () => {
         console.error("Retrieve hold order error:", error);
       }
     }
-  }, []);
+  }, 
+  // eslint-disable-next-line
+  []);
 
   const cleanupOrderData = async (message: any) => {
     toast.success(message || "Order submitted successfully");

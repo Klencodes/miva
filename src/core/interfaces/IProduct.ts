@@ -22,6 +22,7 @@ export interface IProduct {
 // Extended CartItem with additional properties needed for cart calculations
 export interface CartItem extends Omit<IProduct, 'price_per_piece'> {
   quantity: number;
+  quantity_type?: string;
   expanded?: boolean;
   isPieces?: boolean; // true = pieces, false = selling units
   price_per_piece: number; // Price per individual piece (required in cart)

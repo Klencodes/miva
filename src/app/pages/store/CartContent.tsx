@@ -61,20 +61,24 @@ const CartContent: React.FC<ICartContentProps> = ({
     return (item.price_per_unit || 0) / (item.selling_unit_quantity || 1);
   };
 
-  // Helper function to calculate item subtotal
+  // Helper function to calculate item subtotal - FIXED
   const getItemSubtotal = (item: CartItem): number => {
-    if (item.isPieces !== undefined && !item.isPieces) {
-      // Quantity is in selling units
-      return (item.price_per_unit || 0) * item.quantity;
+    const sellingQty = item.selling_unit_quantity || 1;
+    
+    if (item.quantity_type === 'units') {
+      // For units: use price_per_unit directly
+      const pricePerBox = item.price_per_unit || (item.price_per_piece ? item.price_per_piece * sellingQty : 0);
+      return pricePerBox * item.quantity;
     } else {
-      // Quantity is in pieces
-      return getPricePerPiece(item) * item.quantity;
+      // For pieces: use price_per_piece
+      const pricePerPiece = item.price_per_piece || (item.price_per_unit ? item.price_per_unit / sellingQty : 0);
+      return pricePerPiece * item.quantity;
     }
   };
 
-  // Helper function to format quantity display
+  // Helper function to format quantity display - FIXED
   const formatQuantityDisplay = (item: CartItem): string => {
-    if (item.isPieces !== undefined && !item.isPieces) {
+    if (item.quantity_type === 'units') {
       // Quantity is in selling units
       const units = item.quantity;
       const pieces = units * (item.selling_unit_quantity || 1);
@@ -95,14 +99,33 @@ const CartContent: React.FC<ICartContentProps> = ({
     }
   };
 
-  // Helper function to format price per unit display
+  // Helper function to format price per unit display - FIXED
   const formatPricePerUnitDisplay = (item: CartItem): string => {
-    if (item.isPieces !== undefined && !item.isPieces) {
-      return `GHC ${(item.price_per_unit || 0).toFixed(2)}/${item.selling_unit}`;
+    if (item.quantity_type === 'units') {
+      const sellingQty = item.selling_unit_quantity || 1;
+      const pricePerBox = item.price_per_unit || (item.price_per_piece ? item.price_per_piece * sellingQty : 0);
+      return `GHC ${pricePerBox.toFixed(2)}/${item.selling_unit}`;
     } else {
-      return `GHC ${getPricePerPiece(item).toFixed(2)}/piece`;
+      const pricePerPiece = getPricePerPiece(item);
+      return `GHC ${pricePerPiece.toFixed(2)}/piece`;
     }
   };
+
+  // Debug: Log the cart items and their subtotals
+  const debugSubtotal = cartItems.reduce((sum, item) => sum + getItemSubtotal(item), 0);
+  console.log('DEBUG - Cart calculations:');
+  console.log('Items:', cartItems.map(item => ({
+    name: item.short_name,
+    quantity_type: item.quantity_type,
+    quantity: item.quantity,
+    price_per_unit: item.price_per_unit,
+    price_per_piece: item.price_per_piece,
+    selling_unit_quantity: item.selling_unit_quantity,
+    calculated_subtotal: getItemSubtotal(item)
+  })));
+  console.log('Local calculated subtotal:', debugSubtotal);
+  console.log('Props subtotal:', subTotal);
+  console.log('Props total:', total);
 
   return (
     <div className="rounded-sm shadow-sm flex flex-col h-full bg-card">
@@ -203,9 +226,9 @@ const CartContent: React.FC<ICartContentProps> = ({
                         <p className="text-xs text-text-light">
                           {formatQuantityDisplay(item)}
                         </p>
-                        {item.isPieces !== undefined && (
+                        {item.quantity_type && (
                           <p className="text-xs text-text-light">
-                            Type: {item.isPieces ? 'Pieces' : `${item.selling_unit}s`}
+                            Type: {item.quantity_type === 'pieces' ? 'Pieces' : `${item.selling_unit}s`}
                           </p>
                         )}
                       </div>
@@ -215,14 +238,14 @@ const CartContent: React.FC<ICartContentProps> = ({
                       onClick={() => removeFromCart(item)}
                       className="text-danger transition-colors duration-200"
                     >
-                      <i className="ri-trash-3-line"></i>
+                      <i className="ri-close-line"></i>
                     </button>
                   </div>
 
                   {/* Quantity Controls */}
                   <div className="flex items-center justify-between mb-2">
                     <Button
-                      onClick={() => openCustomQuantityModal(item, item.quantity, item.isPieces)}
+                      onClick={() => openCustomQuantityModal(item, item.quantity, item.quantity_type === 'pieces')}
                       size="sm"
                     >
                       Change Quantity
@@ -355,6 +378,10 @@ const CartContent: React.FC<ICartContentProps> = ({
 
           {/* Action Buttons */}
           <div className="flex flex-row justify-between w-full gap-2 px-3 pb-2">
+            <Button onClick={holdOrder} variant="outline" className="flex-1">
+              <i className="ri-save-line mr-1 text-primary"></i>
+              Hold
+            </Button>
             <Button
               onClick={submitOrder}
               disabled={
@@ -367,11 +394,6 @@ const CartContent: React.FC<ICartContentProps> = ({
               loading={creatingOrder}
             >
               Complete (GHC {(total || 0)?.toFixed(2)})
-            </Button>
-
-            <Button onClick={holdOrder} variant="outline" className="flex-1">
-              <i className="ri-save-line mr-1 text-primary"></i>
-              Hold
             </Button>
           </div>
         </div>
