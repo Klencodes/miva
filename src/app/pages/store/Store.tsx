@@ -546,14 +546,6 @@ const ModernStore: React.FC = () => {
     });
   };
 
-  const addOneUnitToCart = (product: IProduct) => {
-    addToCart(product, 1, false);
-  };
-
-  const addOnePieceToCart = (product: IProduct) => {
-    addToCart(product, 1, true);
-  };
-
   const openCustomQuantityModal = (product: IProduct, currentQuantity?: number, currentIsPieces?: boolean) => {
     setSelectedProductForCustomQty(product);
     setCurrentQuantity(currentQuantity || 0);
@@ -941,7 +933,7 @@ const ModernStore: React.FC = () => {
                           {product.short_name}
                         </h3>
                         <p className="text-xs text-text-light">
-                          {product.selling_unit_quantity}x{product.content_measurement}
+                          {product.selling_unit_quantity > 1 && product.selling_unit_quantity + 'x'}{product.content_measurement}
                           {product.content_unit} / {product.selling_unit}
                         </p>
                       </div>
@@ -971,7 +963,7 @@ const ModernStore: React.FC = () => {
                           Add Custom
                         </Button>
                         
-                        {product.selling_unit_quantity > 1 && (
+                        {/* {product.selling_unit_quantity > 1 && (
                           <div className="flex gap-1">
                             <Button
                               size="sm"
@@ -992,7 +984,7 @@ const ModernStore: React.FC = () => {
                               +1 {product.selling_unit}
                             </Button>
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>

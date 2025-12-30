@@ -112,21 +112,6 @@ const CartContent: React.FC<ICartContentProps> = ({
   };
 
   // Debug: Log the cart items and their subtotals
-  const debugSubtotal = cartItems.reduce((sum, item) => sum + getItemSubtotal(item), 0);
-  console.log('DEBUG - Cart calculations:');
-  console.log('Items:', cartItems.map(item => ({
-    name: item.short_name,
-    quantity_type: item.quantity_type,
-    quantity: item.quantity,
-    price_per_unit: item.price_per_unit,
-    price_per_piece: item.price_per_piece,
-    selling_unit_quantity: item.selling_unit_quantity,
-    calculated_subtotal: getItemSubtotal(item)
-  })));
-  console.log('Local calculated subtotal:', debugSubtotal);
-  console.log('Props subtotal:', subTotal);
-  console.log('Props total:', total);
-
   return (
     <div className="rounded-sm shadow-sm flex flex-col h-full bg-card">
       {/* Cart Header */}

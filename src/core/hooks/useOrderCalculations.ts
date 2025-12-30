@@ -51,9 +51,12 @@ export const useOrderCalculations = (cartItems: CartItem[], orderFormData: Order
     return parseNumericValue(orderFormData.tenderedCash);
   }, [orderFormData.tenderedCash]);
 
-  const balanceDue = useMemo(() => {
-    return tenderedCashValue - total;
-  }, [tenderedCashValue, total]);
+const balanceDue = useMemo(() => {
+  const cash = parseNumericValue(tenderedCashValue);
+  const bill = parseNumericValue(total);
+  
+  return parseFloat((cash - bill).toFixed(2));
+}, [tenderedCashValue, total]);
 
   return {
     subTotal,
