@@ -52,7 +52,6 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
         stock: Number(stock),
       };
 
-      // NOTE: Assuming appService.updateProductStock uses POST and sends product_id in the body as per previous discussion.
       const response = await appService.updateProductStock(payload);
 
       if (!response.success) {
@@ -74,10 +73,12 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
     }
   };
 
+  // Calculate total pieces
+  const totalPieces = product.selling_unit_quantity * Number(stock);
+
   return (
-    // Main container uses flex-col and h-full
     <div className="flex flex-col h-full w-full px-2">
-      {/* Header (Sticky at top of content/modal) */}
+      {/* Header */}
       <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 z-10 bg-card">
         <div className="flex flex-col">
           <h2 className="text-xl text-text font-bold">Update Stock Level</h2>
@@ -94,28 +95,46 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
         </button>
       </div>
 
-      {/* Form container uses flex-col and flex-1 to occupy remaining height */}
+      {/* Form */}
       <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
         
-        {/* Scrollable Content Area: flex-1 ensures it takes all available vertical space, overflow-y-auto allows scrolling. */}
+        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto space-y-6 pt-4">
-          <Input
-            label={`New Stock Quantity (${product.selling_unit})`}
-            type="number"
-            step={0.01}
-            placeholder="0.00"
-            required
-            name="stock"
-            id="stock"
-            value={stock}
-            onChange={handleChange}
-            error={error || undefined}
-            min={0}
-            hint={`Current Stock: ${product.stock.toFixed(2)} ${product.selling_unit}`}
-          />
+          <div className="space-y-4">
+            <Input
+              label={`New Stock Quantity (${product.selling_unit})`}
+              type="number"
+              step={1}
+              placeholder="0"
+              required
+              name="stock"
+              id="stock"
+              value={stock}
+              onChange={handleChange}
+              error={error || undefined}
+              min={0}
+              hint={`Current Stock: ${product.stock.toFixed(2)} ${product.selling_unit}`}
+            />
+
+            {/* Stock Summary */}
+            <div className="bg-info-5 border border-info-20 rounded-sm p-3">
+              <div className="flex items-center">
+                <i className="ri-calculator-line text-info text-lg mr-2"></i>
+                <div>
+                  <p className="text-sm font-medium text-info mb-1">Stock Summary</p>
+                  <p className="text-sm text-info">
+                    {stock} {product.selling_unit} × {product.selling_unit_quantity} pieces = {totalPieces} total pieces
+                  </p>
+                  <p className="text-xs text-text-light mt-1">
+                    Each {product.selling_unit} contains {product.selling_unit_quantity} pieces
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Footer Buttons: pt-4 border-t border-border mt-auto ensures separation and anchors it to the bottom */}
+        {/* Footer Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border mt-auto">
           <Button
             variant="outline"
@@ -130,7 +149,6 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
             variant="primary"
             disabled={loading || !!error || stock.trim() === ""}
             loading={loading}
-            icon="truck-line"
           >
             Update Stock
           </Button>

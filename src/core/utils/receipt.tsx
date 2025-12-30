@@ -1,57 +1,99 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { IOrder } from "../../core/interfaces/IOrder";
 import { DateFormatEnums, dateUtils } from "../../core/utils/date-format";
 import { IEntityItem } from "../interfaces/IEntity";
+import { IOrder } from "../interfaces/IOrder";
 
 export const formatCurrency = (amount: any, isTotal: boolean = false, currencySymbol = isTotal ? "GH₵" : "₵") => {
   return `${currencySymbol}${parseFloat(amount)?.toFixed(2)}`;
 };
 
-// Helper function to format quantity as fraction (e.g., 1.5 -> 1½)
-export const formatQuantityAsFraction = (quantity: number): string => {
-  const whole = Math.floor(quantity);
-  const decimal = quantity - whole;
-  
-  if (decimal === 0) {
-    return whole.toString();
+// Helper function to format quantity display based on quantity_type
+export const formatQuantityDisplay = (
+  quantity: number, 
+  quantityType: string, 
+  sellingUnitQuantity: number, 
+  sellingUnit: string
+): string => {
+  if (quantityType === 'units') {
+    // For units, just show number of boxes/units
+    return `${quantity} ${sellingUnit}${quantity > 1 ? 's' : ''}`;
+  } else {
+    // For pieces, calculate boxes and pieces
+    const fullUnits = Math.floor(quantity / sellingUnitQuantity);
+    const remainingPieces = quantity % sellingUnitQuantity;
+    
+    if (fullUnits > 0 && remainingPieces > 0) {
+      return `${fullUnits} ${sellingUnit}${fullUnits > 1 ? 's' : ''} ${remainingPieces} pc${remainingPieces > 1 ? 's' : ''}`;
+    } else if (fullUnits > 0) {
+      return `${fullUnits} ${sellingUnit}${fullUnits > 1 ? 's' : ''}`;
+    } else {
+      return `${quantity} pc${quantity > 1 ? 's' : ''}`;
+    }
   }
-  
-  // Convert common decimals to fractions
-  if (decimal === 0.5) {
-    return whole > 0 ? `${whole}½` : "½";
+};
+
+// Helper function to format quantity for the quantity column
+export const formatQuantityForColumn = (
+  quantity: number, 
+  quantityType: string, 
+  sellingUnitQuantity: number
+): string => {
+  if (quantityType === 'units') {
+    // For units, show the unit count directly
+    return quantity.toString();
+  } else {
+    // For pieces, show as decimal if applicable
+    const fullUnits = Math.floor(quantity / sellingUnitQuantity);
+    const remainingPieces = quantity % sellingUnitQuantity;
+    
+    if (fullUnits > 0 && remainingPieces > 0) {
+      return `${fullUnits}.${remainingPieces}`;
+    } else if (fullUnits > 0) {
+      return fullUnits.toString();
+    } else {
+      return quantity.toString();
+    }
   }
-  if (decimal === 0.25) {
-    return whole > 0 ? `${whole}¼` : "¼";
+};
+
+// Calculate the correct price for display based on quantity_type
+export const calculateDisplayPrice = (item: any): number => {
+  if (item.quantity_type === 'units') {
+    // For units, show the box/unit price (unit_price is the price per box)
+    return item.unit_price || 0;
+  } else {
+    // For pieces, show price per piece
+    return item.price_per_piece || item.unit_price_per_piece || 
+           (item.unit_price / (item.selling_unit_quantity || 1));
   }
-  if (decimal === 0.75) {
-    return whole > 0 ? `${whole}¾` : "¾";
+};
+
+// Calculate the correct total for an item
+export const calculateItemTotal = (item: any): number => {
+  if (item.quantity_type === 'units') {
+    // For units: unit_price × quantity (where quantity is number of boxes)
+    return (item.unit_price || 0) * item.quantity;
+  } else {
+    // For pieces: price_per_piece × quantity (where quantity is number of pieces)
+    const pricePerPiece = item.price_per_piece || item.unit_price_per_piece || 
+                         (item.unit_price / (item.selling_unit_quantity || 1));
+    return pricePerPiece * item.quantity;
   }
-  if (decimal === 0.33) {
-    return whole > 0 ? `${whole}⅓` : "⅓";
-  }
-  if (decimal === 0.67) {
-    return whole > 0 ? `${whole}⅔` : "⅔";
-  }
-  
-  // For other decimals, show as decimal with 1 decimal place
-  return quantity.toFixed(1);
 };
 
 export const generateReceiptHTML = (
   order: IOrder,
   storeDetails: IEntityItem
 ) => {
-  // Helper function to format measurement details like the PDF
+  // Helper function to format measurement details
   const formatMeasurementDetails = (item: any): string => {
     const parts: string[] = [];
     
-    // For the PDF example: [40x75g/box]
     if (item.selling_unit_quantity) {
-      parts.push(`${item.selling_unit_quantity}x`);
+      parts.push(`${item.selling_unit_quantity}X`);
     }
     
-    // Add content measurement and unit
     if (item.content_measurement && item.content_unit) {
       parts.push(`${item.content_measurement}${item.content_unit}`);
     } else if (item.content_measurement) {
@@ -60,7 +102,6 @@ export const generateReceiptHTML = (
       parts.push(item.content_unit);
     }
     
-    // Add selling unit with slash
     if (item.selling_unit) {
       return `${parts.join("")}/${item.selling_unit}`;
     }
@@ -81,10 +122,10 @@ export const generateReceiptHTML = (
       margin: 0 auto;
       box-sizing: border-box;
     ">
-      <!-- Header - Exactly like PDF -->
+      <!-- Header -->
       <div style="text-align: center; margin-bottom: 16px;">
         <h1 style="font-size: 16px; font-weight: bold; color: #000; margin-bottom: 2px; letter-spacing: 0.5px;">
-          ${storeDetails?.name || "GODDID MART"} – ${storeDetails?.branch }
+          ${storeDetails?.name || "GODDID MART"} – ${storeDetails?.branch || ""}
         </h1>
         <p style="font-size: 10px; color: #000; line-height: 1.2; margin: 0;">
           ${storeDetails?.address || "Main St 001, No1 Junction – Michel Camp"} | ${storeDetails?.phone_number || "233538828589"}
@@ -126,7 +167,7 @@ export const generateReceiptHTML = (
       <div style="margin-bottom: 8px;">
         <div style="display: grid; grid-template-columns: 2fr 1fr 0.5fr 1fr; font-weight: bold; font-size: 10px; margin-bottom: 8px; color: #000; padding-bottom: 4px;">
           <span>ITEM NAME</span>
-          <span style="text-align: right;">UNIT PRICE</span>
+          <span style="text-align: right;">PRICE</span>
           <span style="text-align: center;">QTY</span>
           <span style="text-align: right;">TOTAL</span>
         </div>
@@ -134,8 +175,24 @@ export const generateReceiptHTML = (
         ${order.items
           .map((item) => {
             const measurementDetails = formatMeasurementDetails(item);
-            const itemTotal = item.unit_price * item.quantity;
-            const formattedQty = formatQuantityAsFraction(item.quantity);
+            const displayPrice = calculateDisplayPrice(item);
+            const itemTotal = calculateItemTotal(item);
+            const quantityDisplay = formatQuantityDisplay(
+              item.quantity, 
+              item.quantity_type || 'pieces',
+              item.selling_unit_quantity || 1, 
+              item.selling_unit || 'unit'
+            );
+            const quantityForColumn = formatQuantityForColumn(
+              item.quantity,
+              item.quantity_type || 'pieces',
+              item.selling_unit_quantity || 1
+            );
+            
+            // Determine price unit label
+            const priceUnit = item.quantity_type === 'units' 
+              ? `/${item.selling_unit || 'unit'}` 
+              : '/pc';
 
             return `
             <div style="margin-bottom: 10px;">
@@ -143,27 +200,26 @@ export const generateReceiptHTML = (
                 <!-- Item Name -->
                 <div style="padding-right: 4px;">
                   <div style="font-weight: bold; color: #000; font-size: 11px;">
-                    ${item.short_name}
+                    ${item.short_name || item.product_name}
                   </div>
-                  ${
-                    measurementDetails
-                      ? `
+                  ${measurementDetails ? `
                     <div style="color: #000; font-size: 9px; margin-top: 1px;">
-                      [${measurementDetails}]
+                      ${measurementDetails}
                     </div>
-                  `
-                      : ""
-                  }
+                  ` : ''}
+                  <div style="color: #666; font-size: 9px; margin-top: 1px;">
+                    ${quantityDisplay}
+                  </div>
                 </div>
                 
-                <!-- Unit Price -->
+                <!-- Price -->
                 <div style="text-align: right; font-weight: 600; font-size: 11px; padding-right: 4px;">
-                  ${formatCurrency(item.unit_price)}
+                  ${formatCurrency(displayPrice)}${priceUnit}
                 </div>
                 
                 <!-- Quantity -->
-                <div style="text-align: center; color: #000; font-size: 11px;">
-                  ${formattedQty}
+                <div style="text-align: center; color: #000; font-size: 11px; font-weight: bold;">
+                  ${quantityForColumn}
                 </div>
                 
                 <!-- Total -->
@@ -187,12 +243,14 @@ export const generateReceiptHTML = (
             order.subtotal, true
           )}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="font-weight: 500; color: #000;">Discount</span>
-          <span style="font-weight: 500; color: #000;">-${formatCurrency(
-            order.discount, true
-          )}</span>
-        </div>
+        ${order.discount > 0 ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span style="font-weight: 500; color: #000;">Discount</span>
+            <span style="font-weight: 500; color: #000;">-${formatCurrency(
+              order.discount, true
+            )}</span>
+          </div>
+        ` : ''}
         <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;">
           <span style="font-weight: bold; font-size: 11px; color: #000;">TOTAL</span>
           <span style="font-weight: bold; font-size: 11px; color: #000;">${formatCurrency(
@@ -212,15 +270,23 @@ export const generateReceiptHTML = (
           )}</span>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-          <span style="font-weight: bold; font-size: 11px; color: #000;">Change</span>
-          <span style="font-weight: bold; font-size: 11px; color: #000;">${formatCurrency(
-            order.balance || (order.tendered_cash - order.total), true
-          )}</span>
+          <span style="font-weight: bold; font-size: 11px; color: #000;">
+            ${order.balance_label || (order.balance >= 0 ? "Change" : "Owings")}
+          </span>
+          <span style="font-weight: bold; font-size: 11px; color: ${order.balance < 0 ? '#dc2626' : '#000'};">
+            ${formatCurrency(Math.abs(order.balance), true)}
+          </span>
         </div>
-         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
           <span style="font-weight: bold; color: #000;">Payment Method</span>
-          <span style="font-weight: 500; color: #000;">${order.payment?.payment_method?.toUpperCase() || "MOBILE MONEY"}</span>
+          <span style="font-weight: 500; color: #000;">${(order.payment?.payment_method || "CASH").toUpperCase()}</span>
         </div>
+        ${order.payment?.transaction_id ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-weight: 500; color: #000;">Transaction ID:</span>
+            <span style="font-weight: 500; color: #000;">${order.payment.transaction_id}</span>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Footer -->
@@ -333,7 +399,7 @@ export const downloadReceiptAsPDF = async (
     const tempContainer = document.createElement("div");
     tempContainer.style.position = "absolute";
     tempContainer.style.left = "-9999px";
-    tempContainer.style.width = "80mm"; // Match receipt width
+    tempContainer.style.width = "80mm";
     tempContainer.style.backgroundColor = "white";
     tempContainer.style.fontFamily = "'Courier New', monospace";
     tempContainer.style.fontSize = "11px";
@@ -346,7 +412,7 @@ export const downloadReceiptAsPDF = async (
       backgroundColor: "#ffffff",
       useCORS: true,
       logging: false,
-      width: 300, // 80mm ≈ 300px
+      width: 300,
       height: tempContainer.scrollHeight,
     });
 
@@ -354,7 +420,7 @@ export const downloadReceiptAsPDF = async (
     document.body.removeChild(tempContainer);
 
     const imgData = canvas.toDataURL("image/png");
-    const imgWidth = 80; // 80mm width for receipt
+    const imgWidth = 80;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     const pdf = new jsPDF({

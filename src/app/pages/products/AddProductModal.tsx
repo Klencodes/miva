@@ -3,32 +3,8 @@ import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../../ui";
 import { appService } from "../../../core/services/app";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
-import { IProduct } from "../../../core/interfaces/IProduct";
+import { IBulkAddProduct, IProduct, ProductForm } from "../../../core/interfaces/IProduct";
 import { toast } from "sonner";
-
-interface ProductForm {
-  name: string;
-  category_name: string;
-  stock: string;
-  price: string;
-  content_measurement: string;
-  content_unit: string;
-  selling_unit_quantity: string;
-  selling_unit: string;
-  image_url: string;
-}
-
-interface IBulkAddProduct {
-  name: string;
-  category_name: string;
-  stock: string;
-  price: string;
-  content_measurement: string;
-  content_unit: string;
-  selling_unit_quantity: string;
-  selling_unit: string;
-  image_url?: string;
-}
 
 interface ProductFormModalProps {
   data?: any;
@@ -38,7 +14,8 @@ const initialFormState: ProductForm = {
   name: "",
   category_name: "",
   stock: "",
-  price: "",
+  price_per_unit: "",
+  price_per_piece: "",
   content_measurement: "",
   content_unit: "",
   selling_unit_quantity: "",
@@ -46,8 +23,7 @@ const initialFormState: ProductForm = {
   image_url: "",
 };
 
-const URL_PATTERN =
-  /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
+const URL_PATTERN = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
 
 const AddProductModal: React.FC<ProductFormModalProps> = () => {
   const { modalRef, modalData } = useModal();
@@ -85,7 +61,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         name: product.short_name || "",
         category_name: product.category_name || "",
         stock: product.stock?.toString() || "",
-        price: product.price?.toString() || "",
+        price_per_unit: product.price_per_unit?.toString() || "",
+        price_per_piece: product.price_per_piece?.toString() || "",
         content_measurement: product.content_measurement || "",
         content_unit: product.content_unit || "",
         selling_unit_quantity: product.selling_unit_quantity?.toString() || "",
@@ -104,6 +81,22 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       updateFormattedNamePreview(formData);
     }
   }, [modalData]);
+
+  // Auto-calculate price_per_piece when price_per_unit or selling_unit_quantity changes
+  useEffect(() => {
+    if (form.price_per_unit && form.selling_unit_quantity) {
+      const pricePerUnit = parseFloat(form.price_per_unit);
+      const sellingUnitQuantity = parseFloat(form.selling_unit_quantity);
+      
+      if (!isNaN(pricePerUnit) && !isNaN(sellingUnitQuantity) && sellingUnitQuantity > 0) {
+        const calculatedPricePerPiece = pricePerUnit / sellingUnitQuantity;
+        setForm(prev => ({
+          ...prev,
+          price_per_piece: calculatedPricePerPiece.toFixed(2)
+        }));
+      }
+    }
+  }, [form.price_per_unit, form.selling_unit_quantity]);
 
   // Update formatted name preview when relevant fields change
   useEffect(() => {
@@ -153,10 +146,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       newErrors.stock = "Valid stock quantity is required.";
     }
 
-    if (!data.price) {
-      newErrors.price = "Price is required.";
-    } else if (isNaN(Number(data.price)) || Number(data.price) < 0) {
-      newErrors.price = "Valid price is required.";
+    if (!data.price_per_unit) {
+      newErrors.price_per_unit = "Price per unit is required.";
+    } else if (isNaN(Number(data.price_per_unit)) || Number(data.price_per_unit) < 0) {
+      newErrors.price_per_unit = "Valid price per unit is required.";
     }
 
     if (data.image_url && !URL_PATTERN.test(data.image_url)) {
@@ -164,10 +157,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     }
 
     // Validate packaging fields
-    if (
-      data.selling_unit_quantity &&
-      isNaN(Number(data.selling_unit_quantity))
-    ) {
+    if (data.selling_unit_quantity && isNaN(Number(data.selling_unit_quantity))) {
       newErrors.selling_unit_quantity = "Must be a valid number.";
     }
 
@@ -221,9 +211,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     }
   }, []);
 
-  const onImageSelected = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
+  const onImageSelected = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -316,7 +304,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         'name',
         'category_name',
         'stock',
-        'price',
+        'price_per_unit',
+        'price_per_piece',
         'content_measurement',
         'content_unit',
         'selling_unit_quantity',
@@ -370,7 +359,6 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         const row: any = {};
         headers.forEach((header, index) => {
           const headerKey = header.toLowerCase();
-          console.log(headerKey, "headerKey><><><><><><><><><><><><><><")
           row[headerKey] = values[index] || '';
         });
 
@@ -383,8 +371,11 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         const stockNum = Number(row.stock);
         if (!row.stock || isNaN(stockNum) || stockNum < 0) rowErrors.push("Valid stock quantity is required");
         
-        const priceNum = Number(row.price);
-        if (!row.price || isNaN(priceNum) || priceNum < 0) rowErrors.push("Valid price is required");
+        const pricePerUnitNum = Number(row.price_per_unit);
+        if (!row.price_per_unit || isNaN(pricePerUnitNum) || pricePerUnitNum < 0) rowErrors.push("Valid price per unit is required");
+        
+        const pricePerPieceNum = Number(row.price_per_piece);
+        if (!row.price_per_piece || isNaN(pricePerPieceNum) || pricePerPieceNum < 0) rowErrors.push("Valid price per piece is required");
         
         if (!row.content_measurement?.trim()) rowErrors.push("Content measurement is required");
         if (!row.content_unit?.trim()) rowErrors.push("Content unit is required");
@@ -399,12 +390,12 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         if (rowErrors.length > 0) {
           validationErrors.push({ row: i + 1, errors: rowErrors });
         } else {
-          console.log(JSON.stringify(row))
           validProducts.push({
             name: row.name.trim(),
             category_name: row.category_name.trim(),
             stock: row.stock,
-            price: row.price,
+            price_per_unit: row.price_per_unit,
+            price_per_piece: row.price_per_piece,
             content_measurement: row.content_measurement.trim(),
             content_unit: row.content_unit.trim(),
             selling_unit_quantity: row.selling_unit_quantity,
@@ -422,7 +413,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       setCsvData(validProducts);
       setCsvValidationErrors(validationErrors);
       setCsvPreview(previewRows);
-      console.log(previewRows, '<<<<<<<previewRows>>>>>>>>>')
+      
       toast.success("CSV Parsed", {
         description: `Found ${validProducts.length} valid products. ${validationErrors.length} rows have errors.`,
       });
@@ -589,7 +580,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         name: form.name.trim(),
         category_name: form.category_name,
         stock: form.stock,
-        price: Number(form.price),
+        price_per_unit: Number(form.price_per_unit),
+        price_per_piece: Number(form.price_per_piece),
         content_measurement: form.content_measurement || undefined,
         content_unit: form.content_unit || undefined,
         selling_unit_quantity: form.selling_unit_quantity || undefined,
@@ -623,10 +615,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     }
 
     if (csvValidationErrors.length > 0) {
-        toast.warning(`There are ${csvValidationErrors.length} rows with errors. Do you want to proceed with the ${csvData.length} valid rows?`)
-      
-      
-     
+      toast.warning(`There are ${csvValidationErrors.length} rows with errors. Do you want to proceed with the ${csvData.length} valid rows?`)
     }
 
     await bulkAddProducts(csvData);
@@ -634,23 +623,16 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
   const isFormValid = Object.keys(validate(form)).length === 0;
 
-  // Add bulk add method to appService
-  useEffect(() => {
-    // Make sure appService has bulkAddProducts method
-    if (!appService.bulkAddProducts) {
-      appService.bulkAddProducts = async (data: any) => {
-        const response = await fetch('/api/products/bulk', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify(data),
-        });
-        return await response.json();
-      };
+  // Calculate price per piece for display
+  const calculatePricePerPiece = () => {
+    const pricePerUnit = parseFloat(form.price_per_unit) || 0;
+    const sellingUnitQuantity = parseFloat(form.selling_unit_quantity) || 1;
+    
+    if (pricePerUnit > 0 && sellingUnitQuantity > 0) {
+      return pricePerUnit / sellingUnitQuantity;
     }
-  }, []);
+    return 0;
+  };
 
   return (
     <div className="flex flex-col h-full w-full mx-auto px-2">
@@ -769,27 +751,68 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       onBlur={() => handleBlur("category_name")}
                       error={errors.category_name}
                     />
-
-                    {!isEditMode && (
-                      <Input
-                        label="Price(GHS)"
-                        type="number"
-                        step={parseFloat("0.01")}
-                        placeholder="0.00"
-                        required
-                        name="price"
-                        id="price"
-                        value={form.price}
-                        onChange={handleChange("price")}
-                        onBlur={() => handleBlur("price")}
-                        error={errors.price}
-                        min={parseFloat("0")}
-                      />
-                    )}
                   </div>
                 </div>
 
-                {/* Column 2: Packaging & Image */}
+                {/* Column 2: Pricing Information */}
+                <div className="space-y-4 border border-border rounded-sm p-4">
+                  <div className="flex items-center mb-4">
+                    <i className="ri-money-dollar-circle-line text-primary text-lg mr-2"></i>
+                    <h3 className="font-semibold text-text">Pricing Information</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Price Per Unit (Box/Pack)"
+                      type="number"
+                      step={0.01}
+                      placeholder="0.00"
+                      required
+                      name="price_per_unit"
+                      id="price_per_unit"
+                      value={form.price_per_unit}
+                      onChange={handleChange("price_per_unit")}
+                      onBlur={() => handleBlur("price_per_unit")}
+                      error={errors.price_per_unit}
+                      min={parseFloat("0")}
+                      hint="Price for entire selling unit (box/pack)"
+                    />
+
+                    <Input
+                      label="Price Per Piece"
+                      type="number"
+                      step={0.01}
+                      placeholder="0.00"
+                      required
+                      name="price_per_piece"
+                      id="price_per_piece"
+                      value={form.price_per_piece}
+                      onChange={handleChange("price_per_piece")}
+                      onBlur={() => handleBlur("price_per_piece")}
+                      min={parseFloat("0")}
+                      hint={`Calculated: GHS ${calculatePricePerPiece().toFixed(2)} per piece`}
+                    />
+                  </div>
+
+                  {form.price_per_unit && form.selling_unit_quantity && (
+                    <div className="bg-success-5 border border-success-20 rounded-sm p-3">
+                      <div className="flex items-center">
+                        <i className="ri-calculator-line text-success text-lg mr-2"></i>
+                        <div>
+                          <p className="text-sm font-medium text-success mb-1">Price Breakdown:</p>
+                          <p className="text-sm text-success">
+                            1 {form.selling_unit || "unit"} ({form.selling_unit_quantity || "1"} pieces) = GHS {form.price_per_unit}
+                          </p>
+                          <p className="text-sm text-success">
+                            1 piece = GHS {calculatePricePerPiece().toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 3: Packaging & Image */}
                 <div className="space-y-4 border border-border rounded-sm p-4">
                   <div className="flex items-center mb-4">
                     <i className="ri-package-line text-primary text-lg mr-2"></i>
@@ -849,7 +872,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       onChange={handleChange("selling_unit_quantity")}
                       onBlur={() => handleBlur("selling_unit_quantity")}
                       error={errors.selling_unit_quantity}
-                      min={parseFloat("0")}
+                      min={parseFloat("1")}
+                      hint="Number of pieces per selling unit"
                     />
 
                     <Input
@@ -1049,7 +1073,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                               <th className="p-2 text-left">Name</th>
                               <th className="p-2 text-left">Category</th>
                               <th className="p-2 text-left">Stock</th>
-                              <th className="p-2 text-left">Price</th>
+                              <th className="p-2 text-left">Price/Unit</th>
+                              <th className="p-2 text-left">Price/Piece</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1058,7 +1083,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                                 <td className="p-2">{row.name}</td>
                                 <td className="p-2">{row.category_name}</td>
                                 <td className="p-2">{row.stock}</td>
-                                <td className="p-2">{row.price}</td>
+                                <td className="p-2">{row.price_per_unit}</td>
+                                <td className="p-2">{row.price_per_piece}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1088,7 +1114,11 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                 </div>
                 <div className="flex items-center">
                   <i className="ri-checkbox-circle-fill text-success mr-2"></i>
-                  <span>price</span>
+                  <span>price_per_unit</span>
+                </div>
+                <div className="flex items-center">
+                  <i className="ri-checkbox-circle-fill text-success mr-2"></i>
+                  <span>price_per_piece</span>
                 </div>
                 <div className="flex items-center">
                   <i className="ri-checkbox-circle-fill text-success mr-2"></i>

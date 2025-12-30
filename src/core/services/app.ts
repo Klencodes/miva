@@ -458,6 +458,15 @@ export class AppService {
       throw new Error(handleError(error));
     }
   }
+
+ async updateStockInPieces(): Promise<IResponse> {
+    try {
+      return await apiService.post<IResponse>("products/sync-product-calculations");
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+
 }
 
 export const appService = new AppService();

@@ -1,36 +1,33 @@
 import { CartItem, IProduct } from "./IProduct";
+import { SelectOption } from "./ISelectOption";
 
 export interface ICartContentProps {
   cartItems: CartItem[];
   subTotal: number;
   total: number;
-  discount: string; // Changed from number to string
-  tenderedCash: string; // Changed from number to string
+  discount: string;
+  tenderedCash: string;
   paymentMethod: string;
   transactionId: string;
   balanceDue: number;
   balanceLabel: string;
   selectedCustomer: string | null;
-  paymentOptions: { value: string; label: string }[];
+  paymentOptions: SelectOption[];
   creatingOrder: boolean;
-  setDiscount: (discount: string) => void; // Changed to accept string
-  setTenderedCash: (cash: string) => void; // Changed to accept string
-  setPaymentMethod: (method: string) => void;
-  setTransactionId: (id: string) => void;
+  setDiscount: (value: string) => void;
+  setTenderedCash: (value: string) => void;
+  setPaymentMethod: (value: string) => void;
+  setTransactionId: (value: string) => void;
   removeFromCart: (product: IProduct) => void;
-  updateQuantity: (product: IProduct, newQuantity: number) => void;
+  updateQuantity: (product: IProduct, quantity: number) => void;
   openCustomerModal: () => void;
   submitOrder: () => void;
   holdOrder: () => void;
-  addToCart: (product: IProduct, quantity?: number) => void;
-  addQuarterToCart: (product: IProduct) => void;
-  addHalfToCart: (product: IProduct) => void;
-  addThreeQuarterToCart: (product: IProduct) => void;
+  openCustomQuantityModal: (product: IProduct, currentQuantity?: number, currentIsPieces?: boolean) => void;
   openHoldOrdersModal: () => void;
-  formErrors?: FormErrors; // Added
-  handleFormBlur?: (field: keyof OrderFormData) => void; // Added
+  formErrors?: FormErrors;
+  handleFormBlur?: (field: keyof OrderFormData) => void;
 }
-
 export interface OrderFormData {
   discount: string;
   tenderedCash: string;

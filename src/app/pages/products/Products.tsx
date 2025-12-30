@@ -29,10 +29,18 @@ export default function ProductsList() {
   const [totalCount, setTotalCount] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedAvailability, setSelectedAvailability] = useState<string>("all");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
   const [productExtraData, setProductExtraData] = useState<any>();
   const [categories, setCategories] = useState<SelectOption[]>([]);
+
+  // Availability filter options
+  const availabilityOptions: SelectOption[] = [
+    { label: "All", value: "all" },
+    { label: "Available", value: "available" },
+    { label: "Unavailable", value: "unavailable" },
+  ];
 
   // 2. PAGE TITLE: Update title
   usePageTitle("Inventory Products");
@@ -43,9 +51,18 @@ export default function ProductsList() {
     { label: "Products", url: "/products", isActive: true },
   ];
 
+  // 4. HELPER FUNCTION: Calculate price per piece
+  const calculatePricePerPiece = (product: IProduct): number => {
+    if (product.price_per_piece !== undefined && product.price_per_piece > 0) {
+      return product.price_per_piece;
+    }
+    if (product.price_per_unit && product.selling_unit_quantity) {
+      return product.price_per_unit / product.selling_unit_quantity;
+    }
+    return 0;
+  };
 
-
-  // 5. COLUMNS: Define columns for Products data
+  // 5. COLUMNS: Define columns for Products data - UPDATED FOR NEW PRICE FIELDS
   const columns: TableColumn[] = [
     {
       header: "Image",
@@ -68,41 +85,96 @@ export default function ProductsList() {
       type: "column",
     },
     {
-      header: "Unit Price",
-      // Assuming a currency (e.g., GHS) for display
+      header: "Pack Size",
       value: (item: IProduct) =>
-        `GHS${parseFloat(item.price.toString()).toFixed(2)}`,
+        `${item.selling_unit_quantity} x ${item.content_measurement}${item.content_unit}`,
       type: "column",
     },
     {
-      header: "Stock Quantity",
-      // Display stock with unit, rounded to 2 decimal places if needed
-      value: (item: IProduct) =>
-        `${formatQuantity(item.stock)} ${item.selling_unit}s`,
-      type: "column",
-    },
-    {
-      header: "Availability",
-      value: (item: IProduct) => (item.is_available ? "Available" : "Unavailable"),
-      type: "status",
-      // Define status classes based on availability
-      statusClasses: (item: IProduct) => {
-        return item.is_available
-          ? "bg-success-10 text-success"
-          : "bg-danger-10 text-danger";
+      header: "Box Price",
+      // Price per unit (box/pack)
+      value: (item: IProduct) => {
+        const price = item.price_per_unit || 0;
+        return (
+          <div className="text-right">
+            <div className="font-semibold text-text">
+              GHS {price.toFixed(2)}
+            </div>
+            <div className="text-xs text-text-light">
+              per {item.selling_unit}
+            </div>
+          </div>
+        );
       },
     },
     {
-      header: "Selling Unit",
-      value: (item: IProduct) =>
-        `${item.selling_unit_quantity} x ${item.content_measurement}${item.content_unit} per ${item.selling_unit}`,
-      type: "column",
+      header: "Piece Price",
+      // Price per individual piece
+      value: (item: IProduct) => {
+        const pricePerPiece = calculatePricePerPiece(item);
+        return (
+          <div className="text-right">
+            <div className="font-semibold text-text">
+              GHS {pricePerPiece.toFixed(2)}
+            </div>
+            <div className="text-xs text-text-light">
+              per piece
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      header: "Stock",
+      // Display stock with unit and total pieces
+      value: (item: IProduct) => {
+        const totalPieces = item.stock * item.selling_unit_quantity;
+        const stockLevel = item.stock;
+        const isLowStock = stockLevel <= 5;
+        const isOutOfStock = stockLevel === 0;
+        
+        return (
+          <div className={`${isOutOfStock ? 'text-danger' : isLowStock ? 'text-info' : 'text-text'}`}>
+            <div className="font-semibold">
+              {formatQuantity(item.stock)} {item.selling_unit}s
+            </div>
+            <div className="text-xs">
+              {totalPieces} pieces
+            </div>
+            {isLowStock && (
+              <div className="text-xs mt-1">
+                {isOutOfStock ? (
+                  <span className="text-danger font-medium">Out of stock</span>
+                ) : (
+                  <span className="text-info font-medium">Low stock</span>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Availability",
+      value: (item: IProduct) => item.is_available ? "Available" : "Unavailable",
+      type: "status",
+      // Define status classes based on availability
+      statusClasses: (item: IProduct) => {
+        if (item.is_available) {
+          return item.stock > 5 
+            ? "bg-success-10 text-success" 
+            : item.stock > 0 
+            ? "bg-info-10 text-info" 
+            : "bg-danger-10 text-danger";
+        }
+        return "bg-danger-10 text-danger";
+      },
     },
     {
       header: "Last Updated",
       value: (item: IProduct) => item.updated_at,
       type: "date",
-      format: "short_date_time", 
+      format: "short_date", 
     },
   ];
 
@@ -134,22 +206,22 @@ export default function ProductsList() {
       classes: "",
     },
     {
-        title: "Update Stock", 
-        handler: () => handleUpdateStock(item),
-        icon: "truck-line",
-        classes: "",
-    },
-      {
-        title: "Update Price", 
-        handler: () => handleUpdatePrice(item),
-        icon: "money-dollar-circle-line",
-        classes: "",
+      title: "Update Stock", 
+      handler: () => handleUpdateStock(item),
+      icon: "truck-line",
+      classes: "",
     },
     {
-        title: item.is_available ? "Mark Unavailable" : "Mark Available", 
-        handler: () => handleUpdateAvailability(item),
-        icon: item.is_available ? "forbid-line" : "check-double-line",
-        classes: item.is_available ? "text-warning" : "text-success",
+      title: "Update Price", 
+      handler: () => handleUpdatePrice(item),
+      icon: "money-dollar-circle-line",
+      classes: "",
+    },
+    {
+      title: item.is_available ? "Mark Unavailable" : "Mark Available", 
+      handler: () => handleUpdateAvailability(item),
+      icon: item.is_available ? "forbid-line" : "check-double-line",
+      classes: item.is_available ? "text-info" : "text-success",
     },
     {
       title: "View Details",
@@ -170,25 +242,48 @@ export default function ProductsList() {
     async (
       page: number,
       search: string,
-      category: string
+      category: string,
+      availability: string = "all"
     ): Promise<void> => {
       setLoading(true);
       try {
-        const payload = {
+        const payload: any = {
           page,
           search,
-          category,
+          category: category !== "all" ? category : undefined,
         };
 
-        // NOTE: Replace getOrders with getProducts
+        // Add availability filter if specified
+        if (availability !== "all") {
+          payload.is_available = availability === "available";
+        }
+
         const res = await appService.getProducts(payload);
 
         if (res.success) {
-          setProducts(res.results as IProduct[]);
+          // Ensure all products have price_per_piece calculated if not present
+          const productsWithPiecePrice = res.results.map((product: IProduct) => {
+            const pricePerPiece = calculatePricePerPiece(product);
+            const pricePerUnit = product.price_per_unit || 0;
+            
+            return {
+              ...product,
+              price_per_piece: pricePerPiece,
+              price_per_unit: pricePerUnit,
+              // Ensure price field exists for backward compatibility
+              price: pricePerUnit,
+            };
+          });
+          
+          setProducts(productsWithPiecePrice as IProduct[]);
           setTotalCount(res.count);
+        } else {
+          setProducts([]);
+          setTotalCount(0);
         }
       } catch (err: any) {
         console.error("Failed to fetch products:", err);
+        toast.error("Failed to load products");
         setProducts([]);
         setTotalCount(0);
       } finally {
@@ -198,38 +293,43 @@ export default function ProductsList() {
     []
   );
 
-  useEffect(()=> {
-    const getProductExttraData = async () => {
+  useEffect(() => {
+    const getProductExtraData = async () => {
       try {
         const res = await appService.getProductExtraInfo();
         if (res.success) {
           setProductExtraData(res.results);
-          setCategories([{ label: "All", value: "all" }, ...res.results?.categories?.map((category: any)=> category)]);
+          setCategories([
+            { label: "All", value: "all" }, 
+            ...res.results?.categories?.map((category: any) => category)
+          ]);
         }
       } catch (error) {
         console.error("Failed to fetch product categories:", error);
+        toast.error("Failed to load categories");
       }
     };
-    getProductExttraData();
-  }, [])
+    getProductExtraData();
+  }, []);
 
   // 9. EFFECT HOOKS: Adjust dependencies for category filter
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, selectedCategory]);
+  }, [debouncedSearchTerm, selectedCategory, selectedAvailability]);
 
   useEffect(() => {
-    fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory);
+    fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
   }, [
     fetchProductsData,
     currentPage,
     debouncedSearchTerm,
     selectedCategory,
+    selectedAvailability,
   ]);
 
   useEffect(() => {
     const handleRefresh = () => {
-      fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory);
+      fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
     };
 
     eventService.onRefresh(handleRefresh);
@@ -242,6 +342,7 @@ export default function ProductsList() {
     currentPage,
     debouncedSearchTerm,
     selectedCategory,
+    selectedAvailability,
   ]);
 
   // 10. HANDLERS: Update handler logic
@@ -257,6 +358,10 @@ export default function ProductsList() {
     setSelectedCategory(filterValue);
   };
 
+  const handleAvailabilityFilter = (filterValue: string) => {
+    setSelectedAvailability(filterValue);
+  };
+
   const onViewDetails = (item: IProduct) => {
     // openModal(ProductDetailsModal, {
     //   data: { title: "Product Details", product: item },
@@ -269,6 +374,7 @@ export default function ProductsList() {
     toast.custom((id) => (
       <div className="bg-card p-4 rounded-md shadow-lg">
         <div className="font-semibold text-text">Are you sure you want to delete this product?</div>
+        <p className="text-text-light text-sm mt-1">This action cannot be undone.</p>
         <div className="flex justify-end gap-2 mt-3">
           <Button
             variant="ghost"
@@ -301,147 +407,171 @@ export default function ProductsList() {
         </div>
       </div>
     ));
-  }
+  };
 
-  // 11. EXPORT LOGIC: Update export logic for Products
+  // 11. EXPORT LOGIC: Update export logic for Products - UPDATED FOR NEW PRICE FIELDS
   const handleExport = async (): Promise<void> => {
-  setExportLoading(true);
-  try {
-    const payload = {
-      page: currentPage,
-      search: debouncedSearchTerm,
-      category: selectedCategory,
-    };
-    
-    const res = await appService.getProducts(payload);
+    setExportLoading(true);
+    try {
+      const payload: any = {
+        page: currentPage,
+        search: debouncedSearchTerm,
+        category: selectedCategory !== "all" ? selectedCategory : undefined,
+      };
 
-    if (res.success && res.results && res.results.length > 0) {
-      const exportData: IProduct[] = res.results as IProduct[];
+      if (selectedAvailability !== "all") {
+        payload.is_available = selectedAvailability === "available";
+      }
+      
+      const res = await appService.getProducts(payload);
 
-      const csvHeaders = [
-        { key: "name", label: "name" },
-        { key: "category_name", label: "category_name" },
-        { key: "stock", label: "stock" },
-        { key: "price", label: "price" },
-        { key: "content_measurement", label: "content_measurement" },
-        { key: "content_unit", label: "content_unit" },
-        { key: "selling_unit_quantity", label: "selling_unit_quantity" },
-        { key: "selling_unit", label: "selling_unit" },
-        { key: "image_url", label: "image_url" }
-      ];
+      if (res.success && res.results && res.results.length > 0) {
+        const exportData: IProduct[] = res.results as IProduct[];
 
-      const csvData = exportData.map((product: IProduct) => {
-        return {
-          // name: product.name,
-          name: product.short_name,
-          category_name: product.category_name,
-          stock: String(product.stock),
-          price: product.price,
-          content_measurement: product.content_measurement,
-          content_unit: product.content_unit,
-          selling_unit_quantity: String(product.selling_unit_quantity),
-          selling_unit: product.selling_unit,
-          image_url: product.image_url || "https://placehold.co/300?text=No+Image"
-        };
-      });
+        const csvHeaders = [
+          { key: "name", label: "Product Name" },
+          { key: "category_name", label: "Category" },
+          { key: "stock", label: "Stock (Boxes)" },
+          { key: "total_pieces", label: "Total Pieces" },
+          { key: "price_per_unit", label: "Price Per Box (GHS)" },
+          { key: "price_per_piece", label: "Price Per Piece (GHS)" },
+          { key: "content_measurement", label: "Content Measurement" },
+          { key: "content_unit", label: "Content Unit" },
+          { key: "selling_unit_quantity", label: "Pieces Per Box" },
+          { key: "selling_unit", label: "Selling Unit" },
+          { key: "is_available", label: "Availability" },
+          { key: "image_url", label: "Image URL" }
+        ];
 
-      const csvContent = await convertToCSV(csvData, csvHeaders);
+        const csvData = exportData.map((product: IProduct) => {
+          const pricePerPiece = calculatePricePerPiece(product);
+          const pricePerUnit = product.price_per_unit || 0;
+          const totalPieces = product.stock * product.selling_unit_quantity;
+          
+          return {
+            name: product.short_name,
+            category_name: product.category_name,
+            stock: String(product.stock),
+            total_pieces: String(totalPieces),
+            price_per_unit: pricePerUnit.toFixed(2),
+            price_per_piece: pricePerPiece.toFixed(2),
+            content_measurement: product.content_measurement,
+            content_unit: product.content_unit,
+            selling_unit_quantity: String(product.selling_unit_quantity),
+            selling_unit: product.selling_unit,
+            is_available: product.is_available ? "Available" : "Unavailable",
+            image_url: product.image_url || "https://placehold.co/300?text=No+Image"
+          };
+        });
 
-      const timestamp = new Date().toISOString().split("T")[0];
-      const filename = `products-import-template-${timestamp}.csv`;
+        const csvContent = await convertToCSV(csvData, csvHeaders);
 
-      await downloadCSV(csvContent, filename);
+        const timestamp = new Date().toISOString().split("T")[0];
+        const filename = `products-inventory-${timestamp}.csv`;
 
-      toast.success(
-        "Export Successful",
+        await downloadCSV(csvContent, filename);
+
+        toast.success(
+          "Export Successful",
+          {
+            description: `${exportData.length} product records exported.`,
+          }
+        );
+      } else {
+        toast.error("No Data", { 
+          description: "No product records found to export.", 
+        });
+      }
+    } catch (error) {
+      console.error("Error exporting products:", error);
+      toast.error(
+        "Export Error",
         {
-          description: `${exportData.length} product records exported in import format.`,
+          description: "Failed to export products. Please try again.",
         }
       );
-    } else {
-      toast.error("No Data", { 
-        description: "No product records found to export.", 
-      });
+    } finally {
+      setExportLoading(false);
     }
-  } catch (error) {
-    console.error("Error exporting products:", error);
-    toast.error(
-      "Export Error",
-      {
-        description: "Failed to export products. Please try again.",
-      }
-    );
-  } finally {
-    setExportLoading(false);
-  }
-};
+  };
 
   const handleAddProduct = async () => {
-  const result = await openModal(AddProductModal, {
-    data: {product: null, productExtraData}, 
-    size: "3xl",
-    side: "right",
-    backdropClose: false,
-  });
-  if (result?.success && result?.product) {
-   fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory)
-  }
-};
+    const result = await openModal(AddProductModal, {
+      data: {product: null, productExtraData}, 
+      size: "3xl",
+      side: "right",
+      backdropClose: false,
+    });
+    if (result?.success && result?.product) {
+      fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
+    }
+  };
 
-const handleEditProduct = async (product: IProduct) => {
-  const result = await openModal(AddProductModal, {
-    data: {product: product, productExtraData}, 
-    size: "3xl",
-    side: "right",
-    backdropClose: false,
-  });
-  if(result?.success && result?.product){
-    if(products)
-      setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
-  }
-};
+  const handleBulkUpload = async () => {
+    const result = await openModal(AddProductModal, {
+      data: { productExtraData },
+      size: "3xl",
+      side: "right",
+      backdropClose: false,
+    });
+    if (result?.success) {
+      fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
+      toast.success("Bulk upload completed successfully");
+    }
+  };
 
-const handleUpdateStock = async (product: IProduct) => {
+  const handleEditProduct = async (product: IProduct) => {
+    const result = await openModal(AddProductModal, {
+      data: {product: product, productExtraData}, 
+      size: "3xl",
+      side: "right",
+      backdropClose: false,
+    });
+    if(result?.success && result?.product){
+      if(products)
+        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+    }
+  };
+
+  const handleUpdateStock = async (product: IProduct) => {
     const result = await openModal(UpdateStockModal, {
-        data: { product },
-        size: "md",
-        side: "right",
-        backdropClose: false,
+      data: { product },
+      size: "md",
+      side: "right",
+      backdropClose: false,
     });
     if (result?.success && result?.product) {
       if(products)
         setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
     }
-
   };
-const handleUpdatePrice = async (product: IProduct) => {
+
+  const handleUpdatePrice = async (product: IProduct) => {
     const result = await openModal(UpdatePriceModal, {
-        data: { product },
-        size: "md",
-        side: "right",
-        backdropClose: false,
+      data: { product },
+      size: "md",
+      side: "right",
+      backdropClose: false,
     });
     if (result?.success && result?.product) {
       if(products)
         setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
     }
-
   };
-
 
   const handleUpdateAvailability = async (product: IProduct) => {
     const result = await openModal(UpdateAvailabilityModal, {
-        data: { product },
-        size: "md",
-        side: "right",
-        backdropClose: false,
+      data: { product },
+      size: "md",
+      side: "right",
+      backdropClose: false,
     });
     if (result?.success && result?.product) {
-        if(products)
+      if(products)
         setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
-      }
-    
+    }
   };
+
   // 12. RENDER: Use updated props for DataTable
   return (
     <div className="flex flex-col h-full">
@@ -459,8 +589,10 @@ const handleUpdatePrice = async (product: IProduct) => {
             data={products}
             loading={loading}
             onSearch={handleSearch}
-            filterOptions={categories} 
+            filterOptions={categories}
             onFilter={handleFilter}
+            sortOptions={availabilityOptions}
+            onSort={handleAvailabilityFilter}
             page={currentPage}
             limit={10}
             count={totalCount}

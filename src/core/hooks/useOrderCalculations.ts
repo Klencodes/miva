@@ -1,3 +1,4 @@
+// useOrderCalculations.ts
 import { useMemo } from 'react';
 import { CartItem } from '../interfaces/IProduct';
 import { OrderFormData } from '../interfaces/IStore';
@@ -9,11 +10,29 @@ export const useOrderCalculations = (cartItems: CartItem[], orderFormData: Order
     return isNaN(num) ? 0 : num;
   };
 
+  // Helper function to calculate price per piece for an item
+const getPricePerPiece = (item: CartItem): number => {
+  // Use price_per_piece if available, otherwise calculate it
+  if (item.price_per_piece !== undefined && item.price_per_piece > 0) {
+    return parseFloat(item.price_per_piece.toFixed(2));
+  }
+  
+  // Calculate price per piece based on selling_unit_quantity
+  if (item.selling_unit_quantity > 0) {
+    return parseFloat((item.price_per_unit / item.selling_unit_quantity).toFixed(2));
+  }
+  
+  // Fallback to regular price
+  return parseFloat(item.price_per_unit.toFixed(2));
+};
+
   const subTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => {
-      const price = item.price || 0;
-      const quantity = item.quantity || 0;
-      return sum + (price * quantity);
+      // Calculate price per piece
+      const pricePerPiece = getPricePerPiece(item);
+      
+      // Multiply price per piece by the quantity in pieces
+      return sum + (pricePerPiece * item.quantity);
     }, 0);
   }, [cartItems]);
 
@@ -38,6 +57,19 @@ export const useOrderCalculations = (cartItems: CartItem[], orderFormData: Order
     return balanceDue >= 0 ? "Change" : "Owings";
   }, [balanceDue]);
 
+  // Additional helper: Calculate total quantity in pieces
+  const totalPieces = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  }, [cartItems]);
+
+  // Additional helper: Calculate total in terms of selling units (boxes)
+  const totalSellingUnits = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const sellingUnitQuantity = item.selling_unit_quantity || 1;
+      return sum + (item.quantity / sellingUnitQuantity);
+    }, 0);
+  }, [cartItems]);
+
   return {
     subTotal,
     discountValue,
@@ -45,21 +77,16 @@ export const useOrderCalculations = (cartItems: CartItem[], orderFormData: Order
     tenderedCashValue,
     balanceDue,
     balanceLabel,
+    totalPieces,
+    totalSellingUnits,
+    getPricePerPiece,
     // Formatted versions
     formattedSubTotal: parseFloat(subTotal.toFixed(2)),
     formattedDiscount: parseFloat(discountValue.toFixed(2)),
     formattedTotal: parseFloat(total.toFixed(2)),
     formattedTenderedCash: parseFloat(tenderedCashValue.toFixed(2)),
-    formattedBalanceDue: parseFloat(balanceDue.toFixed(2)),
+    formattedBalanceDue: parseFloat(Math.abs(balanceDue).toFixed(2)),
+    formattedTotalPieces: parseFloat(totalPieces.toFixed(2)),
+    formattedTotalSellingUnits: parseFloat(totalSellingUnits.toFixed(2)),
   };
 };
-
-// Usage in your component:
-// const {
-//   subTotal,
-//   discountValue,
-//   total,
-//   tenderedCashValue,
-//   balanceDue,
-//   balanceLabel,
-// } = useOrderCalculations(cartItems, orderFormData);

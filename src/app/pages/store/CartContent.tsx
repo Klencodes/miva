@@ -1,5 +1,6 @@
 import { Roles } from "../../../core/enums/roles";
 import { getStoredItem, USER_KEY } from "../../../core/hooks/useStore";
+import { CartItem } from "../../../core/interfaces/IProduct";
 import { ICartContentProps } from "../../../core/interfaces/IStore";
 import { IUser } from "../../../core/interfaces/IUser";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
@@ -27,10 +28,7 @@ const CartContent: React.FC<ICartContentProps> = ({
   openCustomerModal,
   submitOrder,
   holdOrder,
-  addToCart,
-  addQuarterToCart,
-  addHalfToCart,
-  addThreeQuarterToCart,
+  openCustomQuantityModal,
   openHoldOrdersModal,
   formErrors = {},
   handleFormBlur,
@@ -54,6 +52,57 @@ const CartContent: React.FC<ICartContentProps> = ({
   // Convert discount to number for display calculations
   const discountValue = parseFloat(discount || "0") || 0;
   const user = getStoredItem<IUser | null>(USER_KEY, null);
+
+  // Helper function to get price per piece
+  const getPricePerPiece = (item: CartItem): number => {
+    if (item.price_per_piece !== undefined && item.price_per_piece > 0) {
+      return item.price_per_piece;
+    }
+    return (item.price_per_unit || 0) / (item.selling_unit_quantity || 1);
+  };
+
+  // Helper function to calculate item subtotal
+  const getItemSubtotal = (item: CartItem): number => {
+    if (item.isPieces !== undefined && !item.isPieces) {
+      // Quantity is in selling units
+      return (item.price_per_unit || 0) * item.quantity;
+    } else {
+      // Quantity is in pieces
+      return getPricePerPiece(item) * item.quantity;
+    }
+  };
+
+  // Helper function to format quantity display
+  const formatQuantityDisplay = (item: CartItem): string => {
+    if (item.isPieces !== undefined && !item.isPieces) {
+      // Quantity is in selling units
+      const units = item.quantity;
+      const pieces = units * (item.selling_unit_quantity || 1);
+      return `${formatQuantity(units)} ${item.selling_unit}${units !== 1 ? 's' : ''} (${formatQuantity(pieces)} pieces)`;
+    } else {
+      // Quantity is in pieces
+      const sellingUnitQty = item.selling_unit_quantity || 1;
+      const fullUnits = Math.floor(item.quantity / sellingUnitQty);
+      const remainingPieces = item.quantity % sellingUnitQty;
+      
+      if (fullUnits > 0 && remainingPieces > 0) {
+        return `${formatQuantity(item.quantity)} pieces (${fullUnits} ${item.selling_unit}${fullUnits > 1 ? 's' : ''} ${remainingPieces} piece${remainingPieces > 1 ? 's' : ''})`;
+      } else if (fullUnits > 0) {
+        return `${formatQuantity(item.quantity)} pieces (${fullUnits} ${item.selling_unit}${fullUnits > 1 ? 's' : ''})`;
+      } else {
+        return `${formatQuantity(item.quantity)} piece${item.quantity > 1 ? 's' : ''}`;
+      }
+    }
+  };
+
+  // Helper function to format price per unit display
+  const formatPricePerUnitDisplay = (item: CartItem): string => {
+    if (item.isPieces !== undefined && !item.isPieces) {
+      return `GHC ${(item.price_per_unit || 0).toFixed(2)}/${item.selling_unit}`;
+    } else {
+      return `GHC ${getPricePerPiece(item).toFixed(2)}/piece`;
+    }
+  };
 
   return (
     <div className="rounded-sm shadow-sm flex flex-col h-full bg-card">
@@ -126,129 +175,66 @@ const CartContent: React.FC<ICartContentProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {cartItems.map((item) => (
-              <div key={item.id} className="bg-card rounded-sm shadow-sm p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3 flex-1">
-                    <img
-                      src={item.image_url}
-                      alt={item.image_alt}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-text text-sm truncate">
-                        {item.short_name} -{" "}
-                        <span className="text-text-light text-xs">
-                          ({item.selling_unit_quantity}x
-                          {item.content_measurement}
-                          {item.content_unit})
-                        </span>
-                      </h4>
-                      <p className="text-primary font-semibold text-xs">
-                        GHC {item.price?.toFixed(2)}/{item.selling_unit}
-                      </p>
+            {cartItems.map((item) => {
+              const itemSubtotal = getItemSubtotal(item);
+              
+              return (
+                <div key={item.id} className="bg-card rounded-sm shadow-sm p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3 flex-1">
+                      <img
+                        src={item.image_url}
+                        alt={item.image_alt}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-text text-sm truncate">
+                          {item.short_name}
+                        </h4>
+                        <div className="flex items-center gap-2 text-xs text-text-light">
+                          <span>
+                            {item.selling_unit_quantity}x{item.content_measurement}
+                            {item.content_unit} per {item.selling_unit}
+                          </span>
+                          <span className="text-primary">
+                            {formatPricePerUnitDisplay(item)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-light">
+                          {formatQuantityDisplay(item)}
+                        </p>
+                        {item.isPieces !== undefined && (
+                          <p className="text-xs text-text-light">
+                            Type: {item.isPieces ? 'Pieces' : `${item.selling_unit}s`}
+                          </p>
+                        )}
+                      </div>
                     </div>
+
+                    <button
+                      onClick={() => removeFromCart(item)}
+                      className="text-danger transition-colors duration-200"
+                    >
+                      <i className="ri-trash-3-line"></i>
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => removeFromCart(item)}
-                    className="text-danger transition-colors duration-200"
-                  >
-                    <i className="ri-trash-3-line"></i>
-                  </button>
-                </div>
-
-                {/* Quantity Controls */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  {/* Quantity Controls */}
+                  <div className="flex items-center justify-between mb-2">
                     <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateQuantity(item, item.quantity - 1);
-                      }}
+                      onClick={() => openCustomQuantityModal(item, item.quantity, item.isPieces)}
                       size="sm"
-                      variant="ghost"
                     >
-                      -
+                      Change Quantity
                     </Button>
-                    <span className="text-sm flex flex-row text-center font-semibold text-text">
-                      {formatQuantity(item.quantity)} {item.selling_unit}
+
+                    <span className="font-semibold text-text">
+                      GHC {itemSubtotal.toFixed(2)}
                     </span>
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateQuantity(item, item.quantity + 1);
-                      }}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      +
-                    </Button>
                   </div>
-
-                  <span className="font-semibold text-text">
-                    GHC {((item.price || 0) * (item.quantity || 0))?.toFixed(2)}
-                  </span>
                 </div>
-
-                {/* Fractional Quick Actions */}
-                <div
-                  className={
-                    item.selling_unit_quantity > 1
-                      ? "grid grid-cols-4 gap-1.5"
-                      : "grid grid-cols-1 gap-1.5"
-                  }
-                >
-                  {item?.selling_unit_quantity > 1 && (
-                    <button
-                      onClick={() => addQuarterToCart(item)}
-                      className={`flex-1 text-xs py-1 px-2 rounded ${
-                        item.quantity === 0.25
-                          ? "bg-primary text-white"
-                          : "bg-background text-text"
-                      }`}
-                    >
-                      ¼
-                    </button>
-                  )}
-
-                  {item?.selling_unit_quantity > 1 && (
-                    <button
-                      onClick={() => addHalfToCart(item)}
-                      className={`flex-1 text-xs py-1 px-2 rounded ${
-                        item.quantity === 0.5
-                          ? "bg-primary text-white"
-                          : "bg-background text-text"
-                      }`}
-                    >
-                      ½
-                    </button>
-                  )}
-                  {item?.selling_unit_quantity > 1 && (
-                    <button
-                      onClick={() => addThreeQuarterToCart(item)}
-                      className={`flex-1 text-xs py-1 px-2 rounded ${
-                        item.quantity === 0.75
-                          ? "bg-primary text-white"
-                          : "bg-background text-text"
-                      }`}
-                    >
-                      ¾
-                    </button>
-                  )}
-                  <button
-                    onClick={() => addToCart(item)}
-                    className={`flex-1 text-xs py-1 px-2 rounded ${
-                      item.quantity === 1
-                        ? "bg-primary text-white"
-                        : "bg-background text-text"
-                    }`}
-                  >
-                    1
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -258,43 +244,43 @@ const CartContent: React.FC<ICartContentProps> = ({
         <div className="">
           {/* Summary */}
           <div className="space-y-2 mb-1">
-          {user?.role === Roles.SUPER_ADMIN && 
-            <>
-            <div className="flex justify-between text-sm">
-              <span className="text-text-light">Subtotal</span>
-              <span className="font-semibold text-text">
-                GHC {(subTotal || 0)?.toFixed(2)}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-text-light">Discount</span>
-
-              <div className="flex items-center gap-4">
-                <div className="w-24 -mb-5">
-                  <Input
-                    type="number"
-                    size="sm"
-                    value={discount}
-                    onChange={(value) => handleDiscountChange(value as string)}
-                    onBlur={() => handleFormBlur?.("discount")}
-                    min={0}
-                    step={0.01}
-                    placeholder="0.00"
-                    error={formErrors?.discount}
-                    disabled={[Roles.STAFF, Roles.SALES, Roles.ADMIN].includes(user!.role)}
-                  />
+            {user?.role === Roles.SUPER_ADMIN && (
+              <>
+                <div className="flex justify-between text-sm pt-2 px-3">
+                  <span className="text-text-light">Subtotal</span>
+                  <span className="font-semibold text-text">
+                    GHC {(subTotal || 0)?.toFixed(2)}
+                  </span>
                 </div>
 
-                <div className="text-danger font-semibold w-24 text-right">
-                  - GHC {discountValue.toFixed(2)}
-                </div>
-              </div>
-            </div>
-            </>
-            }
+                <div className="flex justify-between items-center text-sm px-3">
+                  <span className="text-text-light">Discount</span>
 
-            <div className="flex justify-between text-lg font-bold border-t border-border-light">
+                  <div className="flex items-center gap-4">
+                    <div className="w-24 -mb-5">
+                      <Input
+                        type="number"
+                        size="sm"
+                        value={discount}
+                        onChange={(value) => handleDiscountChange(value as string)}
+                        onBlur={() => handleFormBlur?.("discount")}
+                        min={0}
+                        step={0.01}
+                        placeholder="0.00"
+                        error={formErrors?.discount}
+                        disabled={[Roles.STAFF, Roles.SALES, Roles.ADMIN].includes(user!.role)}
+                      />
+                    </div>
+
+                    <div className="text-danger font-semibold w-24 text-right">
+                      - GHC {discountValue.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-between text-lg font-bold border-t border-border-light pt-2 px-3">
               <span className="text-text">Total</span>
               <span className="text-primary">
                 GHC {(total || 0)?.toFixed(2)}
@@ -304,7 +290,6 @@ const CartContent: React.FC<ICartContentProps> = ({
 
           {/* Payment Details */}
           <div className="space-y-3 mb-3 p-3 rounded-sm bg-background">
-            {/* <h3 className="text-md font-semibold text-text mb-2">Payment</h3> */}
             <div className="flex gap-3">
               <div className="flex-1 -mb-4">
                 <Input
@@ -334,31 +319,16 @@ const CartContent: React.FC<ICartContentProps> = ({
             </div>
 
             {paymentMethod !== "Cash" && (
-              <>
-                <div className="flex-1 -mb-4">
-                  <Input
-                    type="number"
-                    label="Tendered Cash"
-                    value={tenderedCash}
-                    onChange={handleTenderedCashChange}
-                    onBlur={() => handleFormBlur?.("tenderedCash")}
-                    min={0}
-                    step={0.01}
-                    placeholder="0.00"
-                    error={formErrors?.tenderedCash}
-                  />
-                </div>
-                <div className="flex-1 -mb-4">
-                  <Input
-                    type="text"
-                    label="Transaction ID / Reference"
-                    value={transactionId}
-                    onChange={setTransactionId}
-                    onBlur={() => handleFormBlur?.("transactionId")}
-                    error={formErrors?.transactionId}
-                  />
-                </div>
-              </>
+              <div className="flex-1 -mb-4">
+                <Input
+                  type="text"
+                  label="Transaction ID / Reference"
+                  value={transactionId}
+                  onChange={setTransactionId}
+                  onBlur={() => handleFormBlur?.("transactionId")}
+                  error={formErrors?.transactionId}
+                />
+              </div>
             )}
 
             <div
@@ -384,7 +354,7 @@ const CartContent: React.FC<ICartContentProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-row justify-between w-full gap-2">
+          <div className="flex flex-row justify-between w-full gap-2 px-3 pb-2">
             <Button
               onClick={submitOrder}
               disabled={

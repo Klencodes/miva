@@ -15,32 +15,58 @@ const UpdatePriceModal: React.FC<UpdatePriceModalProps> = () => {
   const { modalRef, modalData } = useModal();
   const product: IProduct = modalData.product;
 
-  const [price, setPrice] = useState<string>(product.price.toString());
-  const [error, setError] = useState<string | null>(null);
+  const [pricePerUnit, setPricePerUnit] = useState<string>(product.price_per_unit?.toString() || "");
+  const [pricePerPiece, setPricePerPiece] = useState<string>(product.price_per_piece?.toString() || "");
+  const [errors, setErrors] = useState<{pricePerUnit?: string; pricePerPiece?: string}>({});
   const [loading, setLoading] = useState(false);
 
-  const validate = useCallback((value: string): string | null => {
-    if (value === undefined || value === null || value.trim() === "") {
-      return "Price quantity is required.";
+  const validate = useCallback((): boolean => {
+    const newErrors: {pricePerUnit?: string; pricePerPiece?: string} = {};
+    
+    // Validate price per unit
+    if (!pricePerUnit || pricePerUnit.trim() === "") {
+      newErrors.pricePerUnit = "Price per unit is required.";
+    } else {
+      const num = Number(pricePerUnit);
+      if (isNaN(num) || num < 0) {
+        newErrors.pricePerUnit = "Price per unit must be a non-negative number.";
+      }
     }
-    const num = Number(value);
-    if (isNaN(num) || num < 0) {
-      return "Price must be a non-negative number.";
-    }
-    return null;
-  }, []);
 
-  const handleChange = (value: string) => {
-    setPrice(value);
-    setError(validate(value));
+    // Validate price per piece
+    if (!pricePerPiece || pricePerPiece.trim() === "") {
+      newErrors.pricePerPiece = "Price per piece is required.";
+    } else {
+      const num = Number(pricePerPiece);
+      if (isNaN(num) || num < 0) {
+        newErrors.pricePerPiece = "Price per piece must be a non-negative number.";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [pricePerUnit, pricePerPiece]);
+
+  const handlePricePerUnitChange = (value: string) => {
+    setPricePerUnit(value);
+    // Clear error for this field when user starts typing
+    if (errors.pricePerUnit) {
+      setErrors(prev => ({ ...prev, pricePerUnit: undefined }));
+    }
+  };
+
+  const handlePricePerPieceChange = (value: string) => {
+    setPricePerPiece(value);
+    // Clear error for this field when user starts typing
+    if (errors.pricePerPiece) {
+      setErrors(prev => ({ ...prev, pricePerPiece: undefined }));
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationError = validate(price);
-    if (validationError) {
-      setError(validationError);
+    if (!validate()) {
       return;
     }
 
@@ -49,37 +75,63 @@ const UpdatePriceModal: React.FC<UpdatePriceModalProps> = () => {
     try {
       const payload = {
         product_id: product.id,
-        price: Number(price),
+        price_per_unit: Number(pricePerUnit),
+        price_per_piece: Number(pricePerPiece),
       };
 
       const response = await appService.updateProductPrice(payload);
 
       if (!response.success) {
-        throw new Error(response.message || "Failed to update price.");
+        throw new Error(response.message || "Failed to update prices.");
       }
 
-      toast.success("Price Updated", {
-        description: `${product.short_name} price is now GHS${Number(price).toFixed(2)}.`,
+      toast.success("Prices Updated", {
+        description: `${product.short_name} prices updated successfully.`,
       });
 
       // Close the modal and return the updated product
       modalRef!.close({ success: true, product: response.results });
     } catch (error: any) {
       toast.error("Update Failed", {
-        description: error.message || "Could not update product price.",
+        description: error.message || "Could not update product prices.",
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // Calculate the ratio to show if prices are consistent
+  const calculateRatio = () => {
+    const unitPrice = Number(pricePerUnit) || 0;
+    const piecePrice = Number(pricePerPiece) || 0;
+    const sellingUnitQuantity = product.selling_unit_quantity || 1;
+    
+    if (unitPrice > 0 && piecePrice > 0 && sellingUnitQuantity > 0) {
+      const expectedPiecePrice = unitPrice / sellingUnitQuantity;
+      const difference = Math.abs(piecePrice - expectedPiecePrice);
+      
+      if (difference > 0.01) {
+        return {
+          warning: true,
+          message: `Expected price per piece: GHS ${expectedPiecePrice.toFixed(2)} (${sellingUnitQuantity} pieces × GHS ${piecePrice.toFixed(2)} = GHS ${(piecePrice * sellingUnitQuantity).toFixed(2)})`
+        };
+      }
+    }
+    
+    return {
+      warning: false,
+      message: `Prices are consistent: ${sellingUnitQuantity} × GHS ${piecePrice.toFixed(2)} = GHS ${unitPrice.toFixed(2)}`
+    };
+  };
+
+  const ratioInfo = calculateRatio();
+
   return (
-    // Main container uses flex-col and h-full
     <div className="flex flex-col h-full w-full px-2">
-      {/* Header (Sticky at top of content/modal) */}
+      {/* Header */}
       <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 z-10 bg-card">
         <div className="flex flex-col">
-          <h2 className="text-xl text-text font-bold">Update Price</h2>
+          <h2 className="text-xl text-text font-bold">Update Prices</h2>
           <h4 className="text-md text-text-light mt-1">
             Product: <span className="font-medium text-text">{product.short_name}</span>
           </h4>
@@ -93,28 +145,64 @@ const UpdatePriceModal: React.FC<UpdatePriceModalProps> = () => {
         </button>
       </div>
 
-      {/* Form container uses flex-col and flex-1 to occupy remaining height */}
+      {/* Form */}
       <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
         
-        {/* Scrollable Content Area: flex-1 ensures it takes all available vertical space, overflow-y-auto allows scrolling. */}
+        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto space-y-6 pt-4">
-          <Input
-            label={`New Price (${product.price})`}
-            type="number"
-            step={0.01}
-            placeholder="0.00"
-            required
-            name="price"
-            id="price"
-            value={price}
-            onChange={handleChange}
-            error={error || undefined}
-            min={0}
-            hint={`Current Price: GHS${product.price.toFixed(2)}`}
-          />
+          <div className="space-y-4">
+            <Input
+              label={`Price Per ${product.selling_unit}`}
+              type="number"
+              step={0.01}
+              placeholder="0.00"
+              required
+              name="price_per_unit"
+              id="price_per_unit"
+              value={pricePerUnit}
+              onChange={handlePricePerUnitChange}
+              error={errors.pricePerUnit}
+              min={0}
+              hint={`Current: GHS ${product.price_per_unit?.toFixed(2)} per ${product.selling_unit}`}
+            />
+
+            <Input
+              label="Price Per Piece"
+              type="number"
+              step={0.01}
+              placeholder="0.00"
+              required
+              name="price_per_piece"
+              id="price_per_piece"
+              value={pricePerPiece}
+              onChange={handlePricePerPieceChange}
+              error={errors.pricePerPiece}
+              min={0}
+              hint={`Current: GHS ${(product.price_per_piece || product.price_per_unit / product.selling_unit_quantity).toFixed(2)} per piece`}
+            />
+
+            {pricePerUnit && pricePerPiece && (
+              <div className={`p-3 rounded-sm ${ratioInfo.warning ? 'bg-warning-5 border border-warning-20' : 'bg-success-5 border border-success-20'}`}>
+                <div className="flex items-start">
+                  <i className={`${ratioInfo.warning ? 'ri-error-warning-line text-warning' : 'ri-checkbox-circle-line text-success'} text-lg mr-2 mt-0.5`}></i>
+                  <div>
+                    <p className={`text-sm font-medium ${ratioInfo.warning ? 'text-warning' : 'text-success'} mb-1`}>
+                      {ratioInfo.warning ? 'Price Consistency Check' : 'Prices are Consistent'}
+                    </p>
+                    <p className={`text-sm ${ratioInfo.warning ? 'text-warning' : 'text-success'}`}>
+                      {ratioInfo.message}
+                    </p>
+                    <p className="text-xs text-text-light mt-1">
+                      {product.selling_unit_quantity} pieces per {product.selling_unit}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Footer Buttons: pt-4 border-t border-border mt-auto ensures separation and anchors it to the bottom */}
+        {/* Footer Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border mt-auto">
           <Button
             variant="outline"
@@ -127,11 +215,10 @@ const UpdatePriceModal: React.FC<UpdatePriceModalProps> = () => {
           <Button
             type="submit"
             variant="primary"
-            disabled={loading || !!error || price.trim() === ""}
+            disabled={loading}
             loading={loading}
-            icon="truck-line"
           >
-            Update Price
+            Update Prices
           </Button>
         </div>
       </form>

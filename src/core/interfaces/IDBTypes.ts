@@ -1,5 +1,5 @@
 
-import { IOrderItem, IOrderPayment } from "./IOrder";
+import { IOrderItem, IPaymentInfo } from "./IOrder";
 import { IResponse } from "./IResponse";
 
 export interface DBProduct {
@@ -39,7 +39,7 @@ export interface DBOrder {
   balance: number;
   balance_label?: string;
   items: IOrderItem[];
-  payment: IOrderPayment;
+  payment: IPaymentInfo;
   entity_id?: string;
   status?: 'pending' | 'synced' | 'failed' | 'hold';
   created_at?: string;

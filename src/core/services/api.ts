@@ -82,12 +82,12 @@ class ApiService {
         } else {
           delete config.headers["X-Entity-Context"];
         }
-        this._logRequest(
-            config.method ? config.method.toUpperCase() : 'UNKNOWN', 
-            config.url || 'UNKNOWN_URL', 
-            config.data, 
-            config.headers 
-        );
+        // this._logRequest(
+        //     config.method ? config.method.toUpperCase() : 'UNKNOWN', 
+        //     config.url || 'UNKNOWN_URL', 
+        //     config.data, 
+        //     config.headers 
+        // );
 
         return config;
       },
