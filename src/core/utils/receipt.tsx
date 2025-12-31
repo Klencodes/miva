@@ -76,224 +76,293 @@ export const calculateItemTotal = (item: any): number => {
     return (item.unit_price || 0) * item.quantity;
   } else {
     // For pieces: price_per_piece × quantity (where quantity is number of pieces)
-    const pricePerPiece = item.price_per_piece || item.unit_price_per_piece || 
-                         (item.unit_price / (item.selling_unit_quantity || 1));
+    const pricePerPiece = item.price_per_piece || item.unit_price_per_piece ||  (item.unit_price / (item.selling_unit_quantity || 1));
     return pricePerPiece * item.quantity;
   }
+};
+export const generateReceiptHTML2 = (
+  order: IOrder,
+  storeDetails: IEntityItem
+) => {
+  const formatMeasurementDetails = (item: any): string => {
+    const parts: string[] = [];
+    if (item.selling_unit_quantity > 1) parts.push(`${item.selling_unit_quantity}X`);
+    if (item.content_measurement) parts.push(`${item.content_measurement}${item.content_unit || ""}`);
+    return parts.join("");
+  };
+
+  return `
+    <div class="receipt-container" style="
+      width: 290px;
+      padding: 10px;
+      background: white;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      color: #000;
+      margin: 0 auto;
+      box-sizing: border-box;
+      line-height: 1.4;
+    ">
+      <div style="text-align: center; margin-bottom: 15px;">
+        <div style="font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px;">
+          ${storeDetails?.name || "GODDID MART"}
+        </div>
+        <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
+          ${storeDetails?.branch || "MAIN BRANCH"}
+        </div>
+        <div style="font-size: 10px;">
+          ${storeDetails?.address || ""}<br/>
+          TEL: ${storeDetails?.phone_number || ""}
+        </div>
+      </div>
+
+      <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+
+      <div style="font-size: 11px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span>DATE:</span>
+          <span>${dateUtils.formatDate(order.created_at, DateFormatEnums.DATE_TIME)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>RCPT#:</span>
+          <span style="font-weight: bold;">${order.code}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>CUST:</span>
+          <span>${(order.customer || "WALK-IN").toUpperCase()}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>CASHIER:</span>
+          <span>${(order.cashier || "STAFF").toUpperCase()}</span>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid #000; margin: 5px 0;"></div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+        <thead>
+          <tr style="border-bottom: 1px solid #000;">
+            <th style="text-align: left; padding: 4px 0;">ITEM</th>
+            <th style="text-align: right; padding: 4px 0;">PRICE</th>
+            <th style="text-align: center; padding: 4px 0;">QTY</th>
+            <th style="text-align: right; padding: 4px 0;">TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${order.items.map((item) => {
+            const displayPrice = calculateDisplayPrice(item);
+            const itemTotal = calculateItemTotal(item);
+            const measurement = formatMeasurementDetails(item);
+            const qtyColumn = formatQuantityForColumn(
+              item.quantity,
+              item.quantity_type || 'pieces',
+              item.selling_unit_quantity || 1
+            );
+            
+            return `
+              <tr>
+                <td colspan="4" style="padding-top: 8px; font-weight: bold; text-transform: uppercase;">
+                  ${item.short_name || item.product_name}
+                </td>
+              </tr>
+              <tr style="border-bottom: 1px dashed #eee;">
+                <td style="font-size: 9px; color: #444; vertical-align: top;">
+                  ${measurement}
+                </td>
+                <td style="text-align: right; vertical-align: top;">${displayPrice.toFixed(2)}</td>
+                <td style="text-align: center; vertical-align: top;">${qtyColumn}</td>
+                <td style="text-align: right; font-weight: bold; vertical-align: top;">${itemTotal.toFixed(2)}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+
+      <div style="border-top: 1px solid #000; margin: 10px 0 5px 0;"></div>
+
+      <div style="font-size: 12px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>SUBTOTAL:</span>
+          <span>${order.subtotal.toFixed(2)}</span>
+        </div>
+        ${order.discount > 0 ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+            <span>DISCOUNT:</span>
+            <span>-${order.discount.toFixed(2)}</span>
+          </div>
+        ` : ''}
+        <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 15px; margin-top: 5px; border-top: 1px double #000; padding-top: 5px;">
+          <span>TOTAL:</span>
+          <span>GH₵ ${order.total.toFixed(2)}</span>
+        </div>
+      </div>
+
+      <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+
+      <div style="font-size: 11px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span>TENDERED:</span>
+          <span>${order.tendered_cash.toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>${(order.balance_label || "CHANGE").toUpperCase()}:</span>
+          <span>${Math.abs(order.balance).toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px;">
+          <span>METHOD:</span>
+          <span>${(order.payment?.payment_method || "CASH").toUpperCase()}</span>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 25px; border-top: 1px solid #000; padding-top: 10px;">
+        <div style="font-weight: bold; font-size: 13px;">THANK YOU FOR YOUR BUSINESS!</div>
+        <div style="font-size: 10px; margin-top: 5px;">Items sold in good condition are not returnable.</div>
+        <div style="margin-top: 10px; font-size: 9px;">Software by Goddid Systems</div>
+      </div>
+    </div>
+  `;
 };
 
 export const generateReceiptHTML = (
   order: IOrder,
   storeDetails: IEntityItem
 ) => {
-  // Helper function to format measurement details
   const formatMeasurementDetails = (item: any): string => {
     const parts: string[] = [];
-    
-    if (item.selling_unit_quantity) {
-      parts.push(`${item.selling_unit_quantity}X`);
-    }
-    
-    if (item.content_measurement && item.content_unit) {
-      parts.push(`${item.content_measurement}${item.content_unit}`);
-    } else if (item.content_measurement) {
-      parts.push(item.content_measurement);
-    } else if (item.content_unit) {
-      parts.push(item.content_unit);
-    }
-    
-    if (item.selling_unit) {
-      return `${parts.join("")}/${item.selling_unit}`;
-    }
-    
+    if (item.selling_unit_quantity > 1) parts.push(`${item.selling_unit_quantity}X`);
+    if (item.content_measurement) parts.push(`${item.content_measurement}${item.content_unit || ""}`);
     return parts.join("");
   };
 
   return `
     <div class="receipt-container" style="
-      width: 100%;
-      max-width: 305px;
-      padding: 16px;
+      width: 290px;
+      padding: 10px;
       background: white;
-      font-family: Courier;
-      font-size: 11px;
-      color: #1f2937;
-      word-break: break-word;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      color: #000;
       margin: 0 auto;
       box-sizing: border-box;
+      line-height: 1.4;
     ">
-      <!-- Header -->
-      <div style="text-align: center; margin-bottom: 16px;">
-        <h1 style="font-size: 16px; font-weight: bold; color: #000; margin-bottom: 2px; letter-spacing: 0.5px;">
-          ${storeDetails?.name || "GODDID MART"} – ${storeDetails?.branch || ""}
-        </h1>
-        <p style="font-size: 10px; color: #000; line-height: 1.2; margin: 0;">
-          ${storeDetails?.address || "Main St 001, No1 Junction – Michel Camp"} | ${storeDetails?.phone_number || "233538828589"}
-        </p>
-        <div style="width: 100%; height: 1px; background: #000; margin: 8px 0 12px 0;"></div>
+      <div style="text-align: center; margin-bottom: 15px;">
+        <div style="font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px;">
+          ${storeDetails?.name || "GODDID MART"}
+        </div>
+        <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
+          ${storeDetails?.branch || "MAIN BRANCH"}
+        </div>
+        <div style="font-size: 10px;">
+          ${storeDetails?.address || ""}<br/>
+          TEL: ${storeDetails?.phone_number || ""}
+        </div>
       </div>
 
-      <!-- SALES RECEIPT Title -->
-      <p style="font-weight: bold; font-size: 11px; text-align: center; margin: 0 0 12px 0; color: #000;">
-        SALES RECEIPT
-      </p>
+      <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
 
-      <!-- Transaction Details -->
-      <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="color: #000;">Date/Time:</span>
-          <span style="font-weight: 600;">${dateUtils.formatDate(
-            order.created_at,
-            DateFormatEnums.DATE_TIME
-          )}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="color: #000;">Order Code:</span>
-          <span style="font-weight: bold;">${order.code}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="color: #000;">Customer:</span>
-          <span style="font-weight: 600;">${order.customer || "Walk-in Customer"}</span>
+      <div style="font-size: 11px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span>DATE:</span>
+          <span>${dateUtils.formatDate(order.created_at, DateFormatEnums.DATE_TIME)}</span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-          <span style="color: #000;">Cashier:</span>
-          <span style="font-weight: 600;">${order.cashier || "Joshua S"}</span>
+          <span>RCPT#:</span>
+          <span style="font-weight: bold;">${order.code}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>CUST:</span>
+          <span>${(order.customer || "WALK-IN").toUpperCase()}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>CASHIER:</span>
+          <span>${(order.cashier || "STAFF").toUpperCase()}</span>
         </div>
       </div>
 
-      <div style="border-top: 1px dashed #000; margin: 8px 0;"></div>
+      <div style="border-top: 1px solid #000; margin: 5px 0;"></div>
 
-      <!-- Items Header -->
-      <div style="margin-bottom: 8px;">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 0.5fr 1fr; font-weight: bold; font-size: 10px; margin-bottom: 8px; color: #000; padding-bottom: 4px;">
-          <span>ITEM NAME</span>
-          <span style="text-align: right;">PRICE</span>
-          <span style="text-align: center;">QTY</span>
-          <span style="text-align: right;">TOTAL</span>
-        </div>
-        
-        ${order.items
-          .map((item) => {
-            const measurementDetails = formatMeasurementDetails(item);
+      <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+        <thead>
+          <tr style="border-bottom: 1px solid #111111ff;">
+            <th style="text-align: left; padding: 4px 0;">ITEM</th>
+            <th style="text-align: right; padding: 4px 0;">PRICE</th>
+            <th style="text-align: right; padding: 4px 0;">QTY</th>
+            <th style="text-align: right; padding: 4px 0;">TOTAL</th>
+          </tr>
+        </thead>
+       <tbody>
+          ${order.items.map((item, index) => {
             const displayPrice = calculateDisplayPrice(item);
             const itemTotal = calculateItemTotal(item);
-            const quantityDisplay = formatQuantityDisplay(
-              item.quantity, 
-              item.quantity_type || 'pieces',
-              item.selling_unit_quantity || 1, 
-              item.selling_unit || 'unit'
-            );
-            const quantityForColumn = formatQuantityForColumn(
+            const measurement = formatMeasurementDetails(item);
+            const qtyColumn = formatQuantityForColumn(
               item.quantity,
               item.quantity_type || 'pieces',
               item.selling_unit_quantity || 1
             );
-            
-            // Determine price unit label
-            const priceUnit = item.quantity_type === 'units' 
-              ? `/${item.selling_unit || 'unit'}` 
-              : '/pc';
+
+            const isLastItem = index === order.items.length - 1;
+            const borderStyle = isLastItem ? '' : 'border-bottom: 1px dashed #dedadaff;';
 
             return `
-            <div style="margin-bottom: 10px;">
-              <div style="display: grid; grid-template-columns: 2fr 1fr 0.5fr 1fr; align-items: start; margin-bottom: 4px;">
-                <!-- Item Name -->
-                <div style="padding-right: 4px;">
-                  <div style="font-weight: bold; color: #000; font-size: 11px;">
-                    ${item.short_name || item.product_name}
-                  </div>
-                  ${measurementDetails ? `
-                    <div style="color: #000; font-size: 9px; margin-top: 1px;">
-                      ${measurementDetails}
-                    </div>
-                  ` : ''}
-                  <div style="color: #666; font-size: 9px; margin-top: 1px;">
-                    ${quantityDisplay}
-                  </div>
-                </div>
-                
-                <!-- Price -->
-                <div style="text-align: right; font-weight: 600; font-size: 11px; padding-right: 4px;">
-                  ${formatCurrency(displayPrice)}${priceUnit}
-                </div>
-                
-                <!-- Quantity -->
-                <div style="text-align: center; color: #000; font-size: 11px; font-weight: bold;">
-                  ${quantityForColumn}
-                </div>
-                
-                <!-- Total -->
-                <div style="text-align: right; font-weight: bold; color: #000; font-size: 11px;">
+              <tr>
+                <td colspan="4" style="padding-top: 12px; padding-bottom: 4px; font-weight: bold; text-transform: uppercase; font-size: 11px;">
+                  ${item.short_name || item.product_name}
+                </td>
+              </tr>
+              <tr style="${borderStyle}">
+                <td style="font-size: 9px; color: #444; vertical-align: top; padding-bottom: 8px;">
+                  ${measurement || '&nbsp;'}
+                </td>
+                <td style="text-align: right; vertical-align: top; padding-bottom: 8px;">
+                  ${formatCurrency(displayPrice)}
+                </td>
+                <td style="text-align: right; vertical-align: top; padding-bottom: 8px; font-weight: bold;">
+                  ${qtyColumn}
+                </td>
+                <td style="text-align: right; vertical-align: top; padding-bottom: 8px; font-weight: bold;">
                   ${formatCurrency(itemTotal)}
-                </div>
-              </div>
-            </div>
-          `;
-          })
-          .join("")}
-      </div>
+                </td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
 
-      <div style="border-top: 1px dashed #000; margin: 8px 0;"></div>
-
-      <!-- Financial Summary -->
-      <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="font-weight: 500; color: #000;">Subtotal</span>
-          <span style="font-weight: 500; color: #000;">${formatCurrency(
-            order.subtotal, true
-          )}</span>
-        </div>
+      <div style="font-size: 12px;">
         ${order.discount > 0 ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-weight: 500; color: #000;">Discount</span>
-            <span style="font-weight: 500; color: #000;">-${formatCurrency(
-              order.discount, true
-            )}</span>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+            <span>DISCOUNT:</span>
+            <span>-${order.discount.toFixed(2)}</span>
           </div>
         ` : ''}
-        <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;">
-          <span style="font-weight: bold; font-size: 11px; color: #000;">TOTAL</span>
-          <span style="font-weight: bold; font-size: 11px; color: #000;">${formatCurrency(
-            order.total, true
-          )}</span>
+        <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 15px; margin-top: 5px; border-top: 1px double #000; padding-top: 5px;">
+          <span>TOTAL:</span>
+          <span>GH₵ ${order.total.toFixed(2)}</span>
         </div>
       </div>
 
-      <div style="border-top: 1px dashed #000; margin: 8px 0;"></div>
+      <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
 
-      <!-- Payment Summary -->
-      <div style="text-align: center; margin-bottom: 16px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="font-weight: 500; color: #000;">Amount Tendered</span>
-          <span style="font-weight: 500; color: #000;">${formatCurrency(
-            order.tendered_cash, true
-          )}</span>
+      <div style="font-size: 11px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span>TENDERED:</span>
+          <span>${order.tendered_cash.toFixed(2)}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-          <span style="font-weight: bold; font-size: 11px; color: #000;">
-            ${order.balance_label || (order.balance >= 0 ? "Change" : "Owings")}
-          </span>
-          <span style="font-weight: bold; font-size: 11px; color: ${order.balance < 0 ? '#dc2626' : '#000'};">
-            ${formatCurrency(Math.abs(order.balance), true)}
-          </span>
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>${(order.balance_label || "CHANGE").toUpperCase()}:</span>
+          <span>${Math.abs(order.balance).toFixed(2)}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-          <span style="font-weight: bold; color: #000;">Payment Method</span>
-          <span style="font-weight: 500; color: #000;">${(order.payment?.payment_method || "CASH").toUpperCase()}</span>
+        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px;">
+          <span>METHOD:</span>
+          <span>${(order.payment?.payment_method || "CASH").toUpperCase()}</span>
         </div>
-        ${order.payment?.transaction_id ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span style="font-weight: 500; color: #000;">Transaction ID:</span>
-            <span style="font-weight: 500; color: #000;">${order.payment.transaction_id}</span>
-          </div>
-        ` : ''}
       </div>
 
-      <!-- Footer -->
-      <div style="text-align: center; margin-top: 16px;">
-        <h3 style="font-size: 16px; font-weight: bold; color: #000; margin-bottom: 8px;">
-          THANK YOU!
-        </h3>
+      <div style="text-align: center; margin-top: 10px; border-top: 1px solid #000; padding-top: 10px;">
+        <div style="font-weight: bold; font-size: 12px;">THANK YOU!</div>
+        <div style="margin-top: 10px; font-size: 9px;">Software by ShineTech</div>
       </div>
     </div>
   `;
