@@ -237,7 +237,7 @@ export const generateReceiptHTML = (
   return `
     <div class="receipt-container" style="
       width: 290px;
-      padding: 10px;
+      padding: 0px 10px 10px 10px;
       background: white;
       font-family: 'Courier New', Courier, monospace;
       font-size: 12px;
@@ -246,13 +246,27 @@ export const generateReceiptHTML = (
       box-sizing: border-box;
       line-height: 1.4;
     ">
+      <!-- Logo -->
+      <div style="text-align: center; ">
+        <img 
+          src="/icons/logo-icon.png" 
+          alt="Store Logo" 
+          style="
+            width: 120px;
+            height: 80px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 8px auto;
+          "
+        />
+      </div>
+
+      <!-- Store Header -->
       <div style="text-align: center; margin-bottom: 15px;">
         <div style="font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px;">
           ${storeDetails?.name || "GODDID MART"}
         </div>
-        <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
-          ${storeDetails?.branch || "MAIN BRANCH"}
-        </div>
+      
         <div style="font-size: 10px;">
           ${storeDetails?.address || ""}<br/>
           TEL: ${storeDetails?.phone_number || ""}
@@ -291,7 +305,7 @@ export const generateReceiptHTML = (
             <th style="text-align: right; padding: 4px 0;">TOTAL</th>
           </tr>
         </thead>
-       <tbody>
+        <tbody>
           ${order.items.map((item, index) => {
             const displayPrice = calculateDisplayPrice(item);
             const itemTotal = calculateItemTotal(item);
