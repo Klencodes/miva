@@ -363,7 +363,7 @@ const ModernStore: React.FC = () => {
           if (serverResponse.success) {
             const serverOrderId = serverResponse?.results?.id;
             const serverCode = serverResponse?.results?.code;
-            const serverCreatedAt = serverResponse.results?.created_at;
+            // const serverCreatedAt = serverResponse.results?.created_at;
 
             if (localOrderId && serverOrderId) {
               await indexedDBService.updateOrderStatus(
@@ -375,8 +375,8 @@ const ModernStore: React.FC = () => {
               orderDataForPrint = {
                 ...orderDataForPrint,
                 id: serverOrderId,
-                code: serverCode,
-                created_at: serverCreatedAt
+                // code: serverCode,
+                // created_at: serverCreatedAt
               };
             }
 
