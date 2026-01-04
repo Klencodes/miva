@@ -42,7 +42,7 @@ const formatDate = (date: string | Date | null | undefined, format: string = "me
   // For output examples, assume date = "2025-10-03T19:00:46.994875Z" and locale is 'en-US'
 
   if (isNaN(dateObj.getTime())) {
-    return "Invalid Date"; // Output: "Invalid Date"
+    return "N/A"; // Output: "N/A"
   }
 
   const options: Intl.DateTimeFormatOptions = {};
