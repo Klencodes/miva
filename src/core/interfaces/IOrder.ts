@@ -13,6 +13,7 @@ export interface IOrderItem {
   selling_unit: string;
   image_url: string;
   image_alt: string;
+  isPieces?: boolean;
 }
 
 export interface IPaymentInfo {

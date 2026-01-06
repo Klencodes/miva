@@ -304,7 +304,7 @@ const ModernStore: React.FC = () => {
     const datePart = `${yy}${MM}${dd}`;
     const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
 
-    return `G-${datePart}${randomPart}`;
+    return `G${datePart}${randomPart}`;
   };
 
   const {
@@ -362,7 +362,7 @@ const ModernStore: React.FC = () => {
 
           if (serverResponse.success) {
             const serverOrderId = serverResponse?.results?.id;
-            const serverCode = serverResponse?.results?.code;
+            // const serverCode = serverResponse?.results?.code;
             // const serverCreatedAt = serverResponse.results?.created_at;
 
             if (localOrderId && serverOrderId) {
