@@ -1,44 +1,70 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../../ui";
 import { appService } from "../../../core/services/app";
 import { IProduct } from "../../../core/interfaces/IProduct";
 import { toast } from "sonner";
 
-interface UpdateStockModalProps {
-  data: {
-    product: IProduct;
-  };
-}
-
-const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
+const UpdateStockModal: React.FC = () => {
   const { modalRef, modalData } = useModal();
   const product: IProduct = modalData.product;
 
-  const [stock, setStock] = useState<string>(product.stock.toString());
+  // Default to units mode
+  const [mode, setMode] = useState<"units" | "pieces">("units");
+
+  // Primary input values
+  const [unitsInput, setUnitsInput] = useState<string>(product.stock.toString());
+  const [piecesInput, setPiecesInput] = useState<string>("");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const piecesPerUnit = product.selling_unit_quantity || 1;
+
+  // Sync pieces input when units change (and vice versa)
+  useEffect(() => {
+    if (mode === "units") {
+      const units = parseFloat(unitsInput) || 0;
+      setPiecesInput((units * piecesPerUnit).toString());
+    }
+  }, [unitsInput, mode, piecesPerUnit]);
+
+  useEffect(() => {
+    if (mode === "pieces") {
+      const pieces = parseFloat(piecesInput) || 0;
+      const units = pieces / piecesPerUnit;
+      setUnitsInput(units.toFixed(4).replace(/\.?0+$/, "")); // Clean trailing zeros
+    }
+  }, [piecesInput, mode, piecesPerUnit]);
+
   const validate = useCallback((value: string): string | null => {
-    if (value === undefined || value === null || value.trim() === "") {
+    if (!value || value.trim() === "") {
       return "Stock quantity is required.";
     }
-    const num = Number(value);
+    const num = parseFloat(value);
     if (isNaN(num) || num < 0) {
       return "Stock must be a non-negative number.";
     }
     return null;
   }, []);
 
-  const handleChange = (value: string) => {
-    setStock(value);
+  const handleUnitsChange = (value: string) => {
+    setUnitsInput(value);
+    setMode("units");
+    setError(validate(value));
+  };
+
+  const handlePiecesChange = (value: string) => {
+    setPiecesInput(value);
+    setMode("pieces");
     setError(validate(value));
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationError = validate(stock);
+    const valueToValidate = mode === "units" ? unitsInput : piecesInput;
+    const validationError = validate(valueToValidate);
     if (validationError) {
       setError(validationError);
       return;
@@ -47,9 +73,14 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
     setLoading(true);
 
     try {
+      const newStockInUnits = parseFloat(unitsInput);
+      const newStockInPieces  = parseFloat(piecesInput);
+
       const payload = {
         product_id: product.id,
-        stock: Number(stock),
+        stock: newStockInUnits, // API expects stock in units/boxes
+        // update_in_pieces: true,
+        // stock_in_pieces: newStockInPieces // API expects stock in units/boxes
       };
 
       const response = await appService.updateProductStock(payload);
@@ -58,11 +89,10 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
         throw new Error(response.message || "Failed to update stock.");
       }
 
-      toast.success("Stock Updated", {
-        description: `${product.short_name} stock is now ${Number(stock).toFixed(2)} ${product.selling_unit}.`,
+      toast.success("Stock Updated Successfully", {
+        description: `${product.short_name} stock updated to ${newStockInUnits.toFixed(2)} ${product.selling_unit} (${(newStockInUnits * piecesPerUnit).toFixed(0)} pieces).`,
       });
 
-      // Close the modal and return the updated product
       modalRef!.close({ success: true, product: response.results });
     } catch (error: any) {
       toast.error("Update Failed", {
@@ -73,8 +103,9 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
     }
   };
 
-  // Calculate total pieces
-  const totalPieces = product.selling_unit_quantity * Number(stock);
+  // Live calculations
+  const currentUnits = parseFloat(unitsInput) || 0;
+  const currentPieces = currentUnits * piecesPerUnit;
 
   return (
     <div className="flex flex-col h-full w-full px-2">
@@ -97,44 +128,66 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
 
       {/* Form */}
       <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
-        
-        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto space-y-6 pt-4">
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Units Input */}
             <Input
-              label={`New Stock Quantity (${product.selling_unit})`}
+              label={`Stock in ${product.selling_unit} ${product.selling_unit_quantity}`}
               type="number"
-              step={1}
+              step={parseFloat("0.01")}
               placeholder="0"
-              required
-              name="stock"
-              id="stock"
-              value={stock}
-              onChange={handleChange}
-              error={error || undefined}
+              value={unitsInput}
+              onChange={handleUnitsChange}
+              error={mode === "units" ? error || undefined : undefined}
               min={0}
-              hint={`Current Stock: ${product.stock.toFixed(2)} ${product.selling_unit}`}
+              hint={`Current: ${product.stock.toFixed(2)} ${product.selling_unit}`}
             />
 
-            {/* Stock Summary */}
-            <div className="bg-info-5 border border-info-20 rounded-sm p-3">
-              <div className="flex items-center">
-                <i className="ri-calculator-line text-info text-lg mr-2"></i>
-                <div>
-                  <p className="text-sm font-medium text-info mb-1">Stock Summary</p>
-                  <p className="text-sm text-info">
-                    {stock} {product.selling_unit} × {product.selling_unit_quantity} pieces = {totalPieces} total pieces
-                  </p>
-                  <p className="text-xs text-text-light mt-1">
-                    Each {product.selling_unit} contains {product.selling_unit_quantity} pieces
-                  </p>
+            {/* Pieces Input */}
+            <Input
+              label="Stock in Pieces"
+              type="number"
+              step={parseFloat("1")}
+              placeholder="0"
+              value={piecesInput}
+              onChange={handlePiecesChange}
+              error={mode === "pieces" ? error || undefined : undefined}
+              min={0}
+              hint={`Current: ${(product.stock * piecesPerUnit).toFixed(0)} pieces`}
+            />
+
+            {/* Live Summary */}
+            <div className="bg-info-5 border border-info-20 rounded-sm p-4">
+              <div className="flex items-start">
+                <i className="ri-calculator-line text-info text-xl mr-3 mt-0.5"></i>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-info mb-2">Live Stock Summary</p>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-text">
+                      <span className="font-medium">{currentUnits.toFixed(4).replace(/\.?0+$/, "")}</span> {product.selling_unit}
+                      {" → "}
+                      <span className="font-medium">{currentPieces.toFixed(0)}</span> pieces
+                    </p>
+                    <p className="text-text-light text-xs mt-2">
+                      Each {product.selling_unit} contains <strong>{piecesPerUnit}</strong> piece{piecesPerUnit > 1 ? "s" : ""}
+                    </p>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* Info Note */}
+            <div className="text-xs text-text-light bg-background-50 p-3 rounded-sm border border-border">
+              <p>
+                <i className="ri-information-line mr-1"></i>
+                You can update stock by entering either boxes/units <strong>or</strong> individual pieces.
+                The values will sync automatically.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Footer Buttons */}
+        {/* Footer */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border mt-auto">
           <Button
             variant="outline"
@@ -147,7 +200,7 @@ const UpdateStockModal: React.FC<UpdateStockModalProps> = () => {
           <Button
             type="submit"
             variant="primary"
-            disabled={loading || !!error || stock.trim() === ""}
+            disabled={loading || !!error || !unitsInput.trim()}
             loading={loading}
           >
             Update Stock

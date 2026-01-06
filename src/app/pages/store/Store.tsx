@@ -317,6 +317,36 @@ const ModernStore: React.FC = () => {
     getPricePerPiece,
   } = useOrderCalculations(cartItems, orderFormData);
 
+  // Optimistically deduct stock locally after a successful order
+  const deductStockLocally = (soldItems: CartItem[]) => {
+    setProducts((prevProducts) =>
+      prevProducts.map((product) => {
+        const soldItem = soldItems.find((item) => item.id === product.id);
+        if (!soldItem) return product;
+
+        const sellingUnitQty = product.selling_unit_quantity || 1;
+        let soldPieces = 0;
+
+        if (soldItem.isPieces) {
+          soldPieces = soldItem.quantity;
+        } else {
+          soldPieces = soldItem.quantity * sellingUnitQty;
+        }
+
+        const currentPieces = product.stock_in_pieces || product.stock * sellingUnitQty;
+        const newPieces = Math.max(0, currentPieces - soldPieces);
+        const newUnits = Math.floor(newPieces / sellingUnitQty);
+
+        return {
+          ...product,
+          stock: newUnits,
+          stock_in_pieces: newPieces,
+          is_available: newPieces > 0,
+        };
+      })
+    );
+  };
+
   const submitOrder = async () => {
     if (cartItems.length === 0) {
       toast.error("Cart is empty");
@@ -362,9 +392,7 @@ const ModernStore: React.FC = () => {
 
           if (serverResponse.success) {
             const serverOrderId = serverResponse?.results?.id;
-            // const serverCode = serverResponse?.results?.code;
-            // const serverCreatedAt = serverResponse.results?.created_at;
-
+            
             if (localOrderId && serverOrderId) {
               await indexedDBService.updateOrderStatus(
                 localOrderId,
@@ -375,8 +403,6 @@ const ModernStore: React.FC = () => {
               orderDataForPrint = {
                 ...orderDataForPrint,
                 id: serverOrderId,
-                // code: serverCode,
-                // created_at: serverCreatedAt
               };
             }
 
@@ -403,46 +429,69 @@ const ModernStore: React.FC = () => {
   };
 
   const prepareOrder = () => {
-  return {
-    cashier: `${user?.first_name} ${user?.last_name?.[0] || ""}`.trim() || "Cashier",
-    customer: selectedCustomer || "Walk-in Customer",
-    total: parseFloat(total?.toFixed(2)) || 0,
-    subtotal: parseFloat(subTotal?.toFixed(2)) || 0,
-    discount: discountValue || 0,
-    tendered_cash: tenderedCashValue || 0,
-    balance: parseFloat(balanceDue?.toFixed(2)) || 0,
-    balance_label: balanceLabel,
-    code: generateOrderCode(),
-    items: cartItems.map((item) => {
-      const pricePerPiece = getPricePerPiece(item);
-      const isPiece = item.isPieces; // or item.quantity_type === 'pieces'
-      
-      return {
-        product_id: item.id,
-        quantity: item.quantity || 0,
-        // Backend expects 'pieces' or 'units'
-        quantity_type: isPiece ? 'pieces' : 'units',
-        // If units, use price_per_unit; if pieces, use price_per_piece
-        unit_price: isPiece ? pricePerPiece : (item.price_per_unit || pricePerPiece * item.selling_unit_quantity),
-        price_per_piece: pricePerPiece,
-        product_name: item.name || "",
-        short_name: item.short_name || "",
-        category_name: item.category_name || "",
-        content_measurement: item.content_measurement || "",
-        content_unit: item.content_unit || "",
-        selling_unit_quantity: item.selling_unit_quantity || 1,
-        selling_unit: item.selling_unit || "",
-        image_url: item.image_url || "",
-        image_alt: item.image_alt || "",
-      };
-    }),
-    payment: {
-      payment_method: orderFormData.paymentMethod || "Cash",
-      amount_paid: tenderedCashValue || 0,
-      transaction_id: orderFormData.transactionId || "",
-    },
+    return {
+      cashier: `${user?.first_name} ${user?.last_name?.[0] || ""}`.trim() || "Cashier",
+      customer: selectedCustomer || "Walk-in Customer",
+      total: parseFloat(total?.toFixed(2)) || 0,
+      subtotal: parseFloat(subTotal?.toFixed(2)) || 0,
+      discount: discountValue || 0,
+      tendered_cash: tenderedCashValue || 0,
+      balance: parseFloat(balanceDue?.toFixed(2)) || 0,
+      balance_label: balanceLabel,
+      code: generateOrderCode(),
+      items: cartItems.map((item) => {
+        const pricePerPiece = getPricePerPiece(item);
+        const isPiece = item.isPieces;
+        
+        return {
+          product_id: item.id,
+          quantity: item.quantity || 0,
+          quantity_type: isPiece ? 'pieces' : 'units',
+          unit_price: isPiece ? pricePerPiece : (item.price_per_unit || pricePerPiece * item.selling_unit_quantity),
+          price_per_piece: pricePerPiece,
+          product_name: item.name || "",
+          short_name: item.short_name || "",
+          category_name: item.category_name || "",
+          content_measurement: item.content_measurement || "",
+          content_unit: item.content_unit || "",
+          selling_unit_quantity: item.selling_unit_quantity || 1,
+          selling_unit: item.selling_unit || "",
+          image_url: item.image_url || "",
+          image_alt: item.image_alt || "",
+        };
+      }),
+      payment: {
+        payment_method: orderFormData.paymentMethod || "Cash",
+        amount_paid: tenderedCashValue || 0,
+        transaction_id: orderFormData.transactionId || "",
+      },
+    };
   };
-};
+
+  const cleanupOrderData = async (message: string) => {
+    toast.success(message || "Order submitted successfully");
+
+    // Immediately update displayed stock in the UI
+    deductStockLocally(cartItems);
+
+    setCartItems([]);
+    setOrderFormData({
+      discount: "0",
+      tenderedCash: "0",
+      paymentMethod: "Cash",
+      transactionId: "",
+    });
+    setSelectedCustomer(null);
+    setIsCartOpen(false);
+    setFormErrors({});
+
+    // Refresh products from server when online (with small delay)
+    if (isOnline && fetchProductsRef.current) {
+      setTimeout(() => {
+        fetchProductsRef.current!(1, searchTerm, selectedCategory);
+      }, 800);
+    }
+  };
 
   const addToCart = (product: IProduct, quantity: number = 1, isPieces: boolean = true) => {
     if (!product.is_available || product.stock === 0) {
@@ -462,7 +511,7 @@ const ModernStore: React.FC = () => {
       quantityInPieces = quantity * product.selling_unit_quantity;
     }
     
-    const availablePieces = product.stock * product.selling_unit_quantity;
+    const availablePieces = product.stock_in_pieces || product.stock * product.selling_unit_quantity;
     
     if (quantityInPieces > availablePieces) {
       const availableUnits = Math.floor(availablePieces / product.selling_unit_quantity);
@@ -487,9 +536,7 @@ const ModernStore: React.FC = () => {
       const existingItem = prev.find((item) => item.id === product.id);
       
       if (existingItem) {
-        // Update existing item
         if (existingItem.isPieces === isPieces) {
-          // Same type, just update quantity
           const newQuantity = quantity;
           const newQuantityInPieces = isPieces ? newQuantity : newQuantity * product.selling_unit_quantity;
           
@@ -497,14 +544,13 @@ const ModernStore: React.FC = () => {
             toast.error("Not enough stock available", { duration: 3000 });
             return prev;
           }
-          toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} updated to ${newQuantityInPieces}`)
+          toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} updated to ${newQuantity}`)
           return prev.map((item) =>
             item.id === product.id 
               ? { ...item, quantity: newQuantity } 
               : item
           );
         } else {
-          // Different types - convert to pieces
           const existingQuantityInPieces = existingItem.isPieces 
             ? existingItem.quantity 
             : existingItem.quantity * product.selling_unit_quantity;
@@ -517,7 +563,7 @@ const ModernStore: React.FC = () => {
             return prev;
           }
           
-          toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} updated to ${newQuantityInPieces}`)
+          toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} updated to ${totalPieces} pieces`)
           return prev.map((item) =>
             item.id === product.id 
               ? { 
@@ -529,8 +575,7 @@ const ModernStore: React.FC = () => {
           );
         }
       } else {
-        // New item
-        toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} updated to ${quantity}`)
+        toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} added (${quantity})`)
         return [
           ...prev, 
           { 
@@ -576,7 +621,7 @@ const ModernStore: React.FC = () => {
     }
 
     const prod = products.find((p) => p.id === product.id);
-    if (prod && newQuantity > product.stock * product.selling_unit_quantity) {
+    if (prod && newQuantity > prod.stock * prod.selling_unit_quantity) {
       toast.error(`Not enough stock available for ${product.short_name}`, {
         duration: 3000,
       });
@@ -641,7 +686,7 @@ const ModernStore: React.FC = () => {
 
     try {
       toast.info("Syncing products...");
-      const result = await syncService.syncProducts();
+      const result = await appService.updateStockInPieces();
 
       if (result.success) {
         toast.success("Products synced successfully");
@@ -747,31 +792,7 @@ const ModernStore: React.FC = () => {
         console.error("Retrieve hold order error:", error);
       }
     }
-  }, 
-  // eslint-disable-next-line
-  []);
-
-  const cleanupOrderData = async (message: any) => {
-    toast.success(message || "Order submitted successfully");
-    setCartItems([]);
-    setOrderFormData({
-      discount: "0",
-      tenderedCash: "0",
-      paymentMethod: "Cash",
-      transactionId: "",
-    });
-    setSelectedCustomer(null);
-    setIsCartOpen(false);
-    setFormErrors({});
-
-    if (isOnline && fetchProductsRef.current) {
-      fetchProductsRef.current(1, searchTerm, selectedCategory);
-    }
-
-    // if (isOnline) {
-    //   setTimeout(() => syncService.syncOrders(), 1000);
-    // }
-  };
+  }, []);
 
   const holdOrder = async () => {
     if (cartItems.length === 0) {
@@ -962,29 +983,6 @@ const ModernStore: React.FC = () => {
                           <i className="ri-add-line mr-1"></i>
                           Add Custom
                         </Button>
-                        
-                        {/* {product.selling_unit_quantity > 1 && (
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={() => addOnePieceToCart(product)}
-                              disabled={!product.is_available || product.stock === 0}
-                            >
-                              +1 piece
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={() => addOneUnitToCart(product)}
-                              disabled={!product.is_available || product.stock === 0}
-                            >
-                              +1 {product.selling_unit}
-                            </Button>
-                          </div>
-                        )} */}
                       </div>
                     </div>
                   </div>

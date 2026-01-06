@@ -152,7 +152,7 @@ export const generateReceiptHTML = (
         ${order.discount > 0
           ? `<div style="display:flex;justify-content:space-between;"><span>DISCOUNT:</span><span>-${order.discount.toFixed(2)}</span></div>`
           : ""}
-        <div style="display:flex;justify-content:space-between;font-weight:900;font-size:15px;margin-top:5px;border-top:1px double #000;padding-top:5px;">
+        <div style="display:flex;justify-content:space-between;font-weight:900;font-size:13px;margin-top:5px;border-top:1px double #000;padding-top:5px;">
           <span>TOTAL:</span><span>${formatCurrency(order.total, true)}</span>
         </div>
       </div>
