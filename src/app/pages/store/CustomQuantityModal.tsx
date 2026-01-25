@@ -108,7 +108,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
 
     if (isPiecesMode) {
       if (qty > maxAvailable) {
-        setError(`Only ${formatQuantity(availablePieces)} pieces available`);
+        setError(`Only ${formatQuantity(availablePieces)} ${product.content_unit_type}s available`);
         return false;
       }
     } else {
@@ -146,7 +146,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
     if (sellingUnitQty > 1 && product.allow_pieces_sell) {
       // Add individual pieces (1-5)
       for (let i = 1; i <= Math.min(5, availablePieces); i++) {
-        pieceOptions.push({value: i, label: `${i} piece${i !== 1 ? 's' : ''}`, isPiecesMode: true});
+        pieceOptions.push({value: i, label: `${i} ${product.content_unit_type}${i !== 1 ? 's' : ''}`, isPiecesMode: true});
       }
       
       // Add fractional options if applicable
@@ -193,7 +193,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
       return `${units.toFixed(2)} ${product.selling_unit}${units !== 1 ? 's' : ''}`;
     } else {
       const pieces = qty * product.selling_unit_quantity;
-      return `${pieces} piece${pieces !== 1 ? 's' : ''}`;
+      return `${pieces} ${product.content_unit_type}${pieces !== 1 ? 's' : ''}`;
     }
   };
 
@@ -259,7 +259,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
               </p>
               <div className="flex items-center justify-between mt-2">
                 <div className="text-sm text-text-light">
-                  <div>Available: {availablePieces} pieces</div>
+                  <div>Available: {availablePieces} {product.content_unit_type}s</div>
                   <div>({availableUnits} {product.selling_unit}{availableUnits !== 1 ? 's' : ''})</div>
                 </div>
                 <div className="text-right">
@@ -268,7 +268,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
                   </div>
                   {showPiecesOptions && (
                     <div className="text-xs text-text-light">
-                      GHS {pricePerPiece.toFixed(2)}/piece
+                      GHS {pricePerPiece.toFixed(2)}/{product.content_unit_type}
                     </div>
                   )}
                 </div>
@@ -280,7 +280,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
           {showPiecesOptions && pieceOptions.length > 0 && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-text mb-2">
-                Pieces:
+                {product.content_unit_type}s:
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {pieceOptions.map((option) => (
@@ -323,7 +323,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
                     <div className="font-medium text-sm">{option.label}</div>
                     {showPiecesOptions && (
                       <div className="text-xs text-text-light">
-                        {option.value * product.selling_unit_quantity} pieces
+                        {option.value * product.selling_unit_quantity} {product.content_unit_type}s
                       </div>
                     )}
                     <div className="text-xs text-text-light">
@@ -338,9 +338,9 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
           {/* Custom Input */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-text mb-2 flex justify-between">
-              {isEditMode ? 'Update quantity:' : `Enter quantity in ${isPiecesMode ? 'pieces' : product.selling_unit + 's'}:`}
+              {isEditMode ? 'Update quantity:' : `Enter quantity in ${isPiecesMode ? `${product.content_unit_type}s` : product.selling_unit + 's'}:`}
                <span className="text-xs text-text-light">
-                    Max: {isPiecesMode ? availablePieces : availableUnits} {isPiecesMode ? 'pieces' : product.selling_unit + (availableUnits !== 1 ? 's' : '')}
+                    Max: {isPiecesMode ? availablePieces : availableUnits} {isPiecesMode ? `${product.content_unit_type}s` : product.selling_unit + (availableUnits !== 1 ? 's' : '')}
                   </span>
             </label>
             <div className="flex items-center gap-3">
@@ -353,13 +353,13 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
                     onChange={(e) => handleQuantityChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     className="w-full border border-border rounded-sm px-4 py-1 text-lg font-medium text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder={`Enter ${isPiecesMode ? 'pieces' : product.selling_unit + 's'}`}
+                    placeholder={`Enter ${isPiecesMode ? `${product.content_unit_type}s` : product.selling_unit + 's'}`}
                     step={isPiecesMode ? "1" : "1"}
                     min="1"
                     autoFocus
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-light">
-                    {isPiecesMode ? 'pieces' : product.selling_unit + (parseFloat(quantity) !== 1 ? 's' : '')}
+                    {isPiecesMode ? product.content_unit_type + (parseFloat(quantity) !== 1 ? 's' : '') : product.selling_unit + (parseFloat(quantity) !== 1 ? 's' : '')}
                   </div>
                 </div>
                 
@@ -380,7 +380,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
             <div className="flex items-center justify-between mb-2">
               <span className="text-text-light">Quantity:</span>
               <span className="font-medium text-text">
-                {formatQuantity(parseFloat(quantity) || 0)} {isPiecesMode ? 'pieces' : product.selling_unit + (parseFloat(quantity) !== 1 ? 's' : '')}
+                {formatQuantity(parseFloat(quantity) || 0)} {isPiecesMode ? `${product.content_unit_type}s` : product.selling_unit + (parseFloat(quantity) !== 1 ? 's' : '')}
                 {showPiecesOptions && product.selling_unit_quantity > 1 && (
                   <span className="text-text-light ml-2">
                     ({calculateEquivalentQuantity()})

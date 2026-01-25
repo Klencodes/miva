@@ -3,7 +3,12 @@ import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../../ui";
 import { appService } from "../../../core/services/app";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
-import { IBulkAddProduct, ICloudinaryImageUploadResponse, IProduct, ProductForm } from "../../../core/interfaces/IProduct";
+import {
+  IBulkAddProduct,
+  ICloudinaryImageUploadResponse,
+  IProduct,
+  ProductForm,
+} from "../../../core/interfaces/IProduct";
 import { toast } from "sonner";
 
 interface ProductFormModalProps {
@@ -19,12 +24,14 @@ const initialFormState: ProductForm = {
   allow_pieces_sell: true,
   content_measurement: "",
   content_unit: "",
+  content_unit_type: "",
   selling_unit_quantity: "",
   selling_unit: "",
   image_url: "",
 };
 
-const URL_PATTERN = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
+const URL_PATTERN =
+  /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
 
 const AddProductModal: React.FC<ProductFormModalProps> = () => {
   const { modalRef, modalData } = useModal();
@@ -39,7 +46,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<IBulkAddProduct[]>([]);
-  const [csvValidationErrors, setCsvValidationErrors] = useState<{ row: number; errors: string[] }[]>([]);
+  const [csvValidationErrors, setCsvValidationErrors] = useState<
+    { row: number; errors: string[] }[]
+  >([]);
   const [csvPreview, setCsvPreview] = useState<any[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +57,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
   const [categories, setCategories] = useState<SelectOption[]>([]);
   const [contentUnits, setContentUnits] = useState<SelectOption[]>([]);
   const [sellingUnits, setSellingUnits] = useState<SelectOption[]>([]);
+  const [contentUnitTypes, setContentUnitTypes] = useState<SelectOption[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [formattedNamePreview, setFormattedNamePreview] = useState("");
@@ -67,6 +77,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         content_measurement: product.content_measurement || "",
         allow_pieces_sell: product.allow_pieces_sell ?? true,
         content_unit: product.content_unit || "",
+        content_unit_type: product.content_unit_type || "",
         selling_unit_quantity: product.selling_unit_quantity?.toString() || "",
         selling_unit: product.selling_unit || "",
         image_url: product.image_url || "",
@@ -89,12 +100,16 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     if (form.price_per_unit && form.selling_unit_quantity) {
       const pricePerUnit = parseFloat(form.price_per_unit);
       const sellingUnitQuantity = parseFloat(form.selling_unit_quantity);
-      
-      if (!isNaN(pricePerUnit) && !isNaN(sellingUnitQuantity) && sellingUnitQuantity > 0) {
+
+      if (
+        !isNaN(pricePerUnit) &&
+        !isNaN(sellingUnitQuantity) &&
+        sellingUnitQuantity > 0
+      ) {
         const calculatedPricePerPiece = pricePerUnit / sellingUnitQuantity;
-        setForm(prev => ({
+        setForm((prev) => ({
           ...prev,
-          price_per_piece: calculatedPricePerPiece.toFixed(2)
+          price_per_piece: calculatedPricePerPiece.toFixed(2),
         }));
       }
     }
@@ -121,15 +136,20 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       selling_unit,
     } = formData;
 
-    if (selling_unit_quantity && content_measurement && selling_unit && content_unit) {
+    if (
+      selling_unit_quantity &&
+      content_measurement &&
+      selling_unit &&
+      content_unit
+    ) {
       setFormattedNamePreview(
         `${
           name || "Product"
-        }, ${selling_unit_quantity}x${content_measurement}${content_unit} per ${selling_unit}`
+        }, ${selling_unit_quantity}x${content_measurement}${content_unit} per ${selling_unit}`,
       );
     } else if (content_measurement && content_unit) {
       setFormattedNamePreview(
-        `${name || "Product"}, ${content_measurement} per ${content_unit}`
+        `${name || "Product"}, ${content_measurement} per ${content_unit}`,
       );
     } else {
       setFormattedNamePreview(name || "Product name will appear here");
@@ -150,7 +170,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
     if (!data.price_per_unit) {
       newErrors.price_per_unit = "Price per unit is required.";
-    } else if (isNaN(Number(data.price_per_unit)) || Number(data.price_per_unit) < 0) {
+    } else if (
+      isNaN(Number(data.price_per_unit)) ||
+      Number(data.price_per_unit) < 0
+    ) {
       newErrors.price_per_unit = "Valid price per unit is required.";
     }
 
@@ -159,7 +182,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     }
 
     // Validate packaging fields
-    if (data.selling_unit_quantity && isNaN(Number(data.selling_unit_quantity))) {
+    if (
+      data.selling_unit_quantity &&
+      isNaN(Number(data.selling_unit_quantity))
+    ) {
       newErrors.selling_unit_quantity = "Must be a valid number.";
     }
 
@@ -178,9 +204,18 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
   // Fetch dropdown data
   useEffect(() => {
-    setCategories([{value: "", label: "Select Category"}, ...(modalData?.productExtraData?.categories || [])]);
-    setContentUnits([{value: "", label: "Select Content Unit"}, ...(modalData?.productExtraData?.content_units || [])]);
-    setSellingUnits([{value: "", label: "Select Selling Unit"}, ...(modalData?.productExtraData?.selling_units || [])]);
+    setCategories([
+      { value: "", label: "Select Category" },
+      ...(modalData?.productExtraData?.categories || []),
+    ]);
+    setContentUnits([
+      { value: "", label: "Select Content Unit" },
+      ...(modalData?.productExtraData?.content_units || []),
+    ]);
+    setContentUnitTypes([
+      { value: "", label: "Select Unit Type" },
+      ...(modalData?.productExtraData?.content_unit_types || []),
+    ]);
     // eslint-disable-next-line
   }, []);
 
@@ -213,7 +248,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     }
   }, []);
 
-  const onImageSelected = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  const onImageSelected = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -249,7 +286,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     const validTypes = ["text/csv", "application/vnd.ms-excel"];
     const maxSize = 10 * 1024 * 1024;
 
-    if (!validTypes.includes(file.type) && !file.name.endsWith('.csv')) {
+    if (!validTypes.includes(file.type) && !file.name.endsWith(".csv")) {
       toast.error("Invalid File", {
         description: "Please select a valid CSV file",
       });
@@ -271,7 +308,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
   const parseCsvFile = (file: File) => {
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       const content = e.target?.result as string;
       if (!content) {
@@ -281,7 +318,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         return;
       }
 
-      const lines = content.split('\n').map(line => line.trim()).filter(line => line !== '');
+      const lines = content
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "");
       if (lines.length === 0) {
         toast.error("Empty File", {
           description: "The CSV file is empty",
@@ -292,37 +332,39 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       // Parse headers - handle quoted headers and different separators
       const firstLine = lines[0];
       let headers: string[] = [];
-      
+
       // Try comma separator first
-      headers = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-      
+      headers = firstLine.split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+
       // If only one column found, try semicolon
-      if (headers.length === 1 && firstLine.includes(';')) {
-        headers = firstLine.split(';').map(h => h.trim().replace(/^"|"$/g, ''));
+      if (headers.length === 1 && firstLine.includes(";")) {
+        headers = firstLine
+          .split(";")
+          .map((h) => h.trim().replace(/^"|"$/g, ""));
       }
 
       // Validate headers
       const requiredHeaders = [
-        'name',
-        'category_name',
-        'stock',
-        'price_per_unit',
-        'price_per_piece',
-        'content_measurement',
-        'content_unit',
-        'selling_unit_quantity',
-        'selling_unit'
+        "name",
+        "category_name",
+        "stock",
+        "price_per_unit",
+        "price_per_piece",
+        "content_measurement",
+        "content_unit",
+        "selling_unit_quantity",
+        "selling_unit",
       ];
 
-      const headerMap: {[key: string]: string} = {};
-      headers.forEach(header => {
+      const headerMap: { [key: string]: string } = {};
+      headers.forEach((header) => {
         headerMap[header.toLowerCase()] = header;
       });
 
-      const missingHeaders = requiredHeaders.filter(h => !headerMap[h]);
+      const missingHeaders = requiredHeaders.filter((h) => !headerMap[h]);
       if (missingHeaders.length > 0) {
         toast.error("Invalid CSV Format", {
-          description: `Missing required columns: ${missingHeaders.join(', ')}`,
+          description: `Missing required columns: ${missingHeaders.join(", ")}`,
         });
         return;
       }
@@ -335,12 +377,12 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
         let values: string[];
-        
+
         // Check if line contains commas
-        if (line.includes(',') && !line.includes(';')) {
-          values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-        } else if (line.includes(';')) {
-          values = line.split(';').map(v => v.trim().replace(/^"|"$/g, ''));
+        if (line.includes(",") && !line.includes(";")) {
+          values = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+        } else if (line.includes(";")) {
+          values = line.split(";").map((v) => v.trim().replace(/^"|"$/g, ""));
         } else {
           // If no separator found, treat entire line as first column
           values = [line];
@@ -349,19 +391,22 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         if (values.length < headers.length) {
           // Pad with empty strings if missing values
           while (values.length < headers.length) {
-            values.push('');
+            values.push("");
           }
         } else if (values.length > headers.length) {
           // Join extra values into the last column
           const extraValues = values.slice(headers.length);
           values = values.slice(0, headers.length - 1);
-          values[headers.length - 1] = [...values.slice(headers.length - 1), ...extraValues].join(',');
+          values[headers.length - 1] = [
+            ...values.slice(headers.length - 1),
+            ...extraValues,
+          ].join(",");
         }
 
         const row: any = {};
         headers.forEach((header, index) => {
           const headerKey = header.toLowerCase();
-          row[headerKey] = values[index] || '';
+          row[headerKey] = values[index] || "";
         });
 
         const rowErrors: string[] = [];
@@ -369,25 +414,43 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         // Validate required fields
         if (!row.name?.trim()) rowErrors.push("Product name is required");
         if (!row.category_name?.trim()) rowErrors.push("Category is required");
-        
+
         const stockNum = Number(row.stock);
-        if (!row.stock || isNaN(stockNum) || stockNum < 0) rowErrors.push("Valid stock quantity is required");
-        
+        if (!row.stock || isNaN(stockNum) || stockNum < 0)
+          rowErrors.push("Valid stock quantity is required");
+
         const pricePerUnitNum = Number(row.price_per_unit);
-        if (!row.price_per_unit || isNaN(pricePerUnitNum) || pricePerUnitNum < 0) rowErrors.push("Valid price per unit is required");
-        
+        if (
+          !row.price_per_unit ||
+          isNaN(pricePerUnitNum) ||
+          pricePerUnitNum < 0
+        )
+          rowErrors.push("Valid price per unit is required");
+
         const pricePerPieceNum = Number(row.price_per_piece);
-        if (!row.price_per_piece || isNaN(pricePerPieceNum) || pricePerPieceNum < 0) rowErrors.push("Valid price per piece is required");
-        
-        if (!row.content_measurement?.trim()) rowErrors.push("Content measurement is required");
-        if (!row.content_unit?.trim()) rowErrors.push("Content unit is required");
-        
+        if (
+          !row.price_per_piece ||
+          isNaN(pricePerPieceNum) ||
+          pricePerPieceNum < 0
+        )
+          rowErrors.push("Valid price per piece is required");
+
+        if (!row.content_measurement?.trim())
+          rowErrors.push("Content measurement is required");
+        if (!row.content_unit?.trim())
+          rowErrors.push("Content unit is required");
+
         const sellingUnitQuantityNum = Number(row.selling_unit_quantity);
-        if (!row.selling_unit_quantity || isNaN(sellingUnitQuantityNum) || sellingUnitQuantityNum < 0) {
+        if (
+          !row.selling_unit_quantity ||
+          isNaN(sellingUnitQuantityNum) ||
+          sellingUnitQuantityNum < 0
+        ) {
           rowErrors.push("Valid selling unit quantity is required");
         }
-        
-        if (!row.selling_unit?.trim()) rowErrors.push("Selling unit is required");
+
+        if (!row.selling_unit?.trim())
+          rowErrors.push("Selling unit is required");
 
         if (rowErrors.length > 0) {
           validationErrors.push({ row: i + 1, errors: rowErrors });
@@ -415,7 +478,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       setCsvData(validProducts);
       setCsvValidationErrors(validationErrors);
       setCsvPreview(previewRows);
-      
+
       toast.success("CSV Parsed", {
         description: `Found ${validProducts.length} valid products. ${validationErrors.length} rows have errors.`,
       });
@@ -447,32 +510,37 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     setImageError(null);
   };
 
-  const uploadImage = useCallback(async (): Promise<ICloudinaryImageUploadResponse | null> => {
-    if (!selectedFile) return { secure_url: existingImageUrl || "", public_id: existingImageUrl || ""   };
+  const uploadImage =
+    useCallback(async (): Promise<ICloudinaryImageUploadResponse | null> => {
+      if (!selectedFile)
+        return {
+          secure_url: existingImageUrl || "",
+          public_id: existingImageUrl || "",
+        };
 
-    setUploading(true);
-    setImageError(null);
+      setUploading(true);
+      setImageError(null);
 
-    try {
-      const formData = new FormData();
-      formData.append("image", selectedFile);
+      try {
+        const formData = new FormData();
+        formData.append("image", selectedFile);
 
-      const uploadResponse = await appService.uploadAsset(formData);
+        const uploadResponse = await appService.uploadAsset(formData);
 
-      if (!uploadResponse.success) {
-        throw new Error(uploadResponse.message || "Failed to upload image");
+        if (!uploadResponse.success) {
+          throw new Error(uploadResponse.message || "Failed to upload image");
+        }
+
+        return uploadResponse?.results || null;
+      } catch (error: any) {
+        const errorMessage =
+          error.error?.message || error.message || "Failed to upload image";
+        setImageError(errorMessage);
+        return null;
+      } finally {
+        setUploading(false);
       }
-  
-      return uploadResponse?.results || null;
-    } catch (error: any) {
-      const errorMessage =
-        error.error?.message || error.message || "Failed to upload image";
-      setImageError(errorMessage);
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  }, [selectedFile, existingImageUrl]);
+    }, [selectedFile, existingImageUrl]);
 
   const saveProduct = async (productData: any): Promise<void> => {
     try {
@@ -493,7 +561,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       if (!response.success) {
         throw new Error(
           response.message ||
-            `Failed to ${isEditMode ? "update" : "create"} product.`
+            `Failed to ${isEditMode ? "update" : "create"} product.`,
         );
       }
 
@@ -515,10 +583,12 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     }
   };
 
-  const bulkAddProducts = async (products: IBulkAddProduct[]): Promise<void> => {
+  const bulkAddProducts = async (
+    products: IBulkAddProduct[],
+  ): Promise<void> => {
     try {
       setBulkLoading(true);
-      
+
       const response = await appService.bulkAddProducts({ products });
 
       if (response.success) {
@@ -565,13 +635,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     setLoading(true);
 
     try {
-
       // Upload image if a new file was selected
       let imageUrl: string | null = null;
       let imagePublicId: string | null = null;
 
       if (selectedFile) {
-        const uploadedImage: ICloudinaryImageUploadResponse | null = await uploadImage();        
+        const uploadedImage: ICloudinaryImageUploadResponse | null =
+          await uploadImage();
         if (uploadedImage) {
           imageUrl = uploadedImage.secure_url;
           imagePublicId = uploadedImage.public_id;
@@ -588,12 +658,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         price_per_unit: Number(form.price_per_unit),
         price_per_piece: Number(form.price_per_piece),
         allow_pieces_sell: form.allow_pieces_sell,
-        content_measurement: form.content_measurement || undefined,
-        content_unit: form.content_unit || undefined,
-        selling_unit_quantity: form.selling_unit_quantity || undefined,
-        selling_unit: form.selling_unit || undefined,
-        image_url: imageUrl || undefined,
-        image_public_id: imagePublicId || undefined,
+        content_measurement: form.content_measurement,
+        content_unit: form.content_unit,
+        content_unit_type: form.content_unit_type,
+        selling_unit_quantity: form.selling_unit_quantity,
+        selling_unit: form.selling_unit,
+        image_url: imageUrl,
+        image_public_id: imagePublicId,
       };
 
       await saveProduct(finalFormData);
@@ -622,7 +693,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     }
 
     if (csvValidationErrors.length > 0) {
-      toast.warning(`There are ${csvValidationErrors.length} rows with errors. Do you want to proceed with the ${csvData.length} valid rows?`)
+      toast.warning(
+        `There are ${csvValidationErrors.length} rows with errors. Do you want to proceed with the ${csvData.length} valid rows?`,
+      );
     }
 
     await bulkAddProducts(csvData);
@@ -634,7 +707,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
   const calculatePricePerPiece = () => {
     const pricePerUnit = parseFloat(form.price_per_unit) || 0;
     const sellingUnitQuantity = parseFloat(form.selling_unit_quantity) || 1;
-    
+
     if (pricePerUnit > 0 && sellingUnitQuantity > 0) {
       return pricePerUnit / sellingUnitQuantity;
     }
@@ -700,7 +773,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
             <div className="flex items-center">
               <i className="ri-eye-line text-info text-lg mr-3"></i>
               <div className="flex-1">
-                <p className="font-medium text-info mb-1">Product Name Preview</p>
+                <p className="font-medium text-info mb-1">
+                  Product Name Preview
+                </p>
                 <p className="text-sm text-info">{formattedNamePreview}</p>
               </div>
             </div>
@@ -714,7 +789,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                 <div className="space-y-4 border border-border rounded-sm p-4">
                   <div className="flex items-center mb-4">
                     <i className="ri-information-line text-primary text-lg mr-2"></i>
-                    <h3 className="font-semibold text-text">Basic Information</h3>
+                    <h3 className="font-semibold text-text">
+                      Basic Information
+                    </h3>
                   </div>
 
                   <Input
@@ -729,7 +806,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                     error={errors.name}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-x-4">
                     {!isEditMode && (
                       <Input
                         label="Stock Quantity"
@@ -765,10 +842,12 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                 <div className="space-y-4 border border-border rounded-sm p-4">
                   <div className="flex items-center mb-4">
                     <i className="ri-money-dollar-circle-line text-primary text-lg mr-2"></i>
-                    <h3 className="font-semibold text-text">Pricing Information</h3>
+                    <h3 className="font-semibold text-text">
+                      Pricing Information
+                    </h3>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-x-4">
                     <Input
                       label="Price Per Unit (Box/Pack)"
                       type="number"
@@ -806,9 +885,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       <div className="flex items-center">
                         <i className="ri-calculator-line text-success text-lg mr-2"></i>
                         <div>
-                          <p className="text-sm font-medium text-success mb-1">Price Breakdown:</p>
+                          <p className="text-sm font-medium text-success mb-1">
+                            Price Breakdown:
+                          </p>
                           <p className="text-sm text-success">
-                            1 {form.selling_unit || "unit"} ({form.selling_unit_quantity || "1"} pieces) = GHS {form.price_per_unit}
+                            1 {form.selling_unit || "unit"} (
+                            {form.selling_unit_quantity || "1"} pieces) = GHS{" "}
+                            {form.price_per_unit}
                           </p>
                           <p className="text-sm text-success">
                             1 piece = GHS {calculatePricePerPiece().toFixed(2)}
@@ -823,9 +906,11 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                 <div className="space-y-4 border border-border rounded-sm p-4">
                   <div className="flex items-center mb-4">
                     <i className="ri-package-line text-primary text-lg mr-2"></i>
-                    <h3 className="font-semibold text-text">Packaging Details</h3>
+                    <h3 className="font-semibold text-text">
+                      Packaging Details
+                    </h3>
                   </div>
-                  
+
                   <div className="bg-primary-5 border border-primary rounded-sm p-3 mb-4">
                     <div className="flex items-start">
                       <i className="ri-lightbulb-flash-line text-primary-50 text-lg mr-2 mt-0.5"></i>
@@ -835,16 +920,31 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                         </p>
                         <p className="text-sm text-primary-70">
                           A 6-pack of 400ml energy drinks would be:
-                          <span className="font-semibold"> Content Measurement: 400ml</span>,
-                          <span className="font-semibold"> Content Unit: can</span>,
-                          <span className="font-semibold"> Selling Unit Quantity: 6</span>,
-                          <span className="font-semibold"> Selling Unit: Pack</span>
+                          <span className="font-semibold">
+                            {" "}
+                            Content Measurement: 400ml
+                          </span>
+                          ,
+                          <span className="font-semibold">
+                            {" "}
+                            Content Unit: can
+                          </span>
+                          ,
+                          <span className="font-semibold">
+                            {" "}
+                            Selling Unit Quantity: 6
+                          </span>
+                          ,
+                          <span className="font-semibold">
+                            {" "}
+                            Selling Unit: Pack
+                          </span>
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-x-4">
                     <Input
                       label="Content Measurement"
                       placeholder="e.g., 400g, 1Kg, 50ml, 1L"
@@ -868,7 +968,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-x-4">
                     <Input
                       label="Selling Unit Quantity"
                       type="number"
@@ -896,18 +996,35 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       error={errors.selling_unit}
                     />
                   </div>
-
-                  <div className="mt-3 flex items-start gap-2 flex-col">
-                    <p className="text-xs text-text-light -mt-3">Allow selling individual pieces from this product.</p>
-
+                   
+                  <div className="grid grid-cols-2 gap-x-4">
                     <Input
-                      type="checkbox"
-                      label="Allow Pieces Sell"
-                      name="allow_pieces_sell"
-                      id="allow_pieces_sell"
-                      value={form.allow_pieces_sell}
-                      onChange={handleChange("allow_pieces_sell")}
+                      type="select"
+                      label="Content Unit Type"
+                      placeholder="Select Unit Type"
+                      name="content_unit_type"
+                      id="content_unit_type"
+                      selectOptions={contentUnitTypes}
+                      value={form.content_unit_type}
+                      onChange={handleChange("content_unit_type")}
+                      onBlur={() => handleBlur("content_unit_type")}
+                      error={errors.content_unit_type}
                     />
+                    
+                    <div className="flex flex-col items-start justify-end">
+                      <p className="text-xs text-text-light -mt-3">
+                        Allow selling individual pieces from this product.
+                      </p>
+
+                      <Input
+                        type="checkbox"
+                        label="Allow Pieces Sell"
+                        name="allow_pieces_sell"
+                        id="allow_pieces_sell"
+                        value={form.allow_pieces_sell}
+                        onChange={handleChange("allow_pieces_sell")}
+                      />
+                    </div>
                   </div>
 
                   {/* Image Upload Section */}
@@ -978,7 +1095,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                     )}
 
                     {imageError && (
-                      <div className="text-danger text-sm mt-1">{imageError}</div>
+                      <div className="text-danger text-sm mt-1">
+                        {imageError}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -997,9 +1116,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
               <div className="flex items-start">
                 <i className="ri-information-line text-info text-lg mr-3 mt-0.5"></i>
                 <div className="flex-1">
-                  <p className="font-medium text-info mb-2">How to Bulk Import</p>
+                  <p className="font-medium text-info mb-2">
+                    How to Bulk Import
+                  </p>
                   <ul className="text-sm text-info space-y-1">
-                    <li>• Download the CSV template using the export feature</li>
+                    <li>
+                      • Download the CSV template using the export feature
+                    </li>
                     <li>• Fill in the required fields for each product</li>
                     <li>• Upload the CSV file below</li>
                     <li>• Review the data before importing</li>
@@ -1064,7 +1187,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       <div className="flex items-center mb-2">
                         <i className="ri-error-warning-line text-warning text-lg mr-2"></i>
                         <p className="font-medium text-warning">
-                          {csvValidationErrors.length} rows have validation errors
+                          {csvValidationErrors.length} rows have validation
+                          errors
                         </p>
                       </div>
                       <details>
@@ -1073,7 +1197,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                         </summary>
                         <div className="mt-2 max-h-40 overflow-y-auto">
                           {csvValidationErrors.map((error, index) => (
-                            <div key={index} className="text-xs text-warning mb-1">
+                            <div
+                              key={index}
+                              className="text-xs text-warning mb-1"
+                            >
                               Row {error.row}: {error.errors.join(", ")}
                             </div>
                           ))}
@@ -1085,7 +1212,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                   {/* Data Preview */}
                   {csvPreview.length > 0 && (
                     <div className="space-y-2">
-                      <p className="font-medium text-text">Data Preview ({csvData.length} valid rows):</p>
+                      <p className="font-medium text-text">
+                        Data Preview ({csvData.length} valid rows):
+                      </p>
                       <div className="border border-border rounded-sm overflow-hidden">
                         <table className="w-full text-sm">
                           <thead className="bg-background-10">
@@ -1099,7 +1228,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                           </thead>
                           <tbody>
                             {csvPreview.map((row, index) => (
-                              <tr key={index} className="border-t border-border">
+                              <tr
+                                key={index}
+                                className="border-t border-border"
+                              >
                                 <td className="p-2">{row.name}</td>
                                 <td className="p-2">{row.category_name}</td>
                                 <td className="p-2">{row.stock}</td>
@@ -1118,7 +1250,9 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
             {/* Required Fields Info */}
             <div className="bg-background-5 border border-border rounded-sm p-4">
-              <p className="font-medium text-text mb-2">Required Fields in CSV:</p>
+              <p className="font-medium text-text mb-2">
+                Required Fields in CSV:
+              </p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center">
                   <i className="ri-checkbox-circle-fill text-success mr-2"></i>
@@ -1139,6 +1273,14 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                 <div className="flex items-center">
                   <i className="ri-checkbox-circle-fill text-success mr-2"></i>
                   <span>price_per_piece</span>
+                </div>
+                <div className="flex items-center">
+                  <i className="ri-checkbox-circle-fill text-success mr-2"></i>
+                  <span>allow_pieces_sell</span>
+                </div>
+                <div className="flex items-center">
+                  <i className="ri-checkbox-circle-fill text-success mr-2"></i>
+                  <span>content_unit_type</span>
                 </div>
                 <div className="flex items-center">
                   <i className="ri-checkbox-circle-fill text-success mr-2"></i>
@@ -1179,10 +1321,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
             {uploading
               ? "Uploading Image..."
               : loading
-              ? "Processing..."
-              : isEditMode
-              ? "Update Product"
-              : "Add Product"}
+                ? "Processing..."
+                : isEditMode
+                  ? "Update Product"
+                  : "Add Product"}
           </Button>
         ) : (
           <Button

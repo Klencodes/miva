@@ -446,7 +446,7 @@ const ModernStore: React.FC = () => {
         return {
           product_id: item.id,
           quantity: item.quantity || 0,
-          quantity_type: isPiece ? 'pieces' : 'units',
+          quantity_type: isPiece ? item.content_unit_type : 'units',
           unit_price: isPiece ? pricePerPiece : (item.price_per_unit || pricePerPiece * item.selling_unit_quantity),
           price_per_piece: pricePerPiece,
           product_name: item.name || "",
@@ -516,7 +516,7 @@ const ModernStore: React.FC = () => {
     if (quantityInPieces > availablePieces) {
       const availableUnits = Math.floor(availablePieces / product.selling_unit_quantity);
       toast.error(
-        `Not enough stock. Available: ${availablePieces} pieces (${availableUnits} ${product.selling_unit}${availableUnits !== 1 ? 's' : ''})`,
+        `Not enough stock. Available: ${availablePieces} ${product.content_unit_type}s (${availableUnits} ${product.selling_unit}${availableUnits !== 1 ? 's' : ''})`,
         { duration: 3000 }
       );
       return;
@@ -544,7 +544,7 @@ const ModernStore: React.FC = () => {
             toast.error("Not enough stock available", { duration: 3000 });
             return prev;
           }
-          toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} updated to ${newQuantity}`)
+          toast.success(`${product.short_name} ${isPieces ? product.content_unit_type : product.selling_unit} updated to ${newQuantity}`)
           return prev.map((item) =>
             item.id === product.id 
               ? { ...item, quantity: newQuantity } 
@@ -562,8 +562,8 @@ const ModernStore: React.FC = () => {
             toast.error("Not enough stock for combined quantity", { duration: 3000 });
             return prev;
           }
-          
-          toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} updated to ${totalPieces} pieces`)
+
+          toast.success(`${product.short_name} ${isPieces ? product.content_unit_type : product.selling_unit} updated to ${totalPieces} pieces`)
           return prev.map((item) =>
             item.id === product.id 
               ? { 
@@ -575,14 +575,14 @@ const ModernStore: React.FC = () => {
           );
         }
       } else {
-        toast.success(`${product.short_name} ${isPieces ? 'pieces' : product.selling_unit} added (${quantity})`)
+        toast.success(`${product.short_name} ${isPieces ? product.content_unit_type : product.selling_unit} added (${quantity})`)
         return [
           ...prev, 
           { 
             ...product, 
             quantity: quantity,
             isPieces: isPieces,
-            quantity_type: isPieces ? 'pieces' : 'units',
+            quantity_type: isPieces ? product.content_unit_type : 'units',
             price_per_piece: pricePerPiece,
             price_per_unit: product.price_per_unit
           }
@@ -764,7 +764,7 @@ const ModernStore: React.FC = () => {
             content_unit: item.content_unit || '',
             selling_unit_quantity: parseInt(item.selling_unit_quantity) || 1,
             selling_unit: item.selling_unit || '',
-            isPieces: item.quantity_type === 'pieces' ? true : false,
+            isPieces: item.quantity_type !== 'units' ? true : false,
             expanded: false
           }));
 
@@ -966,7 +966,7 @@ const ModernStore: React.FC = () => {
                           </div>
                           {product.selling_unit_quantity > 1 && (
                             <div className="text-xs text-text-light">
-                              GHC {(product.price_per_piece || product.price_per_unit / product.selling_unit_quantity).toFixed(2)}/piece
+                              GHC {(product.price_per_piece || product.price_per_unit / product.selling_unit_quantity).toFixed(2)}/{product.content_unit_type}
                             </div>
                           )}
                         </div>

@@ -7,12 +7,13 @@ export interface IProduct {
   stock_in_pieces: number;
   price_per_unit: number; // Price per selling unit (box, sack, etc.)
   price_per_piece: number; // Price per individual piece
-  allow_pieces_sell: boolean;
+  allow_pieces_sell: boolean; // Whether selling by pieces is allowed
   is_available: boolean;
   image_url: string;
   image_alt: string;
-  content_measurement: string; // e.g., "400g", "5kg"
-  content_unit: string; // e.g., "can", "bag"
+  content_measurement: string; // e.g., "400", "5"
+  content_unit: string; // e.g., "g", "kg", "ml", "L"
+  content_unit_type: string; // e.g., "can", "bag"
   selling_unit_quantity: number; // e.g., 24 pieces in a box
   selling_unit: string; // e.g., "box", "sack"
   entity_id: string; // Added this field (based on your backend schema)
@@ -40,6 +41,7 @@ export interface ProductForm {
   allow_pieces_sell: boolean;
   content_measurement: string;
   content_unit: string;
+  content_unit_type: string; 
   selling_unit_quantity: string;
   selling_unit: string;
   image_url: string;

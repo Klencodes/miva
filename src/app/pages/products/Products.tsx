@@ -118,7 +118,7 @@ export default function ProductsList() {
               GHS {pricePerPiece.toFixed(2)}
             </div>
             <div className="text-xs text-text-light">
-              per piece
+              per {item.content_unit_type}
             </div>
           </div>
         );
@@ -139,7 +139,7 @@ export default function ProductsList() {
               {formatQuantity(item.stock)} {item.selling_unit}s
             </div>
             <div className="text-xs">
-              {totalPieces} pieces
+              {totalPieces} {item.content_unit_type}s
             </div>
             {isLowStock && (
               <div className="text-xs mt-1">
