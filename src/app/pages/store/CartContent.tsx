@@ -82,7 +82,7 @@ const CartContent: React.FC<ICartContentProps> = ({
       // Quantity is in selling units
       const units = item.quantity;
       const pieces = units * (item.selling_unit_quantity || 1);
-      return `${formatQuantity(units)} ${item.selling_unit}${units !== 1 ? 's' : ''} (${formatQuantity(pieces)} pieces)`;
+      return `${formatQuantity(units)} ${item.selling_unit}${units !== 1 ? 's' : ''} (${formatQuantity(pieces)} ${item.content_unit_type}s)`;
     } else {
       // Quantity is in pieces
       const sellingUnitQty = item.selling_unit_quantity || 1;
@@ -90,11 +90,11 @@ const CartContent: React.FC<ICartContentProps> = ({
       const remainingPieces = item.quantity % sellingUnitQty;
       
       if (fullUnits > 0 && remainingPieces > 0) {
-        return `${formatQuantity(item.quantity)} pieces (${fullUnits} ${item.selling_unit}${fullUnits > 1 ? 's' : ''} ${remainingPieces} piece${remainingPieces > 1 ? 's' : ''})`;
+        return `${formatQuantity(item.quantity)} ${item.content_unit_type}s (${fullUnits} ${item.selling_unit}${fullUnits > 1 ? 's' : ''} ${remainingPieces} ${item.content_unit_type}${remainingPieces > 1 ? 's' : ''})`;
       } else if (fullUnits > 0) {
-        return `${formatQuantity(item.quantity)} pieces (${fullUnits} ${item.selling_unit}${fullUnits > 1 ? 's' : ''})`;
+        return `${formatQuantity(item.quantity)} ${item.content_unit_type}s (${fullUnits} ${item.selling_unit}${fullUnits > 1 ? 's' : ''})`;
       } else {
-        return `${formatQuantity(item.quantity)} piece${item.quantity > 1 ? 's' : ''}`;
+        return `${formatQuantity(item.quantity)} ${item.content_unit_type}${item.quantity > 1 ? 's' : ''}`;
       }
     }
   };
@@ -107,7 +107,7 @@ const CartContent: React.FC<ICartContentProps> = ({
       return `GHC ${pricePerBox.toFixed(2)}/${item.selling_unit}`;
     } else {
       const pricePerPiece = getPricePerPiece(item);
-      return `GHC ${pricePerPiece.toFixed(2)}/piece`;
+      return `GHC ${pricePerPiece.toFixed(2)}/${item.content_unit_type}`;
     }
   };
 
@@ -184,6 +184,7 @@ const CartContent: React.FC<ICartContentProps> = ({
         ) : (
           <div className="space-y-4">
             {cartItems.map((item) => {
+              console.log('Cart Item:', item);
               const itemSubtotal = getItemSubtotal(item);
               
               return (
@@ -202,7 +203,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                         <div className="flex items-center gap-2 text-xs text-text-light">
                           <span>
                             {item.selling_unit_quantity}x{item.content_measurement}
-                            {item.content_unit} per {item.selling_unit}
+                            {item.content_unit}/{item.selling_unit}
                           </span>
                           <span className="text-primary">
                             {formatPricePerUnitDisplay(item)}
@@ -213,7 +214,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                         </p>
                         {item.quantity_type && (
                           <p className="text-xs text-text-light">
-                            Type: {item.quantity_type === 'pieces' ? 'Pieces' : `${item.selling_unit}s`}
+                            Type: {item.quantity_type === 'units' ? `${item.selling_unit}s` : `${item.content_unit_type}s`}
                           </p>
                         )}
                       </div>
@@ -230,7 +231,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                   {/* Quantity Controls */}
                   <div className="flex items-center justify-between mb-2">
                     <Button
-                      onClick={() => openCustomQuantityModal(item, item.quantity, item.quantity_type === 'pieces')}
+                      onClick={() => openCustomQuantityModal(item, item.quantity, item.quantity_type !== 'units')}
                       size="sm"
                     >
                       Change Quantity
