@@ -792,6 +792,7 @@ const ModernStore: React.FC = () => {
         console.error("Retrieve hold order error:", error);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const holdOrder = async () => {
