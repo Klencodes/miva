@@ -3,7 +3,7 @@ import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../../ui";
 import { appService } from "../../../core/services/app";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
-import { IBulkAddProduct, IProduct, ProductForm } from "../../../core/interfaces/IProduct";
+import { IBulkAddProduct, ICloudinaryImageUploadResponse, IProduct, ProductForm } from "../../../core/interfaces/IProduct";
 import { toast } from "sonner";
 
 interface ProductFormModalProps {
@@ -16,6 +16,7 @@ const initialFormState: ProductForm = {
   stock: "",
   price_per_unit: "",
   price_per_piece: "",
+  allow_pieces_sell: true,
   content_measurement: "",
   content_unit: "",
   selling_unit_quantity: "",
@@ -64,6 +65,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         price_per_unit: product.price_per_unit?.toString() || "",
         price_per_piece: product.price_per_piece?.toString() || "",
         content_measurement: product.content_measurement || "",
+        allow_pieces_sell: product.allow_pieces_sell ?? true,
         content_unit: product.content_unit || "",
         selling_unit_quantity: product.selling_unit_quantity?.toString() || "",
         selling_unit: product.selling_unit || "",
@@ -445,8 +447,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     setImageError(null);
   };
 
-  const uploadImage = useCallback(async (): Promise<string | null> => {
-    if (!selectedFile) return existingImageUrl;
+  const uploadImage = useCallback(async (): Promise<ICloudinaryImageUploadResponse | null> => {
+    if (!selectedFile) return { secure_url: existingImageUrl || "", public_id: existingImageUrl || ""   };
 
     setUploading(true);
     setImageError(null);
@@ -460,8 +462,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       if (!uploadResponse.success) {
         throw new Error(uploadResponse.message || "Failed to upload image");
       }
-
-      return uploadResponse?.results?.secure_url || null;
+  
+      return uploadResponse?.results || null;
     } catch (error: any) {
       const errorMessage =
         error.error?.message || error.message || "Failed to upload image";
@@ -563,16 +565,19 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     setLoading(true);
 
     try {
-      let imageUrl: string | null = null;
 
       // Upload image if a new file was selected
+      let imageUrl: string | null = null;
+      let imagePublicId: string | null = null;
+
       if (selectedFile) {
-        imageUrl = await uploadImage();
-        if (!imageUrl) {
-          setLoading(false);
-          return;
+        const uploadedImage: ICloudinaryImageUploadResponse | null = await uploadImage();        
+        if (uploadedImage) {
+          imageUrl = uploadedImage.secure_url;
+          imagePublicId = uploadedImage.public_id;
         }
       } else {
+        // Use existing image if no new file selected
         imageUrl = form.image_url || existingImageUrl;
       }
 
@@ -582,11 +587,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         stock: form.stock,
         price_per_unit: Number(form.price_per_unit),
         price_per_piece: Number(form.price_per_piece),
+        allow_pieces_sell: form.allow_pieces_sell,
         content_measurement: form.content_measurement || undefined,
         content_unit: form.content_unit || undefined,
         selling_unit_quantity: form.selling_unit_quantity || undefined,
         selling_unit: form.selling_unit || undefined,
         image_url: imageUrl || undefined,
+        image_public_id: imagePublicId || undefined,
       };
 
       await saveProduct(finalFormData);
@@ -887,6 +894,19 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       onChange={handleChange("selling_unit")}
                       onBlur={() => handleBlur("selling_unit")}
                       error={errors.selling_unit}
+                    />
+                  </div>
+
+                  <div className="mt-3 flex items-start gap-2 flex-col">
+                    <p className="text-xs text-text-light -mt-3">Allow selling individual pieces from this product.</p>
+
+                    <Input
+                      type="checkbox"
+                      label="Allow Pieces Sell"
+                      name="allow_pieces_sell"
+                      id="allow_pieces_sell"
+                      value={form.allow_pieces_sell}
+                      onChange={handleChange("allow_pieces_sell")}
                     />
                   </div>
 

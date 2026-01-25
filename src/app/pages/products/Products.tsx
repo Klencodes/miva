@@ -91,7 +91,7 @@ export default function ProductsList() {
       type: "column",
     },
     {
-      header: "Box Price",
+      header: "Unit Price",
       // Price per unit (box/pack)
       value: (item: IProduct) => {
         const price = item.price_per_unit || 0;
@@ -222,12 +222,6 @@ export default function ProductsList() {
       handler: () => handleUpdateAvailability(item),
       icon: item.is_available ? "forbid-line" : "check-double-line",
       classes: item.is_available ? "text-info" : "text-success",
-    },
-    {
-      title: "View Details",
-      handler: () => onViewDetails(item),
-      icon: "eye-line",
-      classes: "",
     },
     {
       title: "Delete",
@@ -362,13 +356,6 @@ export default function ProductsList() {
     setSelectedAvailability(filterValue);
   };
 
-  const onViewDetails = (item: IProduct) => {
-    // openModal(ProductDetailsModal, {
-    //   data: { title: "Product Details", product: item },
-    //   size: "3xl",
-    //   side: "right",
-    // });
-  };
 
   const handleDeleteProduct = async (product: IProduct) => {
     toast.custom((id) => (

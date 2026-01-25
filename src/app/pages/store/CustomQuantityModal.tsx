@@ -29,14 +29,23 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
   useEffect(() => {
     if (isOpen && product) {
       if (currentQuantity && currentQuantity > 0) {
-        setQuantity(currentQuantity.toString());
-        setIsPiecesMode(currentIsPieces !== false);
+        // If editing and original quantity was in pieces but the product no longer allows pieces,
+        // convert the pieces quantity to units (rounding up) and switch to units mode.
+        if (currentIsPieces && !product.allow_pieces_sell) {
+          const units = Math.ceil(Number(currentQuantity) / product.selling_unit_quantity);
+          setQuantity(units.toString());
+          setIsPiecesMode(false);
+        } else {
+          setQuantity(currentQuantity.toString());
+          setIsPiecesMode(currentIsPieces !== false && product.allow_pieces_sell);
+        }
+
         setIsEditMode(true);
       } else {
         setQuantity("1");
         setSelectedQuickOption(null);
-        // Default to units mode if selling_unit_quantity is 1 or less
-        setIsPiecesMode(product.selling_unit_quantity <= 1 ? false : true);
+        // Default to pieces mode only if product allows it and selling_unit_quantity > 1
+        setIsPiecesMode(product.allow_pieces_sell && product.selling_unit_quantity > 1 ? true : false);
         setIsEditMode(false);
       }
       setError("");
@@ -64,7 +73,8 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
   const handleQuickOptionSelect = (value: number, piecesMode: boolean = true) => {
     setQuantity(value.toString());
     setSelectedQuickOption(value);
-    setIsPiecesMode(piecesMode);
+    // Respect product setting: if pieces selling is disabled, force units mode
+    setIsPiecesMode(!!product.allow_pieces_sell && piecesMode);
     setError("");
   };
 
@@ -132,7 +142,8 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
     const sellingUnitQty = product.selling_unit_quantity;
     const pieceOptions: Array<{value: number, label: string, isPiecesMode: boolean}> = [];
     
-    if (sellingUnitQty > 1) {
+    // Only generate piece options when product allows selling pieces
+    if (sellingUnitQty > 1 && product.allow_pieces_sell) {
       // Add individual pieces (1-5)
       for (let i = 1; i <= Math.min(5, availablePieces); i++) {
         pieceOptions.push({value: i, label: `${i} piece${i !== 1 ? 's' : ''}`, isPiecesMode: true});
@@ -210,8 +221,8 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
     setSelectedQuickOption(null);
   };
 
-  // Check if we should show pieces options
-  const showPiecesOptions = product.selling_unit_quantity > 1;
+  // Check if we should show pieces options (only when product allows selling pieces)
+  const showPiecesOptions = !!product.allow_pieces_sell && product.selling_unit_quantity > 1;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">

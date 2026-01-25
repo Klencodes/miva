@@ -686,7 +686,7 @@ const ModernStore: React.FC = () => {
 
     try {
       toast.info("Syncing products...");
-      const result = await appService.updateStockInPieces();
+      const result = await syncService.syncProducts();
 
       if (result.success) {
         toast.success("Products synced successfully");

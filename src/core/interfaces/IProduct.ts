@@ -7,6 +7,7 @@ export interface IProduct {
   stock_in_pieces: number;
   price_per_unit: number; // Price per selling unit (box, sack, etc.)
   price_per_piece: number; // Price per individual piece
+  allow_pieces_sell: boolean;
   is_available: boolean;
   image_url: string;
   image_alt: string;
@@ -36,6 +37,7 @@ export interface ProductForm {
   stock: string;
   price_per_unit: string; // Price per selling unit
   price_per_piece: string; // Price per piece
+  allow_pieces_sell: boolean;
   content_measurement: string;
   content_unit: string;
   selling_unit_quantity: string;
@@ -83,4 +85,10 @@ export interface IProductResponse extends IProduct {
   created_at: string;
   updated_at: string;
   // Add any other fields from your API response
+}
+
+export interface ICloudinaryImageUploadResponse {
+  public_id: string;  
+  secure_url: string;      
+  original_filename?: string;
 }
