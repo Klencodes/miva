@@ -343,10 +343,8 @@ const RoleUpdateModal = () => {
   const roleOptions = useMemo(
     () => [
       { value: Roles.SUPER_ADMIN, label: initialCap(Roles.SUPER_ADMIN) },
-      { value: Roles.OWNER, label: initialCap(Roles.OWNER) },
       { value: Roles.ADMIN, label: initialCap(Roles.ADMIN) },
       { value: Roles.SALES, label: initialCap(Roles.SALES) },
-      { value: Roles.STAFF, label: initialCap(Roles.ADMIN) },
     ],
     []
   );

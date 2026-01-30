@@ -163,10 +163,8 @@ const AssignUserEntity: React.FC = () => {
               disabled={entitiesLoading}
               selectOptions={[
                 { value: Roles.SUPER_ADMIN, label: remCap(Roles.SUPER_ADMIN)},
-                { value: Roles.OWNER, label: remCap(Roles.OWNER) },
                 { value: Roles.ADMIN, label: remCap(Roles.ADMIN) },
                 { value: Roles.SALES, label: remCap(Roles.SALES) },
-                { value: Roles.STAFF, label: remCap(Roles.ADMIN) },
               ]}
             />
           </div>

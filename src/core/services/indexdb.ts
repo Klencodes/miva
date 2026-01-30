@@ -2,7 +2,7 @@ import { ENTITY_KEY, getStoredItem } from "../hooks/useStore";
 import { DBProduct, ProductsResponse, DBOrder, DBCustomer, CustomerResponse } from "../interfaces/IDBTypes";
 import { IEntityItem } from "../interfaces/IEntity";
 import { IOrderPayload } from "../interfaces/IOrder";
-import { IResponse } from "../interfaces/IResponse";
+import { IOrderResponse, IResponse } from "../interfaces/IResponse";
 
 class IndexedDBService {
   private dbName = 'GodDidMart';
@@ -679,51 +679,80 @@ async updateOrderStatus(
   });
 }
 
-
-
   // Get all regular orders (local pending + server synced) - NO hold orders
-  async getAllOrders(params?: {
-    page?: number;
-    pageSize?: number;
-    search?: string;
-    payment_method?: string;
-    includePending?: boolean;
-  }): Promise<IResponse> {
-    const db = await this.ensureDB();
-    const entityId = this.entityIdString;
+  // Get all regular orders (local pending + server synced) - NO hold orders
+async getAllOrders(params?: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  payment_method?: string;
+  includePending?: boolean;
+  dateRange?: {
+    start_date?: string;
+    end_date?: string;
+  }
+}): Promise<IOrderResponse> {
+  const db = await this.ensureDB();
+  const entityId = this.entityIdString;
 
-    if (!entityId) {
-      return { 
-        success: false, 
-        message: 'Entity ID not found', 
-        results: [], 
-        count: 0, 
-        next: null, 
-        previous: null 
-      };
-    }
+  if (!entityId) {
+    return {
+      success: false,
+      message: 'Entity ID not found',
+      results: [],
+      count: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+      next: null,
+      previous: null,
+      total_orders: 0,
+      total_sales: 0
+    };
+  }
 
-    const {
-      page = 1,
-      pageSize = 10,
-      search = '',
-      payment_method = 'all',
-      includePending = true
-    } = params || {};
+  const {
+    page = 1,
+    pageSize = 10,
+    search = '',
+    payment_method = 'all',
+    includePending = true,
+    dateRange
+  } = params || {};
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['orders'], 'readonly');
+    const store = transaction.objectStore('orders');
+    const entityIndex = store.index('entity_id');
+    
+    const request = entityIndex.getAll(IDBKeyRange.only(entityId));
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['orders'], 'readonly');
-      const store = transaction.objectStore('orders');
-      const entityIndex = store.index('entity_id');
-      
-      const request = entityIndex.getAll(IDBKeyRange.only(entityId));
-
-      request.onsuccess = () => {
+    request.onsuccess = () => {
+      try {
         let orders = request.result as DBOrder[];
 
         // Filter out pending orders if not included
         if (!includePending) {
           orders = orders.filter(order => order.status !== 'pending');
+        }
+        // Apply date range filter
+        if (dateRange?.start_date || dateRange?.end_date) {
+          orders = orders.filter((order: DBOrder) => {
+            const orderDate = new Date(order.created_at || '');
+            
+            if (dateRange?.start_date && orderDate < new Date(dateRange?.start_date)) {
+              return false;
+            }
+            
+            if (dateRange?.end_date) {
+              const endOfDay = new Date(dateRange?.end_date);
+              endOfDay.setHours(23, 59, 59, 999);
+              if (orderDate > endOfDay) {
+                return false;
+              }
+            }
+            
+            return true;
+          });
         }
 
         // Apply search filter
@@ -743,6 +772,16 @@ async updateOrderStatus(
           );
         }
 
+        // Calculate totals BEFORE pagination
+        const totalCount = orders.length;
+        const totalSales = orders.reduce((sum, order) => {
+          return sum + (order.total || 0);
+        }, 0);
+
+        // Count orders by status for informative message
+        const pendingCount = orders.filter(o => o.status === 'pending').length;
+        const syncedCount = orders.filter(o => o.status === 'synced').length;
+
         // Sort by creation date (newest first)
         orders.sort((a, b) => {
           const dateA = new Date(a.created_at || '').getTime();
@@ -756,25 +795,47 @@ async updateOrderStatus(
         const paginatedOrders = orders.slice(startIndex, endIndex);
         const hasMore = endIndex < orders.length;
 
-        // Count orders by status for informative message
-        const pendingCount = orders.filter(o => o.status === 'pending').length;
-        const syncedCount = orders.filter(o => o.status === 'synced').length;
+        // Generate pagination links
+        const generateQueryString = (pageNum: number) => {
+          const queryParams = new URLSearchParams();
+          if (pageNum > 1) queryParams.set('page', pageNum.toString());
+          if (pageSize !== 10) queryParams.set('limit', pageSize.toString());
+          if (search) queryParams.set('search', search);
+          if (payment_method !== 'all') queryParams.set('payment_method', payment_method);
+          if (dateRange?.start_date) queryParams.set('start_date', dateRange?.start_date);
+          if (dateRange?.end_date) queryParams.set('end_date', dateRange?.end_date);
+          if (!includePending) queryParams.set('includePending', 'false');
+          
+          const queryString = queryParams.toString();
+          return queryString ? `?${queryString}` : '';
+        };
+
+        const next = hasMore ? generateQueryString(page + 1) : null;
+        const previous = page > 1 ? generateQueryString(page - 1) : null;
 
         resolve({
           success: true,
           message: `Orders fetched (${syncedCount} synced, ${pendingCount} pending)`,
           results: paginatedOrders,
-          count: orders.length,
-          next: hasMore ? `page=${page + 1}` : null,
-          previous: page > 1 ? `page=${page - 1}` : null
+          count: totalCount,
+          total_orders: totalCount,
+          total_sales: totalSales,
+          next: next,
+          previous: previous,
+          page: page,
+          pageSize: pageSize,
+          totalPages: Math.ceil(totalCount / pageSize)
         });
-      };
+      } catch (error) {
+        reject(error);
+      }
+    };
 
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+}
 
   // Get pending orders for sync
   async getPendingOrders(params?: {
@@ -862,8 +923,6 @@ async updateOrderStatus(
       };
     });
   }
-
-
 
   // Get order by server ID (for looking up server orders)
   async getOrderByServerId(serverId: string): Promise<DBOrder | null> {

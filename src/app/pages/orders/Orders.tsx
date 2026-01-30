@@ -25,7 +25,7 @@ import {
   downloadReceiptAsPDF,
   printReceiptDirectly,
 } from "../../../core/utils/receipt";
-import { ENTITY_KEY, getStoredItem } from "../../../core/hooks/useStore";
+import { ENTITY_KEY, getStoredItem, useStore } from "../../../core/hooks/useStore";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
 
 export default function OrdersList() {
@@ -48,7 +48,7 @@ export default function OrdersList() {
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
-
+  const { user } = useStore();
   // const [dateRange, setDateRange] = useState<{
   //   start_date: string;
   //   end_date: string;
@@ -586,6 +586,7 @@ export default function OrdersList() {
             currentDateRange={dateRange}
             onDateRangeChange={handleDateRangeChange}
             noDataMessage="No sales orders found."
+            userRole={user?.role}
           />
         </div>
       </div>

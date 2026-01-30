@@ -465,7 +465,9 @@ const ModernStore: React.FC = () => {
         amount_paid: tenderedCashValue || 0,
         transaction_id: orderFormData.transactionId || "",
       },
-    };
+      // Ensure frontend-created timestamp is included so server uses the same created_at
+      created_at: new Date().toISOString()
+    }; 
   };
 
   const cleanupOrderData = async (message: string) => {

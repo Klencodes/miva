@@ -277,7 +277,7 @@ const CartContent: React.FC<ICartContentProps> = ({
                         step={0.01}
                         placeholder="0.00"
                         error={formErrors?.discount}
-                        disabled={[Roles.STAFF, Roles.SALES, Roles.ADMIN].includes(user!.role)}
+                        disabled={[ Roles.SALES, Roles.ADMIN].includes(user!.role)}
                       />
                     </div>
 

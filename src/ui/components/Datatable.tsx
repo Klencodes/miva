@@ -5,6 +5,7 @@ import { SelectOption } from "./Input";
 import { dateUtils } from "../../core/utils/date-format";
 import { PaginationProps, TableColumn, CustomAction, ImageConfig } from "../../core/interfaces/table";
 import Button from "./Button";
+import { Roles } from "../../core/enums/roles";
 
 // --- Pagination Component ---
 const Pagination: React.FC<PaginationProps> = ({
@@ -108,6 +109,7 @@ interface DataTableProps {
   loading?: boolean;
   noDataMessage?: string;
   addButtonText?: string;
+  userRole?: Roles;
 
   page?: number;
   limit?: number;
@@ -182,7 +184,7 @@ const DataTable: React.FC<DataTableProps> = ({
   loading = false,
   noDataMessage = "No data found.",
   addButtonText = "Add New",
-
+  userRole = Roles.SALES,
   page = 1,
   limit = 10, // Use limit here to define skeleton rows
   count = 0,
@@ -394,6 +396,7 @@ const DataTable: React.FC<DataTableProps> = ({
           onFilterChange={handleFilter}
           currentDateRange={currentDateRange}
           onDateRangeChange={handleDateRangeChange}
+          userRole={userRole}
         />
       )}
 

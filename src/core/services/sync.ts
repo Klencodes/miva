@@ -348,7 +348,9 @@ class SyncService {
         selling_unit: item.selling_unit || 'unit',
         image_url: item.image_url || '',
         image_alt: item.image_alt || item.short_name || 'Product image'
-      }))
+      })),
+      // Preserve the client-created timestamp when syncing
+      created_at: order.created_at || new Date().toISOString()
     };
 
     return serverOrder;

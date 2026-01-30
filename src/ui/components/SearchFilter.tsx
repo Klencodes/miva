@@ -6,6 +6,7 @@ interface SearchFilterProps {
   placeholder?: string;
   searchLabel?: string;
   showSort?: boolean;
+  userRole?: string;
   showFilters?: boolean;
   sortOptions?: SelectOption[];
   filterOptions?: SelectOption[];
@@ -28,6 +29,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   onFilterChange,
   onDateRangeChange,
   currentDateRange,
+  userRole,
   // currentDateRange = null, 
 }) => {
   // const today = new Date();
@@ -142,6 +144,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           onChange={handleApplyDateRange}
           onStartChange={setStartDate}
           onEndChange={setEndDate}
+          userRole={userRole}
         />
         {/* Optional: add a reset button */}
         {/* <Button size="sm" variant="outline" onClick={handleResetDateRange}>

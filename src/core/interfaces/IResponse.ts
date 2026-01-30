@@ -7,6 +7,14 @@ export interface IResponse {
   previous?: string | null;
   hasMore?: boolean;
 }
+
+export interface IOrderResponse extends IResponse {
+  total_orders: number;
+  total_sales: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
 export interface UploadResult {
   public_id: string;
   secure_url: string;
