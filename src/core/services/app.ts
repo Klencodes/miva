@@ -2,6 +2,10 @@ import { IResponse, UploadResult } from "../interfaces/IResponse";
 import { apiService } from "./api";
 import { apiValues } from "./api-values";
 import { handleError } from "./error-handler";
+export interface IOrderResponse extends IResponse {
+  total_orders?: number;
+  total_sales?: number;
+}
 
 export class AppService {
   /**
@@ -229,10 +233,11 @@ export class AppService {
       throw new Error(handleError(error));
     }
   }
+  
   /**
    * Get Order
    */
-  async getOrders(payload: any): Promise<IResponse> {
+  async getOrders(payload: any): Promise<IOrderResponse> {
     try {
       const params: Record<string, string> = {
         page: payload?.page.toString(),
@@ -246,9 +251,15 @@ export class AppService {
       ) {
         params.payment_method = payload?.payment_method;
       }
+      if(payload?.dateRange?.start_date){
+        params.start_date = payload?.dateRange?.start_date
+      }
+       if(payload?.dateRange?.end_date){
+        params.end_date = payload?.dateRange?.end_date
+      }
 
       const queryParams = new URLSearchParams(params).toString();
-      return await apiService.get<IResponse>(
+      return await apiService.get<IOrderResponse>(
         `${apiValues.GET_ORDERS_ENDPOINT}?${queryParams}`
       );
     } catch (error: any) {
@@ -454,6 +465,17 @@ export class AppService {
   async getPayoutWallet(): Promise<any> {
     try {
       return await apiService.get<IResponse>(apiValues.PAYOUT_WALLET_ENDPOINT);
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+
+  /**
+   * Get revenue time series (aggregated from orders)
+   */
+  async getRevenueTimeSeries(params?: { start_date?: string; end_date?: string; group_by?: string }): Promise<any> {
+    try {
+      return await apiService.post<IResponse>(apiValues.REVENUE_TIME_SERIES_ENDPOINT, params || {});
     } catch (error: any) {
       throw new Error(handleError(error));
     }

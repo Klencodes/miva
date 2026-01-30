@@ -11,6 +11,7 @@ export const apiValues = {
   get ASSIGN_USER_ENTITY_ENDPOINT() { return 'entities/assign-user-to-entity/' },
   get CREATE_BUSINESS_ENTITY_ENDPOINT() { return 'entities/' },
   get DASHBOARD_ANALYTICS_ENDPOINT() { return 'analytics/business-dashboard/' },
+  get REVENUE_TIME_SERIES_ENDPOINT() { return 'analytics/revenue-time-series/' },
   get PRODUCTS_ENDPOINT() { return 'products/' },
   get ALL_PRODUCTS_ENDPOINT() { return 'products/all/' },
   get UPDATE_PRODUCT_AVAILABILITY_ENDPOINT() { return 'products/update-availability/' },

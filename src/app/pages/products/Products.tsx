@@ -494,19 +494,6 @@ export default function ProductsList() {
     }
   };
 
-  const handleBulkUpload = async () => {
-    const result = await openModal(AddProductModal, {
-      data: { productExtraData },
-      size: "3xl",
-      side: "right",
-      backdropClose: false,
-    });
-    if (result?.success) {
-      fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
-      toast.success("Bulk upload completed successfully");
-    }
-  };
-
   const handleEditProduct = async (product: IProduct) => {
     const result = await openModal(AddProductModal, {
       data: {product: product, productExtraData}, 

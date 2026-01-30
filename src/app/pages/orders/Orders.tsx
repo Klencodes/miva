@@ -21,7 +21,10 @@ import { syncService } from "../../../core/services/sync";
 import { indexedDBService } from "../../../core/services/indexdb";
 import { DBOrder } from "../../../core/interfaces/IDBTypes";
 import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
-import { downloadReceiptAsPDF, printReceiptDirectly } from "../../../core/utils/receipt";
+import {
+  downloadReceiptAsPDF,
+  printReceiptDirectly,
+} from "../../../core/utils/receipt";
 import { ENTITY_KEY, getStoredItem } from "../../../core/hooks/useStore";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
 
@@ -32,16 +35,35 @@ export default function OrdersList() {
   const [exportLoading, setExportLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [totalSales, setTotalSales] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("all");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<string>("all");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
   const loadingRef = useRef(false);
   const isOnline = useNetworkStatus();
-  const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null)
+  const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
+
+  // const [dateRange, setDateRange] = useState<{
+  //   start_date: string;
+  //   end_date: string;
+  // }>({ start_date: "", end_date: "" });
+    const [dateRange, setDateRange] = useState<{start_date: string, end_date: string}>(() => {
+    const today = new Date();
+    // const thirtyDaysAgo = new Date();
+    // thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    return {
+      // start_date: thirtyDaysAgo.toISOString().split('T')[0],
+      start_date: today.toISOString().split('T')[0],
+      end_date: today.toISOString().split('T')[0]
+    };
+  });
 
   usePageTitle("Sales Orders");
 
@@ -105,7 +127,7 @@ export default function OrdersList() {
     },
     {
       header: "Cashier",
-      value: (item: IOrder) => item.cashier, 
+      value: (item: IOrder) => item.cashier,
       type: "column",
     },
     {
@@ -148,14 +170,13 @@ export default function OrdersList() {
       title: "Download Receipt",
       handler: () => handleDownload(item),
       icon: "download-line",
-      
     },
-  {
-    title: "Preview Receipt",
-    handler: () => handleOpenReceipt(item),
-    icon: "eye-line",
-    classes: "",
-  },
+    {
+      title: "Preview Receipt",
+      handler: () => handleOpenReceipt(item),
+      icon: "eye-line",
+      classes: "",
+    },
     {
       title: "View Details",
       handler: () => onViewDetails(item),
@@ -166,7 +187,7 @@ export default function OrdersList() {
 
   const handlePrint = (item: IOrder) => {
     const success = printReceiptDirectly(item, entity!);
-    
+
     if (success) {
       // toast.success("Opening print preview...");
     } else {
@@ -176,9 +197,9 @@ export default function OrdersList() {
 
   const handleDownload = async (item: IOrder) => {
     toast.info("Generating PDF...");
-    
+
     const success = await downloadReceiptAsPDF(item, entity!);
-    
+
     if (success) {
       toast.success("Receipt downloaded successfully");
     } else {
@@ -187,138 +208,162 @@ export default function OrdersList() {
   };
 
   // 8. DATA FETCHING: Update function to fetch Orders
-const convertDBOrderToIOrder = (dbOrder: DBOrder): IOrder => {
-  return {
-    id: dbOrder.server_id || dbOrder.id?.toString() || `local-${dbOrder.id}`,
-    code: dbOrder.code || `LOCAL-${dbOrder.id}`,
-    cashier: dbOrder.cashier || '',
-    customer: dbOrder.customer || '',
-    total: dbOrder.total || 0,
-    subtotal: dbOrder.subtotal || dbOrder.total || 0,
-    discount: dbOrder.discount || 0,
-    tendered_cash: dbOrder.tendered_cash || 0,
-    balance: dbOrder.balance || 0,
-    balance_label: dbOrder.balance_label || 'Change',
-    items: dbOrder.items || [],
-    payment: dbOrder.payment || { payment_method: 'Cash', amount_paid: 0 },
-    created_at: dbOrder.created_at || new Date().toISOString(),
-    // Type assertion - add IndexedDB fields to IOrder
-  } as IOrder & { status?: string; synced_at?: string; entity_id?: string };
-};
+  const convertDBOrderToIOrder = (dbOrder: DBOrder): IOrder => {
+    return {
+      id: dbOrder.server_id || dbOrder.id?.toString() || `local-${dbOrder.id}`,
+      code: dbOrder.code || `LOCAL-${dbOrder.id}`,
+      cashier: dbOrder.cashier || "",
+      customer: dbOrder.customer || "",
+      total: dbOrder.total || 0,
+      subtotal: dbOrder.subtotal || dbOrder.total || 0,
+      discount: dbOrder.discount || 0,
+      tendered_cash: dbOrder.tendered_cash || 0,
+      balance: dbOrder.balance || 0,
+      balance_label: dbOrder.balance_label || "Change",
+      items: dbOrder.items || [],
+      payment: dbOrder.payment || { payment_method: "Cash", amount_paid: 0 },
+      created_at: dbOrder.created_at || new Date().toISOString(),
+      // Type assertion - add IndexedDB fields to IOrder
+    } as IOrder & { status?: string; synced_at?: string; entity_id?: string };
+  };
 
-// In your component
-type DisplayOrder = IOrder & {
-  status?: string;
-  synced_at?: string;
-  entity_id?: string;
-};
+  // In your component
+  type DisplayOrder = IOrder & {
+    status?: string;
+    synced_at?: string;
+    entity_id?: string;
+  };
 
-// Update the fetchOrdersData function to use this conversion
-const fetchOrdersData = useCallback(
-  async (
-    pageParam: number = 1,
-    search: string = "",
-    payment_method: string = "All"
-  ) => {
-    if (loadingRef.current) return;
+  // Update the fetchOrdersData function to use this conversion
+  const fetchOrdersData = useCallback(
+    async (
+      pageParam: number = 1,
+      search: string = "",
+      payment_method: string = "All",
+      dateRange?: { start_date: string; end_date: string },
+    ) => {
+      if (loadingRef.current) return;
 
-    loadingRef.current = true;
-    setLoading(true);
+      loadingRef.current = true;
+      setLoading(true);
 
-    try {
-      const payload = {
-        page: pageParam,
-        search,
-        payment_method,
-      };
+      try {
+        const payload = {
+          page: pageParam,
+          search,
+          payment_method,
+          dateRange,
+        };
 
-      let orders: IOrder[] = []; 
-      let count = 0;
+        let orders: IOrder[] = [];
+        let count = 0;
 
-      if (isOnline) {
-        try {
-          const serverResponse = await appService.getOrders(payload);
+        if (isOnline) {
+          try {
+            const serverResponse = await appService.getOrders(payload);
 
-          if (serverResponse.success && serverResponse.results) {
-            // Server orders are already IOrder[]
-            orders = serverResponse.results as IOrder[];
-            count = serverResponse.count as number;
-
-            // Save server orders to IndexedDB
-            await indexedDBService.saveOrders(orders);
-          }
-        } catch (serverError) {
-          console.log('Server fetch failed, using local data:', serverError);
-        }
-      }else{
-
-      // ALWAYS get local orders (including pending)
-      const localResponse = await indexedDBService.getAllOrders({
-        includePending: true,
-        ...payload
-      });
-      
-      if (localResponse.success && localResponse.results) {
-        const localOrders = localResponse.results as DBOrder[];
-        
-        // Convert DBOrder to IOrder
-        const convertedLocalOrders = localOrders.map(convertDBOrderToIOrder);
-        
-        // Merge with server orders
-        if (orders.length > 0) {
-          // Create a map of orders by ID to avoid duplicates
-          const orderMap = new Map<string, IOrder>();
-          
-          // Add server orders first
-          orders.forEach(order => orderMap.set(order.id, order));
-          
-          // Add local orders (pending ones will have different IDs)
-          convertedLocalOrders.forEach(order => {
-            if (!orderMap.has(order.id)) {
-              orderMap.set(order.id, order);
+            if (serverResponse.success && serverResponse.results) {
+              // Server orders are already IOrder[]
+              orders = serverResponse.results as IOrder[];
+              count = serverResponse.count as number;
+              setTotalOrders(serverResponse.total_orders || count);
+              setTotalSales(serverResponse.total_sales || 0);
+              // Save server orders to IndexedDB
+              await indexedDBService.saveOrders(orders);
             }
-          });
-          
-          orders = Array.from(orderMap.values());
+          } catch (serverError) {
+            console.log("Server fetch failed, using local data:", serverError);
+          }
         } else {
-          orders = convertedLocalOrders;
+          // ALWAYS get local orders (including pending)
+          const localResponse = await indexedDBService.getAllOrders({
+            includePending: true,
+            ...payload,
+          });
+
+          if (localResponse.success && localResponse.results) {
+            const localOrders = localResponse.results as DBOrder[];
+
+            // Convert DBOrder to IOrder
+            const convertedLocalOrders = localOrders.map(
+              convertDBOrderToIOrder,
+            );
+
+            // Merge with server orders
+            if (orders.length > 0) {
+              // Create a map of orders by ID to avoid duplicates
+              const orderMap = new Map<string, IOrder>();
+
+              // Add server orders first
+              orders.forEach((order) => orderMap.set(order.id, order));
+
+              // Add local orders (pending ones will have different IDs)
+              convertedLocalOrders.forEach((order) => {
+                if (!orderMap.has(order.id)) {
+                  orderMap.set(order.id, order);
+                }
+              });
+
+              orders = Array.from(orderMap.values());
+            } else {
+              orders = convertedLocalOrders;
+            }
+
+            count = localResponse.count as number;
+
+            // Set totals from local data when offline
+            setTotalOrders(count);
+            const localTotalSales = convertedLocalOrders.reduce(
+              (acc, o) => acc + (o.total || 0),
+              0,
+            );
+            setTotalSales(localTotalSales);
+          }
         }
-        
-        count = localResponse.count as number;
-        
+        setOrders(orders);
+        setTotalCount(count);
+      } catch (error) {
+        toast.error("Failed to load orders");
+        setOrders([]);
+        setTotalCount(0);
+        setTotalOrders(0);
+        setTotalSales(0);
+      } finally {
+        loadingRef.current = false;
+        setLoading(false);
       }
-    }
-      setOrders(orders);
-      setTotalCount(count);
-    } catch (error) {
-      toast.error("Failed to load orders");
-      setOrders([]);
-      setTotalCount(0);
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-    }
-  },
-  [isOnline]
-);
+    },
+    [isOnline],
+  );
 
   // 9. EFFECT HOOKS: Adjust dependencies and remove wallet fetching
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, selectedPaymentMethod]);
+  }, [debouncedSearchTerm, selectedPaymentMethod, dateRange]);
 
   useEffect(() => {
-    fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod);
+    fetchOrdersData(
+      currentPage,
+      debouncedSearchTerm,
+      selectedPaymentMethod,
+      dateRange,
+    );
   }, [
     fetchOrdersData,
     currentPage,
     debouncedSearchTerm,
     selectedPaymentMethod,
+    dateRange,
   ]);
 
   useEffect(() => {
     const handleRefresh = () => {
-      fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod);
+      fetchOrdersData(
+        currentPage,
+        debouncedSearchTerm,
+        selectedPaymentMethod,
+        dateRange,
+      );
     };
 
     eventService.onRefresh(handleRefresh);
@@ -331,6 +376,7 @@ const fetchOrdersData = useCallback(
     currentPage,
     debouncedSearchTerm,
     selectedPaymentMethod,
+    dateRange,
   ]);
 
   // 10. HANDLERS: Update handler logic
@@ -402,18 +448,17 @@ const fetchOrdersData = useCallback(
     }
   };
 
-  //force sync a single order 
+  //force sync a single order
   //eslint-disable-next-line
-  const forceSyncSingleOrder = async(orderId: number) =>{
-    try{
-      const result = await syncService.forceSyncOrder(orderId)
-      if(result){
-        
+  const forceSyncSingleOrder = async (orderId: number) => {
+    try {
+      const result = await syncService.forceSyncOrder(orderId);
+      if (result) {
       }
-    } catch{
+    } catch {
       toast.error("Sync single order failed");
     }
-  }
+  };
 
   // 11. EXPORT LOGIC: Update export logic for Orders
   const handleExport = async (): Promise<void> => {
@@ -446,7 +491,7 @@ const fetchOrdersData = useCallback(
               .reduce(
                 (acc, part) =>
                   acc && acc[part] !== undefined ? acc[part] : "",
-                obj
+                obj,
               );
           };
 
@@ -457,7 +502,7 @@ const fetchOrdersData = useCallback(
             discount: order.discount,
             "payment.payment_method": getNestedValue(
               order,
-              "payment.payment_method"
+              "payment.payment_method",
             ),
             created_at: new Date(order.created_at).toLocaleString(),
             cashier: order.cashier,
@@ -487,6 +532,12 @@ const fetchOrdersData = useCallback(
       setExportLoading(false);
     }
   };
+  const handleDateRangeChange = (dateRange: {
+    start_date: string;
+    end_date: string;
+  }) => {
+    setDateRange(dateRange);
+  };
 
   // 12. RENDER: Remove Payout-specific UI elements (Wallet Summary)
   return (
@@ -500,6 +551,25 @@ const fetchOrdersData = useCallback(
         />
 
         {/* Removed Payout Wallet Summary/Request Section */}
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 mb-3`}>
+          <div className="bg-card rounded-sm p-4 item-center">
+            <div className="text-sm text-text-light font-medium mb-1">
+              Total Sales
+            </div>
+            <div className="text-2xl font-bold text-text">
+              GHS {parseFloat(totalSales.toFixed(2))}
+            </div>
+            <div className="text-xs text-text-light mt-1">Ready for review</div>
+          </div>
+
+          <div className="bg-card rounded-sm p-4 item-center">
+            <div className="text-sm text-text-light font-medium mb-1">
+              Total Orders
+            </div>
+            <div className="text-2xl font-bold text-success">{totalOrders || 0}</div>
+            <div className="text-xs text-text-light mt-1">All time orders</div>
+          </div>
+        </div>
 
         <div className="overflow-y-auto flex-1">
           <DataTable
@@ -513,6 +583,8 @@ const fetchOrdersData = useCallback(
             count={totalCount}
             onPageChange={handlePageChange}
             customActions={getCustomActions}
+            currentDateRange={dateRange}
+            onDateRangeChange={handleDateRangeChange}
             noDataMessage="No sales orders found."
           />
         </div>

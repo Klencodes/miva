@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect, JSX } from "react";
 import { Link } from "react-router-dom";
 import { SearchFilter } from "./SearchFilter";
+import { SelectOption } from "./Input";
 import { dateUtils } from "../../core/utils/date-format";
 import { PaginationProps, TableColumn, CustomAction, ImageConfig } from "../../core/interfaces/table";
 import Button from "./Button";
-import { SelectOption } from "../../core/interfaces/ISelectOption";
 
 // --- Pagination Component ---
-export const Pagination: React.FC<PaginationProps> = ({
+const Pagination: React.FC<PaginationProps> = ({
   page,
   limit,
   count,
@@ -114,14 +114,14 @@ interface DataTableProps {
   count?: number;
 
   customActions?: CustomAction[] | ((item: any) => CustomAction[]);
-
+  currentDateRange?: { start_date: string; end_date: string } | null;
   onSearch?: (term: string) => void;
   onFilter?: (filter: string) => void;
   onSort?: (sort: string) => void;
   onPageChange?: (page: number) => void;
   onAdd?: () => void;
   onDateRangeChange?: (
-    dateRange: { start: string; end: string } | null
+    dateRange: { start_date: string; end_date: string } | any
   ) => void;
 }
 
@@ -171,6 +171,7 @@ const TableSkeletonLoader: React.FC<{ columnsCount: number; rows: number; showAc
   );
 };
 
+// --- DataTable Component ---
 const DataTable: React.FC<DataTableProps> = ({
   columns = [],
   sortOptions = [],
@@ -187,7 +188,7 @@ const DataTable: React.FC<DataTableProps> = ({
   count = 0,
 
   customActions = [],
-
+  currentDateRange = null,
   onSearch,
   onFilter,
   onSort,
@@ -214,9 +215,7 @@ const DataTable: React.FC<DataTableProps> = ({
     onPageChange?.(newPage);
   };
 
-  const handleDateRangeChange = (
-    dateRange: { start: string; end: string } | null
-  ) => {
+  const handleDateRangeChange = ( dateRange: { start_date: string; end_date: string } | null) => {
     onDateRangeChange?.(dateRange);
   };
 
@@ -261,7 +260,6 @@ const DataTable: React.FC<DataTableProps> = ({
   const showSortFeature = !!onSort && (sortOptions?.length || 0) > 0;
   const showPaginationFeature = !!onPageChange && count > limit;
   const showAddButtonFeature = !!onAdd;
-  const showDateRangeFeature = !!onDateRangeChange;
 
   const useActionDropdowns = showActionsColumn;
 
@@ -366,7 +364,7 @@ const DataTable: React.FC<DataTableProps> = ({
             <img
               src={value}
               alt={altText}
-              className={`rounded-sm object-cover ${sizeClasses} ${
+              className={`rounded-full object-cover ${sizeClasses} ${
                 imgConfig.className || ""
               }`}
             />
@@ -389,12 +387,12 @@ const DataTable: React.FC<DataTableProps> = ({
           searchLabel={searchLabel}
           showSort={showSortFeature}
           showFilters={showFiltersFeature}
-          showDateRange={showDateRangeFeature}
           sortOptions={sortOptions}
           filterOptions={filterOptions}
           onSearchChange={handleSearch}
           onSortChange={handleSort}
           onFilterChange={handleFilter}
+          currentDateRange={currentDateRange}
           onDateRangeChange={handleDateRangeChange}
         />
       )}
@@ -521,7 +519,7 @@ const DataTable: React.FC<DataTableProps> = ({
                             }}
                           >
                             <Button
-                              onClick={(e) => {
+                              onClick={(e: { stopPropagation: () => void; }) => {
                                 e.stopPropagation();
                                 toggleActionMenu(item.id);
                               }}
@@ -587,5 +585,4 @@ const DataTable: React.FC<DataTableProps> = ({
     </div>
   );
 };
-
 export default DataTable;

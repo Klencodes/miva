@@ -216,6 +216,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
       { value: "", label: "Select Unit Type" },
       ...(modalData?.productExtraData?.content_unit_types || []),
     ]);
+    setSellingUnits([
+      { value: "", label: "Select Selling Unit" },
+      ...(modalData?.productExtraData?.selling_units || []),
+    ]);
     // eslint-disable-next-line
   }, []);
 

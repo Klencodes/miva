@@ -74,7 +74,7 @@ const UpdateStockModal: React.FC = () => {
 
     try {
       const newStockInUnits = parseFloat(unitsInput);
-      const newStockInPieces  = parseFloat(piecesInput);
+      // const newStockInPieces  = parseFloat(piecesInput);
 
       const payload = {
         product_id: product.id,
