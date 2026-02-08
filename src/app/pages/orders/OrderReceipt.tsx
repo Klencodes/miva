@@ -51,11 +51,11 @@ const OrderReceipt: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Modal Header */}
-      <div className="no-print flex flex-col mb-6 border-b border-border sticky top-0 bg-white z-10">
+      <div className="no-print flex flex-col mb-6 border-b border-border sticky top-0 z-10">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-700">{modalData?.title}</h2>
-            <h4 className="text-md text-gray-500 mt-1">{modalData?.subtitle}</h4>
+            <h2 className="text-2xl font-bold text-text">{modalData?.title}</h2>
+            <h4 className="text-md text-text-light mt-1">{modalData?.subtitle}</h4>
           </div>
           <button
             onClick={() => modalRef!.dismiss()}

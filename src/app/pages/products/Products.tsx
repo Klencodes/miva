@@ -19,6 +19,7 @@ import UpdateStockModal from "./UpdateStockModal";
 import UpdateAvailabilityModal from "./UpdateAvailabilityModal";
 import { formatQuantity } from "../../../core/utils/formatQuantity";
 import UpdatePriceModal from "./UpdatePriceModal";
+import { useStore } from "../../../core/hooks/useStore";
 
 export default function ProductsList() {
   // 1. STATE ADJUSTMENTS: Use IProduct interface
@@ -32,6 +33,7 @@ export default function ProductsList() {
   const [selectedAvailability, setSelectedAvailability] = useState<string>("all");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
+  const { user } = useStore();
   const [productExtraData, setProductExtraData] = useState<any>();
   const [categories, setCategories] = useState<SelectOption[]>([]);
 
@@ -568,8 +570,8 @@ export default function ProductsList() {
             sortOptions={availabilityOptions}
             onSort={handleAvailabilityFilter}
             page={currentPage}
-            limit={10}
             count={totalCount}
+            userRole={user?.role}
             onPageChange={handlePageChange}
             customActions={getCustomActions}
             noDataMessage="No products found in the inventory."

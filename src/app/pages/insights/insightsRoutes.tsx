@@ -7,7 +7,7 @@ const RevenueInsights = React.lazy(() => import("./RevenueInsights"));
 function InsightsRoutes() {
   return (
     <Routes>
-      <Route path="revenue" element={<RevenueInsights />} />
+      <Route path="revenue" element={<RevenueInsights/>} />
     </Routes>
   );
 }

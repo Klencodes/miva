@@ -24,7 +24,9 @@ export const apiValues = {
   get ADD_CUSTOMERS_ENDPOINT() { return 'users/customers/add/' },
   get GET_CURRENT_USER_ENDPOINT() { return 'profile/' },
   get USERS_ENDPOINT() { return 'users/' },
-  get ADD_USER_ENDPOINT() { return 'users/add/' },
+  get ADD_USER_ENDPOINT() { return 'users/add/' },  
+  get SUPPLIERS_ENDPOINT() { return 'suppliers/' },
+  get ADD_SUPPLIER_ENDPOINT() { return 'suppliers/add/' },
 
 
 

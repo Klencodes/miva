@@ -25,10 +25,10 @@ const getPricePerPiece = (item: IOrderItem): number => {
 
 // Critical: Must match your hook's subtotal logic exactly
 export const calculateDisplayPrice = (item: IOrderItem): number => {
-  const isPieceMode = item.isPieces === true || item.quantity_type === "pieces";
+  const isPieceMode = item.isPieces === true || item.quantity_type !== "units";
 
   if (isPieceMode) {
-    return getPricePerPiece(item);
+    return item.price_per_piece || getPricePerPiece(item);
   } else {
     // Units mode: show price per unit/box
     return item.unit_price || getPricePerPiece(item) * (item.selling_unit_quantity || 1);
@@ -40,23 +40,71 @@ export const calculateItemTotal = (item: IOrderItem): number => {
   return price * item.quantity;
 };
 
-// Quantity column: e.g., 2.5 for 2 boxes + 5 pieces
+// One-line mapping function
+const getAbbreviation = (type: string, quantity: number): string => {
+  const abbrevMap: Record<string, string> = {
+    each: 'ea', box: 'bx', ctn: 'ctn', carton: 'ctn', sack: 'sk', pack: 'pk',
+    crate: 'crt', gal: 'gal', gallon: 'gal', pc: 'pc', piece: 'pc', pkt: 'pkt',
+    packet: 'pkt', bkt: 'bkt', bucket: 'bkt', bdl: 'bdl', bundle: 'bdl',
+    cnt: 'cnt', container: 'cnt', pal: 'pal', pallet: 'pal', strip: 'strp',
+    sachet: 'scht', bottle: 'btl', pouch: 'pch'
+  };
+  
+  const singular = abbrevMap[type.toLowerCase()] || type.toLowerCase().slice(0, 3);
+  return quantity > 1 ? `${singular}s` : singular;
+};
+
 export const formatQuantityForColumn = (
   quantity: number,
   quantityType: string = "pieces",
-  sellingUnitQuantity: number = 1
+  sellingUnitQuantity: number = 1,
+  sellingUnit: string = "units"
 ): string => {
-  if (quantityType === "units") {
-    return quantity.toFixed(0);
+  if (quantity === null || quantity === undefined) return "";
+  
+  const type = quantityType.toLowerCase();
+  
+  // Handle integer-only types
+  const integerTypes = new Set([
+    "each", "pc", "piece", "unit", "bottle", "can", "jar", "bar",
+    "strip", "sachet", "pouch", "packet", "roll"
+  ]);
+  
+  if (integerTypes.has(type)) {
+    const rounded = Math.round(quantity);
+    return `${rounded}${getAbbreviation(quantityType, rounded)}`;
   }
-
-  const full = Math.floor(quantity / sellingUnitQuantity);
-  const rem = quantity % sellingUnitQuantity;
-
-  if (full > 0 && rem > 0) {
-    return `${full}.${rem}`;
+  
+  // Handle units type
+  if (type === "units") {
+    return `${quantity}${getAbbreviation(sellingUnit, quantity)}`;
   }
-  return full > 0 ? full.toString() : quantity.toString();
+  
+  // Handle packaged items
+  if (sellingUnitQuantity > 1) {
+    const full = Math.floor(quantity / sellingUnitQuantity);
+    const rem = quantity % sellingUnitQuantity;
+    
+    if (full > 0 && rem > 0) {
+      const decimalValue = full + rem / sellingUnitQuantity;
+      const displayValue = decimalValue % 1 === 0 
+        ? decimalValue.toFixed(0)
+        : decimalValue.toFixed(2).replace(/\.?0+$/, '');
+      
+      return `${displayValue} ${getAbbreviation(quantityType, full)}`;
+    }
+    
+    if (full > 0) {
+      return `${full}${getAbbreviation(quantityType, full)}`;
+    }
+    
+    return `${rem}${getAbbreviation("piece", rem)}`;
+  }
+  
+  // Handle regular decimal quantities
+  const displayQty = quantity % 1 === 0  ? quantity.toFixed(0) : quantity.toFixed(2).replace(/\.?0+$/, '');
+  
+  return `${displayQty}${getAbbreviation(quantityType, quantity)}`;
 };
 
 // Measurement: e.g., 12X500ML
@@ -77,10 +125,10 @@ export const generateReceiptHTML = (
 ): string => {
   return `
     <div class="receipt-container" style="width:290px;padding:0 10px 10px 10px;background:white;font-family:'Courier New',monospace;font-size:12px;color:#000;margin:0 auto;box-sizing:border-box;line-height:1.4;">
-      <!-- Logo -->
+      <!-- Logo
       <div style="text-align:center;">
         <img src="/icons/logo-icon.png" alt="Logo" style="width:120px;height:80px;object-fit:contain;margin:0 auto 8px auto;display:block;" />
-      </div>
+      </div> -->
 
       <!-- Header -->
       <div style="text-align:center;margin-bottom:15px;">
@@ -97,7 +145,7 @@ export const generateReceiptHTML = (
 
       <!-- Transaction Info -->
       <div style="font-size:11px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;"><span>DATE:</span><span>${dateUtils.formatDate(order.created_at, DateFormatEnums.DATE_TIME)}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>DATE:</span><span>${dateUtils.formatDate(order.created_at, DateFormatEnums.DATE_TIME_SHORT)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>RCPT#:</span><span style="font-weight:bold;">${order.code}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>CUST:</span><span>${(order.customer || "WALK-IN").toUpperCase()}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>CASHIER:</span><span>${(order.cashier || "STAFF").toUpperCase()}</span></div>
@@ -124,7 +172,8 @@ export const generateReceiptHTML = (
               const qtyColumn = formatQuantityForColumn(
                 item.quantity,
                 item.quantity_type || "pieces",
-                item.selling_unit_quantity || 1
+                item.selling_unit_quantity || 1,
+                item.selling_unit
               );
               const isLast = index === order.items.length - 1;
               const border = isLast ? "" : 'border-bottom:1px dashed #ddd;';

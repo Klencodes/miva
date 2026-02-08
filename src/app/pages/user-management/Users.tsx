@@ -309,6 +309,7 @@ const Users = () => {
             noDataMessage="No users found matching your criteria."
             page={currentPage}
             count={totalCount}
+            userRole={user?.role}
             onPageChange={handlePageChange}
             onSearch={handleSearch}
           />
