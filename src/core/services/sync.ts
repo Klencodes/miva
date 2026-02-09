@@ -245,7 +245,6 @@ class SyncService {
   // Download server orders to local DB
   private async downloadServerOrders(): Promise<void> {
     try {
-      console.log('📥 Downloading server orders...');
       
       // Get the last sync timestamp or use a default
       const lastSyncTime = await indexedDBService.getLastSyncTime();

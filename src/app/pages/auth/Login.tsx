@@ -15,7 +15,6 @@ import { IUser } from "../../../core/interfaces/IUser";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
 import { Roles, SUPER_ADMIN_ENTITY_ID } from "../../../core/enums/roles";
 import { toast } from "sonner";
-import { syncService } from "../../../core/services/sync";
 
 export interface LoginFormState {
   email: string;
