@@ -242,16 +242,18 @@ export default function ProductsList() {
       availability: string = "all"
     ): Promise<void> => {
       setLoading(true);
+      console.log(selectedAvailability, "selectedAvailability>>>>>")
       try {
         const payload: any = {
           page,
           search,
           category: category !== "all" ? category : undefined,
         };
+        console.log(availability, "availability......>>>>>>")
 
         // Add availability filter if specified
         if (availability !== "all") {
-          payload.is_available = availability === "available";
+          payload.is_available = availability.toLowerCase() === "available";
         }
 
         const res = await appService.getProducts(payload);
@@ -406,12 +408,9 @@ export default function ProductsList() {
         page: currentPage,
         search: debouncedSearchTerm,
         category: selectedCategory !== "all" ? selectedCategory : undefined,
+        is_available: selectedAvailability !== "all" ? selectedAvailability : undefined
       };
 
-      if (selectedAvailability !== "all") {
-        payload.is_available = selectedAvailability === "available";
-      }
-      
       const res = await appService.getProducts(payload);
 
       if (res.success && res.results && res.results.length > 0) {

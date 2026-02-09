@@ -226,7 +226,7 @@ useEffect(() => {
       setIsFullscreen(true);
     }
   };
-  
+
   // Only auto-enter fullscreen if user hasn't interacted with it before
   // You might want to store a preference in localStorage
   const shouldAutoFullscreen = !localStorage.getItem('fullscreenDisabled');
@@ -246,19 +246,16 @@ useEffect(() => {
 
   const toggleFullScreen = useCallback(() => {
   if (!document.fullscreenElement) {
-    // Not in fullscreen, so request it
+    // This MUST be called inside a click/button handler
     document.documentElement.requestFullscreen().catch((err) => {
       console.error(`Error attempting to enable fullscreen: ${err.message}`);
     });
-    // User manually enabled fullscreen, don't auto-enter next time
     localStorage.removeItem('fullscreenDisabled');
   } else {
-    // Already in fullscreen, so exit it
     if (document.exitFullscreen) {
       document.exitFullscreen().catch((err) => {
         console.error(`Error attempting to exit fullscreen: ${err.message}`);
       });
-      // User manually exited, remember this preference
       localStorage.setItem('fullscreenDisabled', 'true');
     }
   }

@@ -191,6 +191,7 @@ export class AppService {
    * Get products
    */
   async getProducts(payload: any): Promise<any> {
+    console.log(payload, "payload>>>>>>")
     try {
       const params: Record<string, string> = {
         page: payload?.page.toString(),
@@ -200,6 +201,9 @@ export class AppService {
       }
       if (payload?.category && payload?.category.toLowerCase() !== "all") {
         params.category = payload?.category;
+      }
+      if(payload?.is_available){
+        params.is_available = payload.is_available
       }
 
       const queryParams = new URLSearchParams(params).toString();
