@@ -1,0 +1,31 @@
+directories:
+  output: dist
+  buildResources: assets
+files:
+  - filter:
+      - build/**/*
+      - build/**/*
+      - node_modules/**/*
+      - electron/main.js
+      - electron/preload.js
+      - electron/fallback.html
+      - package.json
+extraMetadata:
+  main: build/electron.js
+appId: com.yourcompany.yourapp
+productName: Your App
+mac:
+  category: public.app-category.productivity
+  icon: public/logo192.png
+  target: dmg
+win:
+  target: nsis
+  icon: public/logo192.png
+linux:
+  target: AppImage
+  icon: public/logo192.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+extends: react-cra
+electronVersion: 40.2.1

@@ -302,7 +302,7 @@ const ModernStore: React.FC = () => {
     const dd = String(now.getDate()).padStart(2, "0");
 
     const datePart = `${yy}${MM}${dd}`;
-    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const randomPart = Math.random().toString(36).substring(2, 4).toUpperCase();
 
     return `G${datePart}${randomPart}`;
   };
@@ -399,7 +399,6 @@ const ModernStore: React.FC = () => {
                 "synced",
                 serverOrderId
               );
-              
               orderDataForPrint = {
                 ...orderDataForPrint,
                 id: serverOrderId,
@@ -844,12 +843,12 @@ const ModernStore: React.FC = () => {
           {/* Header */}
           <div className="rounded-sm shadow-sm mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="min-w-0">
+              <div className="min-w-0 hidden sm:block">
                 <h1 className="text-2xl font-bold text-text truncate">Products</h1>
                 <p className="text-text-light mt-1 truncate">Browse and add items to your cart</p>
               </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-3 w-full sm:w-auto sm:gap-y-5">
                 <div className="relative flex-1 sm:flex-none sm:w-64 -mb-5">
                   <Input
                     type="text"
@@ -861,9 +860,8 @@ const ModernStore: React.FC = () => {
                 </div>
 
                 <div className="lg:hidden relative flex-shrink-0">
-                  <button
+                  <Button
                     onClick={() => setIsCartOpen(true)}
-                    className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center relative"
                     aria-label="View Cart"
                   >
                     <i className="ri-shopping-cart-2-line text-xl"></i>
@@ -872,17 +870,21 @@ const ModernStore: React.FC = () => {
                         {cartItems.length}
                       </span>
                     )}
-                  </button>
+                  </Button>
                 </div>
-              </div>
-              {isOnline && (
+                 {isOnline && (
                 <Button onClick={handleManualSync} className="flex-shrink-0">
-                  Sync Products
+                   <span className="hidden sm:block"> Sync Products</span>
+                    <span className="block sm:hidden"> 
+                      <i className="ri-refresh-line text-xl"></i>
+                    </span>
                 </Button>
               )}
+              </div>
+             
             </div>
 
-            <div className="mt-4 w-full">
+            <div className="mt-4 w-full hidden sm:block">
               <div className="relative">
                 <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-2">
                   <div className="flex items-center space-x-2 py-1 min-w-max">
@@ -910,7 +912,7 @@ const ModernStore: React.FC = () => {
           
           {/* Products Grid */}
           <div className="flex-1 overflow-y-auto h-full px-2">
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 bg-background">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:p-4 bg-background">
               {products.map((product, index) => (
                 <div
                   key={`${product.id}-${index}`}

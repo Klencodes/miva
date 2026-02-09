@@ -151,10 +151,9 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
 
   const contentClasses = useMemo(() => {
     return `flex-1 overflow-y-auto transition-all duration-300 ease-in-out bg-background
-      ${isMobileSidebarOpen ? "pointer-events-none" : ""} 
       ${layoutMode === LayoutMode.VERTICAL ? " lg:p-6 md:p-4" : "p-4"}
       scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent`;
-  }, [isMobileSidebarOpen, layoutMode]);
+  }, [layoutMode]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -165,6 +164,7 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
         currentSidebarState={finalSidebarState}
         onUserMenuAction={handleUserMenuAction}
         onLogoClick={handleLogoClick}
+        isMobile={isMobile}
       />
 
       {layoutMode === LayoutMode.HORIZONTAL && !showLoading && filteredNavItems.length > 0 && (
@@ -176,7 +176,7 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
 
       {/* Main Content Area */}
       <div className={layoutClasses}>
-        {/* Mobile Overlay */}
+        {/* Mobile Overlay for sidebar */}
         {layoutMode === LayoutMode.VERTICAL && isMobileSidebarOpen && (
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"

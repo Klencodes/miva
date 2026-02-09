@@ -22,6 +22,7 @@ interface HeaderProps {
   onToggleSidebar: () => void;
   onUserMenuAction?: (action: "logout" | "profile" | "settings") => void;
   onLogoClick?: () => void;
+  isMobile: boolean;
   currentSidebarState?: "standard" | "condensed" | "hidden";
 }
 
@@ -31,6 +32,7 @@ const Header: React.FC<HeaderProps> = memo(({
   onToggleSidebar,
   onUserMenuAction,
   onLogoClick,
+  isMobile,
   currentSidebarState = "standard",
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -298,6 +300,11 @@ useEffect(() => {
     onToggleSidebar();
   }, [onToggleSidebar]);
 
+  const toggleMobileSidebar = useCallback(() => {
+    // For mobile, the sidebar will overlay the content
+    onToggleSidebar();
+  }, [onToggleSidebar]);
+
   const handleLogoClickInternal = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     if (onLogoClick) {
@@ -340,8 +347,8 @@ useEffect(() => {
   // Memoize logo classes
   const logoClasses = useMemo(() => `
     flex items-center transition-all duration-300 cursor-pointer
-    ${isCondensed ? "w-[30px]" : "w-[230px]"}
-  `, [isCondensed]);
+    ${isMobile ? "w-[40px]" : isCondensed ? "w-[30px]" : "w-[230px]"}
+  `, [isMobile, isCondensed]);
 
   const iconLogoClass = useMemo(() => `
     h-8 w-8
@@ -354,9 +361,9 @@ useEffect(() => {
   `, [isCondensed]);
 
   return (
-    <div className="flex items-center justify-between h-16 px-6 bg-card z-[1000] relative border-b border-border isolate-parts">
+    <div className="flex items-center justify-between h-16 sm:px-6 px-0 bg-card z-[1000] relative border-b border-border isolate-parts">
       {/* --- LEFT SIDE (Logo/Sidebar Toggle) --- */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center">
         <Link
           to="/store"
           className={logoClasses}
@@ -376,18 +383,12 @@ useEffect(() => {
         </Link>
         <div className="flex gap-2 ml-4">
           {isVerticalLayout && (
-            <button
-              className="
-                bg-transparent border-none cursor-pointer text-text-light text-xl p-2 rounded-sm 
-                transition-all duration-200 flex items-center justify-center w-10 h-10 
-                hover:bg-background hover:text-text
-              "
-              onClick={handleToggleSidebar}
-              aria-label="Toggle sidebar"
-              title="Toggle sidebar"
+            <Button
+             variant="transparent"
+              onClick={isMobile ? toggleMobileSidebar : handleToggleSidebar}
             >
               <i className="ri-menu-line"></i>
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -395,7 +396,7 @@ useEffect(() => {
       {/* --- RIGHT SIDE (Controls) --- */}
       <div className="flex items-center">
         {/* Online/Offline Status Indicator */}
-        <div
+        {!isMobile && <div
           className={`
             flex items-center mr-3 px-2 py-1 rounded text-xs font-medium
             ${
@@ -409,39 +410,31 @@ useEffect(() => {
           <i className={`ri-wifi-${isOnline ? "line" : "off-line"} mr-1`}></i>
           {isOnline ? "Online" : "Offline"}
         </div>
+}
 
         {/* Maximize/Fullscreen button */}
-        <button
-          className="
-              bg-transparent border-none cursor-pointer text-text-light text-xl p-2 rounded-sm 
-              transition-all duration-200 flex items-center justify-center w-10 h-10 
-              hover:bg-background hover:text-text mr-3
-            "
+        {!isMobile && <Button
+         variant="transparent"
           onClick={toggleFullScreen}
           aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          // title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
         >
           <i
             className={
               isFullscreen ? "ri-fullscreen-exit-line" : "ri-fullscreen-line"
             }
           ></i>
-        </button>
+        </Button>}
 
         {/* Entity Dropdown/Modal Button */}
         {shouldShowEntityDropdown && ( 
           <div ref={entityDropdownRef} className="relative">
-            <button
-              className="
-                min-w-[200px]
-                flex items-center justify-between gap-2 px-4 py-2 text-sm font-medium rounded-sm 
-                bg-background border border-border text-text transition-colors duration-200 
-                hover:bg-background-10
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
+            <Button
+              variant="ghost"
               onClick={handleEntityButtonClick}
               aria-expanded={showEntityDropdown}
               aria-haspopup="listbox"
+              size={isMobile ? "sm": "md"}
               aria-label="Select entity"
               disabled={isEntityLoading || (!isOnline && !entity)} 
             >
@@ -459,7 +452,7 @@ useEffect(() => {
                   `}
                 />
               )}
-            </button>
+            </Button>
 
             {/* Dropdown for merchants only */}
             {showEntityDropdown && (
