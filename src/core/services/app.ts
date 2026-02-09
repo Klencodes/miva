@@ -191,7 +191,6 @@ export class AppService {
    * Get products
    */
   async getProducts(payload: any): Promise<any> {
-    console.log(payload, "payload>>>>>>")
     try {
       const params: Record<string, string> = {
         page: payload?.page.toString(),

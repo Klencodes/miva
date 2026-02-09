@@ -242,14 +242,12 @@ export default function ProductsList() {
       availability: string = "all"
     ): Promise<void> => {
       setLoading(true);
-      console.log(selectedAvailability, "selectedAvailability>>>>>")
       try {
         const payload: any = {
           page,
           search,
           category: category !== "all" ? category : undefined,
         };
-        console.log(availability, "availability......>>>>>>")
 
         // Add availability filter if specified
         if (availability !== "all") {
