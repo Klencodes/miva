@@ -21,6 +21,8 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
 }) => {
   const { setStoreEntities } = useStore();
   const [loading, setLoading] = useState<boolean>(false)
+    const { logout } = useStore(); 
+  
   const handleRetry = async () => {
     try {
       setLoading(true);
@@ -60,6 +62,7 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
                 <div className="bg-card rounded-lg p-6 mb-8 border border-border shadow-sm">
                   <p className="text-lg text-text-light mb-6">{message}</p>
                   <Button size="sm" className={'mb-3'} loading={loading} onClick={handleRetry}>Retry again</Button>
+                  <Button size="sm" variant="danger" className={'ml-3 mb-3'} onClick={logout}>Logout</Button>
 
                   {/* Additional Info */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

@@ -35,7 +35,6 @@ const Header: React.FC<HeaderProps> = memo(({
   isMobile,
   currentSidebarState = "standard",
 }) => {
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showEntityDropdown, setShowEntityDropdown] = useState(false);
   const [isEntityLoading, setIsEntityLoading] = useState(false);
@@ -185,15 +184,6 @@ const fetchEntities = useCallback(
 // Change the initial state to false
 
 useEffect(() => {
-  const handleFullscreenChange = () => {
-    setIsFullscreen(!!document.fullscreenElement);
-  };
-  
-  const handleFullscreenError = (e: Event) => {
-    console.error('Fullscreen error:', e);
-    setIsFullscreen(!!document.fullscreenElement);
-  };
-  
   const handleClickOutside = (event: MouseEvent) => {
     if (
       userMenuRef.current &&
@@ -209,58 +199,11 @@ useEffect(() => {
     }
   };
   
-  document.addEventListener("fullscreenchange", handleFullscreenChange);
-  document.addEventListener("fullscreenerror", handleFullscreenError);
   document.addEventListener("mousedown", handleClickOutside);
-  
-  // Auto-enter fullscreen when component mounts
-  const enterFullscreenOnMount = () => {
-    // Only enter fullscreen if not already in fullscreen
-    if (!document.fullscreenElement) {
-      // Small delay to ensure component is fully rendered
-      setTimeout(() => {
-        document.documentElement.requestFullscreen().catch((err) => {
-          console.error(`Auto fullscreen failed: ${err.message}`);
-          setIsFullscreen(false);
-        });
-      }, 300); // 300ms delay
-    } else {
-      setIsFullscreen(true);
-    }
-  };
 
-  // Only auto-enter fullscreen if user hasn't interacted with it before
-  // You might want to store a preference in localStorage
-  const shouldAutoFullscreen = !localStorage.getItem('fullscreenDisabled');
-  
-  if (shouldAutoFullscreen) {
-    enterFullscreenOnMount();
-  } else {
-    setIsFullscreen(!!document.fullscreenElement);
-  }
-  
   return () => {
-    document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    document.removeEventListener("fullscreenerror", handleFullscreenError);
     document.removeEventListener("mousedown", handleClickOutside);
   };
-}, []);
-
-  const toggleFullScreen = useCallback(() => {
-  if (!document.fullscreenElement) {
-    // This MUST be called inside a click/button handler
-    document.documentElement.requestFullscreen().catch((err) => {
-      console.error(`Error attempting to enable fullscreen: ${err.message}`);
-    });
-    localStorage.removeItem('fullscreenDisabled');
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen().catch((err) => {
-        console.error(`Error attempting to exit fullscreen: ${err.message}`);
-      });
-      localStorage.setItem('fullscreenDisabled', 'true');
-    }
-  }
 }, []);
 
   const toggleUserMenu = useCallback((event: React.MouseEvent) => {
@@ -398,7 +341,7 @@ useEffect(() => {
         {/* Online/Offline Status Indicator */}
         {!isMobile && <div
           className={`
-            flex items-center mr-3 px-2 py-1 rounded text-xs font-medium
+            flex items-center mr-3 p-2 rounded text-xs font-medium
             ${
               isOnline
                 ? "bg-success-5 text-success border border-success"
@@ -412,20 +355,6 @@ useEffect(() => {
         </div>
 }
 
-        {/* Maximize/Fullscreen button */}
-        {!isMobile && <Button
-         variant="transparent"
-          onClick={toggleFullScreen}
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          // title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          <i
-            className={
-              isFullscreen ? "ri-fullscreen-exit-line" : "ri-fullscreen-line"
-            }
-          ></i>
-        </Button>}
-
         {/* Entity Dropdown/Modal Button */}
         {shouldShowEntityDropdown && ( 
           <div ref={entityDropdownRef} className="relative">
@@ -434,7 +363,7 @@ useEffect(() => {
               onClick={handleEntityButtonClick}
               aria-expanded={showEntityDropdown}
               aria-haspopup="listbox"
-              size={isMobile ? "sm": "md"}
+              size={"sm"}
               aria-label="Select entity"
               disabled={isEntityLoading || (!isOnline && !entity)} 
             >

@@ -680,7 +680,6 @@ async updateOrderStatus(
 }
 
   // Get all regular orders (local pending + server synced) - NO hold orders
-  // Get all regular orders (local pending + server synced) - NO hold orders
 async getAllOrders(params?: {
   page?: number;
   pageSize?: number;
@@ -1425,7 +1424,7 @@ async getProducts(params: {
   }
 
   // Get pending sync items
-  async getPendingSyncItems(limit = 50): Promise<any[]> {
+  async getPendingSyncItems(limit = 100): Promise<any[]> {
     const db = await this.ensureDB();
     const entityId = this.entityIdString;
 

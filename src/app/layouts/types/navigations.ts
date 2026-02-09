@@ -31,7 +31,7 @@ export const NAVBAR_CONFIG: NavItem[] = [
     title: "Revenue Insights",
     icon: "bar-chart-line",
     link: "/insights/revenue",
-    roles: [Roles.SUPER_ADMIN],
+    roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.SALES],
   },
   {
     id: "suppliers",
@@ -45,7 +45,7 @@ export const NAVBAR_CONFIG: NavItem[] = [
     title: "Products",
     icon: "shopping-bag-line",
     link: "/products",
-    roles: [Roles.SUPER_ADMIN, Roles.ADMIN],
+    roles: [Roles.SUPER_ADMIN],
   }, 
   {
     id: "payouts",

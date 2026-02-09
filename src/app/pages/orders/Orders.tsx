@@ -38,8 +38,7 @@ export default function OrdersList() {
   const [totalOrders, setTotalOrders] = useState<number>(0);
   const [totalSales, setTotalSales] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<string>("all");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("all");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
   const loadingRef = useRef(false);
@@ -49,6 +48,7 @@ export default function OrdersList() {
     loadingRef.current = loading;
   }, [loading]);
   const { user } = useStore();
+  console.log(user?.role, "user?.role")
   // const [dateRange, setDateRange] = useState<{
   //   start_date: string;
   //   end_date: string;

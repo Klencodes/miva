@@ -8,6 +8,7 @@ import { toast } from "sonner";
 interface BusinessProfileForm {
   country: string;
   name: string;
+  branch: string;
   email: string;
   address: string;
   phone_number: string;
@@ -21,6 +22,7 @@ interface AddEntityModalProps {
 const initialFormState: BusinessProfileForm = {
   country: "",
   name: "",
+  branch: "",
   email: "",
   address: "",
   phone_number: "",
@@ -54,6 +56,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
       setForm({
         country: modalData.country || "",
         name: modalData.name || "",
+        branch: modalData.branch || "",
         email: modalData.email || "",
         address: modalData.address || "",
         phone_number: modalData.phone_number || "",
@@ -74,6 +77,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
       const newErrors: Partial<BusinessProfileForm> = {};
       if (!data.country) newErrors.country = "Country is required.";
       if (!data.name) newErrors.name = "Business Name is required.";
+      if (!data.branch) newErrors.branch = "Business branch is required.";
       if (!data.email) {
         newErrors.email = "Contact Email is required.";
       } else if (!/^\S+@\S+$/i.test(data.email)) {
@@ -349,6 +353,17 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onChange={handleChange("name")}
                 onBlur={() => handleBlur("name")}
                 error={errors.name}
+              />
+              <Input
+                label="Business Branch"
+                placeholder="Enter your business branch"
+                required
+                name="branch"
+                id="branch"
+                value={form.branch}
+                onChange={handleChange("branch")}
+                onBlur={() => handleBlur("branch")}
+                error={errors.branch}
               />
 
               <Input
