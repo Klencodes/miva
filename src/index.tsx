@@ -33,6 +33,22 @@ if (!document.getElementById('modal-root')) {
   document.body.appendChild(modalRoot);
 }
 
+declare global {
+  interface Window {
+    electronAPI?: {
+      getAppInfo: () => Promise<any>;
+    };
+  }
+}
+
+if (typeof window !== 'undefined' && window.electronAPI) {
+  // Running in Electron
+  window.electronAPI.getAppInfo().then(info => {
+    console.log('Running in Electron:', info);
+    // You can set this in your state/context
+  });
+}
+
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
