@@ -397,7 +397,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex items-center justify-end gap-3">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
