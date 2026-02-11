@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "homepage": "./",
   "build": {
-    "appId": "com.yourcompany.yourapp",
+    "appId": "com.goddidmart.app",
     "productName": "Your App",
     "directories": {
       "output": "dist"
@@ -45,8 +45,7 @@
 
     "electron:start": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
     "electron:dev": "NODE_ENV=development electron .",
-    "electron:build": "npm run build && npm run electron:package",
-    "electron:package": "electron-builder",
+    "electron:build": "npm run build && npm run electron:make",
     "electron:make": "electron-builder --mac --win --linux",
     "electron:prod": "NODE_ENV=production electron ."
   },
