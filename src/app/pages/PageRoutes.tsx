@@ -10,7 +10,7 @@ const OrdersRoutes = React.lazy(() => import('./orders/OrdersRoutes'));
 const ProductsRoutes = React.lazy(() => import('./products/ProductsRoutes'));
 const GeneralRoutes = React.lazy(() => import('./general/GeneralRoutes'));
 const SupplierRoutes = React.lazy(() => import('./suppliers/SuppliersRoutes'));
-const InsightsRoutes = React.lazy(() => import('./insights/InsightsRoutes'));
+const InsightRoutes = React.lazy(() => import('./insights/InsightRoutes'));
 
 export const PagesRoutes: React.FC = () => {
   return (
@@ -24,7 +24,7 @@ export const PagesRoutes: React.FC = () => {
       <Route path="/store/*" element={<StoreRoutes />} />
       <Route path="/settings/*" element={<SettingsRoutes />} />
       <Route path="/payouts/*" element={<PayoutRoutes />} />
-      <Route path="/insights/*" element={<InsightsRoutes />} />
+      <Route path="/insights/*" element={<InsightRoutes />} />
       <Route path="/suppliers/*" element={<SupplierRoutes />} />
       <Route path="/system-users/*" element={<UserManagementRoutes />} />
 
