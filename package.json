@@ -2,34 +2,31 @@
   "name": "GodDidMart",
   "version": "0.4.5",
   "private": true,
-  "main": "electron/main.js",
+  "main": "build/electron/main.js",
   "homepage": "./",
   "build": {
     "appId": "com.goddidmart.app",
-    "productName": "Your App",
+    "productName": "GodDid Mart",
     "directories": {
-      "output": "dist"
+      "output": "output"
     },
     "files": [
       "build/**/*",
       "node_modules/**/*",
-      "electron/main.js",
-      "electron/preload.js",
-      "electron/fallback.html",
       "package.json"
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "public/logo192.png",
+      "icon": "public/logo512.png",
       "target": "dmg"
     },
     "win": {
       "target": "nsis",
-      "icon": "public/logo192.png"
+      "icon": "public/logo512.png"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "public/logo192.png"
+      "icon": "public/logo512.png"
     },
     "nsis": {
       "oneClick": false,
@@ -42,12 +39,19 @@
     "build": "CI=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-
+    
+    "clean": "rm -rf build dist output",
+    "copy:electron": "mkdir -p build/electron && cp electron/*.js build/electron/ && cp electron/*.html build/electron/ 2>/dev/null || :",
+    "postbuild": "npm run copy:electron",
+    
     "electron:start": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
-    "electron:dev": "NODE_ENV=development electron .",
-    "electron:build": "npm run build && npm run electron:make",
-    "electron:make": "electron-builder --mac --win --linux",
-    "electron:prod": "NODE_ENV=production electron ."
+    "electron:dev": "electron build/electron.js",
+    "electron:prod": "NODE_ENV=production electron build/electron.js",
+    
+    "dist": "npm run clean && npm run build && electron-builder --mac --win --linux",
+    "dist:mac": "npm run clean && npm run build && electron-builder --mac",
+    "dist:win": "npm run clean && npm run build && electron-builder --win",
+    "dist:linux": "npm run clean && npm run build && electron-builder --linux"
   },
   "eslintConfig": {
     "extends": [
