@@ -113,7 +113,7 @@ function RevenueInsightsView() {
     total_sales: number;
     total_orders: number;
   }>({ total_sales: 0, total_orders: 0 });
-  const [chartMode, setChartMode] = useState<"area" | "bar" | "both">("both");
+  const [chartMode, setChartMode] = useState<"area" | "bar" | "both">("area");
   const [loading, setLoading] = useState(true);
 
   const handleGroupByChange = (val: any) => {

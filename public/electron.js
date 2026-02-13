@@ -30,12 +30,98 @@ function getAssetPath(relativePath) {
   }
 }
 
+function showErrorPage(message) {
+  const errorHTML = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Error - GodDid Mart</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          min-height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 20px;
+        }
+        .error-container {
+          max-width: 600px;
+          background: rgba(255, 255, 255, 0.1);
+          padding: 40px;
+          border-radius: 16px;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { font-size: 2rem; margin-bottom: 20px; }
+        p { margin-bottom: 20px; line-height: 1.6; }
+        code {
+          background: rgba(0, 0, 0, 0.3);
+          padding: 12px;
+          border-radius: 8px;
+          display: block;
+          margin: 20px 0;
+          font-family: 'Courier New', monospace;
+          font-size: 14px;
+          word-break: break-all;
+        }
+        .button-group { display: flex; gap: 12px; margin-top: 30px; }
+        button {
+          flex: 1;
+          background: white;
+          color: #667eea;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        button.secondary {
+          background: transparent;
+          color: white;
+          border: 2px solid white;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="error-container">
+        <h1>⚠️ Application Error</h1>
+        <p>${message}</p>
+        <code>${__dirname}</code>
+        <p>Possible solutions:</p>
+        <ol style="margin-left: 20px; margin-bottom: 20px;">
+          <li>Reinstall the application</li>
+          <li>Check if all files are present</li>
+          <li>Contact support</li>
+        </ol>
+        <div class="button-group">
+          <button onclick="window.location.reload()">Retry</button>
+          <button class="secondary" onclick="window.close()">Close</button>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHTML)}`);
+}
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    minWidth: 1000,
+    minHeight: 800,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -145,92 +231,7 @@ async function createWindow() {
   });
 }
 
-function showErrorPage(message) {
-  const errorHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Error - GodDid Mart</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          min-height: 100vh;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 20px;
-        }
-        .error-container {
-          max-width: 600px;
-          background: rgba(255, 255, 255, 0.1);
-          padding: 40px;
-          border-radius: 16px;
-          backdrop-filter: blur(10px);
-          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        h1 { font-size: 2rem; margin-bottom: 20px; }
-        p { margin-bottom: 20px; line-height: 1.6; }
-        code {
-          background: rgba(0, 0, 0, 0.3);
-          padding: 12px;
-          border-radius: 8px;
-          display: block;
-          margin: 20px 0;
-          font-family: 'Courier New', monospace;
-          font-size: 14px;
-          word-break: break-all;
-        }
-        .button-group { display: flex; gap: 12px; margin-top: 30px; }
-        button {
-          flex: 1;
-          background: white;
-          color: #667eea;
-          border: none;
-          padding: 12px 24px;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-        button.secondary {
-          background: transparent;
-          color: white;
-          border: 2px solid white;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="error-container">
-        <h1>⚠️ Application Error</h1>
-        <p>${message}</p>
-        <code>${__dirname}</code>
-        <p>Possible solutions:</p>
-        <ol style="margin-left: 20px; margin-bottom: 20px;">
-          <li>Reinstall the application</li>
-          <li>Check if all files are present</li>
-          <li>Contact support</li>
-        </ol>
-        <div class="button-group">
-          <button onclick="window.location.reload()">Retry</button>
-          <button class="secondary" onclick="window.close()">Close</button>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHTML)}`);
-}
+
 
 // IPC Handlers
 ipcMain.handle('get-app-info', () => {

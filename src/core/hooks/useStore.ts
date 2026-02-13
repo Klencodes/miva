@@ -149,7 +149,7 @@ export const useStore = () => {
   }, []);
 
   const logout = useCallback(async() => {
-    await syncService.syncOrders();
+    // await syncService.syncOrders();
     setUserState(null);
     setEntityState(null);
     setStoreEntitiesState(null);

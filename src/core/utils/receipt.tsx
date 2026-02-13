@@ -42,13 +42,13 @@ export const calculateItemTotal = (item: IOrderItem): number => {
 
 // One-line mapping function
 const getAbbreviation = (type: string, quantity: number): string => {
-  const abbrevMap: Record<string, string> = {
-    each: 'ea', box: 'bx', ctn: 'ctn', carton: 'ctn', sack: 'sk', pack: 'pk',
-    crate: 'crt', gal: 'gal', gallon: 'gal', pc: 'pc', piece: 'pc', pkt: 'pkt',
-    packet: 'pkt', bkt: 'bkt', bucket: 'bkt', bdl: 'bdl', bundle: 'bdl',
-    cnt: 'cnt', container: 'cnt', pal: 'pal', pallet: 'pal', strip: 'strp',
-    sachet: 'scht', bottle: 'btl', pouch: 'pch'
-  };
+ const abbrevMap: Record<string, string> = {
+  each: 'ea', box: 'bx', ctn: 'ct', carton: 'ct', sack: 'sk', pack: 'pk',
+  crate: 'cr', gal: 'gl', gallon: 'gl', pc: 'pc', piece: 'pc', pkt: 'pt',
+  packet: 'pt', bkt: 'bk', bucket: 'bk', bdl: 'bd', bundle: 'bd',
+  cnt: 'cn', container: 'cn', pal: 'pl', pallet: 'pl', strip: 'st',
+  sachet: 'sh', bottle: 'bt', pouch: 'po'
+};
   
   const singular = abbrevMap[type.toLowerCase()] || type.toLowerCase().slice(0, 3);
   return quantity > 1 ? `${singular}s` : singular;
