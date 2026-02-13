@@ -52,7 +52,7 @@ if (typeof window !== 'undefined' && window.electronAPI) {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={process.env.PUBLIC_URL}>
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
               <StoreProvider>

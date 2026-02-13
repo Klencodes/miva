@@ -2,7 +2,7 @@
   "name": "GodDidMart",
   "version": "0.5.1",
   "private": true,
-  "main": "build/electron/main.js",
+  "main": "build/electron.js",
   "homepage": "./",
   "build": {
     "appId": "com.goddidmart.app",
@@ -41,9 +41,6 @@
     "eject": "react-scripts eject",
     
     "clean": "rm -rf build dist output",
-    "copy:electron": "mkdir -p build/electron && cp electron/*.js build/electron/ && cp electron/*.html build/electron/ 2>/dev/null || :",
-    "postbuild": "npm run copy:electron",
-    
     "electron:start": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
     "electron:dev": "electron build/electron.js",
     "electron:prod": "NODE_ENV=production electron build/electron.js",
