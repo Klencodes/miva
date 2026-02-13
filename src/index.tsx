@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, HashRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import App from "./App";
@@ -41,6 +41,17 @@ declare global {
   }
 }
 
+// Detect if running in Electron
+const isElectron = typeof window !== 'undefined' && window.electronAPI;
+
+declare global {
+  interface Window {
+    electronAPI?: {
+      getAppInfo: () => Promise<any>;
+    };
+  }
+}
+
 if (typeof window !== 'undefined' && window.electronAPI) {
   // Running in Electron
   window.electronAPI.getAppInfo().then(info => {
@@ -49,10 +60,18 @@ if (typeof window !== 'undefined' && window.electronAPI) {
   });
 }
 
+// Choose the right router based on environment
+const Router = isElectron ? HashRouter : BrowserRouter;
+
+// For BrowserRouter, only set basename if it's not '.' and not empty
+const basename = !isElectron && process.env.PUBLIC_URL && process.env.PUBLIC_URL !== '.' 
+  ? process.env.PUBLIC_URL 
+  : undefined;
+
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter basename={process.env.PUBLIC_URL}>
+      <Router basename={basename}>
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
               <StoreProvider>
@@ -64,7 +83,7 @@ ReactDOM.createRoot(rootElement).render(
               </StoreProvider>
             </ThemeProvider>
         </QueryClientProvider>
-      </BrowserRouter>
+      </Router>
     </ErrorBoundary>
   </React.StrictMode>
 );
