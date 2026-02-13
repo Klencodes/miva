@@ -20,6 +20,8 @@ import { DateRangePicker } from "../../../ui/components/DateRangePicker";
 import { IBreadcrumbItem } from "../../../ui/components/Breadcrumb";
 import { dateUtils } from "../../../core/utils/date-format";
 import { IRevenueTimeSeries } from "../../../core/interfaces/IRevenueInsight";
+import { Roles } from "../../../core/enums/roles";
+import { useStore } from "../../../core/hooks/useStore";
 
 const CustomTooltip = (props: any) => {
   const { active, payload, label } = props;
@@ -87,16 +89,27 @@ const CustomTooltip = (props: any) => {
 
 function RevenueInsightsView() {
   usePageTitle("Revenue Insights");
+  const { user } = useStore();
 
-  // Default date range: last 30 days
-  const today = new Date();
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(today.getDate() - 30);
+// 1. Set simple defaults for state
+const [startDate, setStartDate] = useState("");
+const [endDate, setEndDate] = useState("");
 
-  const [startDate, setStartDate] = useState(
-    thirtyDaysAgo.toISOString().split("T")[0],
-  );
-  const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
+// 2. Add this useEffect to set dates once the user is loaded
+useEffect(() => {
+  if (user) {
+    const today = new Date();
+    const lookbackDays = user.role === Roles.SALES ? 7 : 30;
+    
+    const start = new Date();
+    start.setDate(today.getDate() - lookbackDays);
+
+    setStartDate(start.toISOString().split("T")[0]);
+    setEndDate(today.toISOString().split("T")[0]);
+  }
+}, [user]);
+
+
   const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("day");
 
   const [timeSeriesData, setTimeSeriesData] = useState<IRevenueTimeSeries[]>(
@@ -122,6 +135,7 @@ function RevenueInsightsView() {
 
   const fetchData = useCallback(async () => {
     try {
+      if (!startDate || !endDate) return;
       setLoading(true);
       const params = {
         start_date: startDate,
@@ -166,39 +180,10 @@ function RevenueInsightsView() {
     { label: "Revenue Insights", url: "/insights/revenue", isActive: true },
   ];
 
-  const totalSales =
-    summary?.total_sales ??
-    (Array.isArray(timeSeriesData)
-      ? timeSeriesData.reduce(
-          (acc, curr) => acc + (Number(curr.total_sales) || 0),
-          0,
-        )
-      : 0);
-  const totalOrders =
-    summary?.total_orders ??
-    (Array.isArray(timeSeriesData)
-      ? timeSeriesData.reduce(
-          (acc, curr) => acc + (Number(curr.total_orders) || 0),
-          0,
-        )
-      : 0);
-
-  const prevTotalSales =
-    comparisonSummary?.total_sales ??
-    (Array.isArray(comparisonData)
-      ? comparisonData.reduce(
-          (acc, curr) => acc + (Number(curr.total_sales) || 0),
-          0,
-        )
-      : 0);
-  const prevTotalOrders =
-    comparisonSummary?.total_orders ??
-    (Array.isArray(comparisonData)
-      ? comparisonData.reduce(
-          (acc, curr) => acc + (Number(curr.total_orders) || 0),
-          0,
-        )
-      : 0);
+  const totalSales = summary?.total_sales || 0;
+  const totalOrders = summary?.total_orders || 0;
+  const prevTotalSales = comparisonSummary?.total_sales || 0;
+  const prevTotalOrders = comparisonSummary?.total_orders || 0;
 
   const computePct = (current: number, previous: number) => {
     if (previous === 0) return current === 0 ? 0 : 100;
@@ -219,8 +204,26 @@ function RevenueInsightsView() {
       }))
     : [];
 
+    const groupOptions = [
+      { label: "Group By", value: "" },
+      { label: "Daily", value: "day" },
+      { label: "Weekly", value: "week" },
+      { label: "Monthly", value: "month" },
+    ];
+
+    // Filter out weekly/monthly if the user is SALES
+    const filteredOptions = user?.role === Roles.SALES 
+      ? groupOptions.filter(opt => opt.value === "" || opt.value === "day")
+      : groupOptions;
+      
+    const CHART_MODES = [
+      { id: 'area', label: 'Area' },
+      { id: 'bar',  label: 'Bar' },
+      { id: 'both', label: 'Both' },
+    ] as const; 
+
   return (
-    <div className="min-h-screen">
+    <div className="h-full flex flex-col space-y-6">
       <div className="rounded-sm overflow-hidden flex flex-col">
         <Breadcrumb
           breadcrumbs={breadcrumbs}
@@ -238,31 +241,19 @@ function RevenueInsightsView() {
             labelType="default"
             value={groupBy}
             onChange={handleGroupByChange}
-            selectOptions={[
-              { label: "Group By", value: "" },
-              { label: "Daily", value: "day" },
-              { label: "Weekly", value: "week" },
-              { label: "Monthly", value: "month" },
-            ]}
+            selectOptions={filteredOptions}
           />
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={chartMode === "area" ? "primary" : "ghost"}
-            onClick={() => setChartMode("area")}
-            title="Area"
-          />
-
-          <Button
-            variant={chartMode === "bar" ? "primary" : "ghost"}
-            onClick={() => setChartMode("bar")}
-            title="Bar"
-          />
-          <Button
-            variant={chartMode === "both" ? "primary" : "ghost"}
-            onClick={() => setChartMode("both")}
-            title="Both"
-          />
+          <div className="flex items-center space-x-2">
+            {CHART_MODES.map(({ id, label }) => (
+              <Button
+                key={id}
+                variant={chartMode === id ? "primary" : "ghost"}
+                onClick={() => setChartMode(id)}
+                title={label}
+              />
+            ))}
+      
         </div>
         <DateRangePicker
           startDate={startDate}
@@ -270,6 +261,8 @@ function RevenueInsightsView() {
           onStartChange={setStartDate}
           onEndChange={setEndDate}
           onChange={fetchData}
+          userRole={user?.role || ""}
+          
         />
       </div>
 
@@ -278,7 +271,7 @@ function RevenueInsightsView() {
           <div className="flex flex-col items-center">
             <div className="relative w-12 h-12">
               <div className="absolute top-0 left-0 w-full h-full border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <div className="absolute top-1 left-1 w-10 h-10 border-4 border-info border-b-transparent rounded-full animate-spin-reverse opacity-50"></div>
+              <div className="absolute top-1 left-1 w-12 h-12 border-4 border-info border-b-transparent rounded-full animate-spin-reverse opacity-50"></div>
             </div>
             <span className="mt-4 text-text font-semibold text-sm tracking-wide">
               Analysing Revenue Data...
@@ -391,9 +384,7 @@ function RevenueInsightsView() {
             {(chartMode === "area" || chartMode === "both") && (
               <div className="bg-card shadow-sm flex flex-col min-h-[500px] rounded-sm overflow-hidden">
                 <div
-                  className="p-6 flex-1 w-full bg-gradient-to-b from-card to-card-light"
-                  style={{ minHeight: "400px" }}
-                >
+                  className="p-6 flex-1 w-full bg-gradient-to-b from-card to-card-light">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={chartData}
@@ -515,7 +506,7 @@ function RevenueInsightsView() {
             {(chartMode === "bar" || chartMode === "both") && (
               <div className="bg-card shadow-sm flex flex-col min-h-[500px] rounded-sm overflow-hidden">
                 <div className="p-6 w-full bg-gradient-to-b from-card to-card-light mt-4 rounded-sm">
-                  <ResponsiveContainer width="100%" height={360}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                       data={chartData}
                       margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

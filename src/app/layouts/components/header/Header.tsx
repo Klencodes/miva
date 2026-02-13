@@ -386,7 +386,7 @@ useEffect(() => {
             {/* Dropdown for merchants only */}
             {showEntityDropdown && (
               <div
-                className="absolute top-full left-0 mt-2 bg-card min-w-[200px] rounded-sm py-1 z-[1010] border border-border"
+                className="absolute top-full left-0 mt-2 bg-card min-w-[250px] rounded-sm py-1 z-[1010] border border-border"
                 role="listbox"
               >
                 {/* 1. Add Entity Button (Now at the Top) */}
