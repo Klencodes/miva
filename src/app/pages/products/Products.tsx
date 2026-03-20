@@ -17,7 +17,6 @@ import AddProductModal from "./AddProductModal";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import UpdateStockModal from "./UpdateStockModal";
 import UpdateAvailabilityModal from "./UpdateAvailabilityModal";
-import { formatQuantity } from "../../../core/utils/formatQuantity";
 import UpdatePriceModal from "./UpdatePriceModal";
 import { useStore } from "../../../core/hooks/useStore";
 
@@ -130,7 +129,7 @@ export default function ProductsList() {
       header: "Stock",
       // Display stock with unit and total pieces
       value: (item: IProduct) => {
-        const totalPieces = item.stock * item.selling_unit_quantity;
+        const totalPieces = item.stock_in_pieces ?? item.stock * item.selling_unit_quantity;
         const stockLevel = item.stock;
         const isLowStock = stockLevel <= 5;
         const isOutOfStock = stockLevel === 0;
@@ -138,11 +137,11 @@ export default function ProductsList() {
         return (
           <div className={`${isOutOfStock ? 'text-danger' : isLowStock ? 'text-info' : 'text-text'}`}>
             <div className="font-semibold">
-              {formatQuantity(item.stock)} {item.selling_unit}s
-            </div>
-            <div className="text-xs">
-              {totalPieces} {item.content_unit_type}s
-            </div>
+  {item.stock} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
+</div>
+<div className="text-xs">
+  {item.stock_in_pieces ?? totalPieces} {item.content_unit_type}s
+</div>
             {isLowStock && (
               <div className="text-xs mt-1">
                 {isOutOfStock ? (

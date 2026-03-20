@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "../../../ui";
 import { toast } from "sonner";
 import { indexedDBService } from "../../../core/services/indexdb";
-import { formatQuantity } from "../../../core/utils/formatQuantity";
+import { formatQuantityWithPieces } from "../../../core/utils/formatQuantity";
 import { useModal } from "../../../core/hooks/useModal";
 
 const HoldOrdersModal: React.FC = () => {
@@ -200,7 +200,12 @@ const HoldOrdersModal: React.FC = () => {
                                 {item.short_name}
                               </p>
                               <p className="text-xs text-text-light">
-                                {formatQuantity(item.quantity)} × GHC{" "}
+                                {formatQuantityWithPieces(
+  item.quantity,
+  item.quantity_type === "units" ? item.selling_unit : (item.content_unit_type || "piece"),
+  item.selling_unit_quantity,
+  item.content_unit_type || "piece"
+)} × GHC{" "}
                                 {item.unit_price?.toFixed(2)}
                               </p>
                             </div>

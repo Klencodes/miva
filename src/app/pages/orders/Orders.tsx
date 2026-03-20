@@ -28,8 +28,13 @@ import {
 import { ENTITY_KEY, getStoredItem, useStore } from "../../../core/hooks/useStore";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
 
+type DisplayOrder = IOrder & {
+  status?: string;
+  synced_at?: string;
+  entity_id?: string;
+};
+
 export default function OrdersList() {
-  // 1. STATE ADJUSTMENTS: Use IOrder interface and remove Payout/Wallet state
   const [orders, setOrders] = useState<DisplayOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [exportLoading, setExportLoading] = useState<boolean>(false);
@@ -44,43 +49,33 @@ export default function OrdersList() {
   const loadingRef = useRef(false);
   const isOnline = useNetworkStatus();
   const entity = getStoredItem<IEntityItem | null>(ENTITY_KEY, null);
+  const { user } = useStore();
+
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
-  const { user } = useStore();
-  console.log(user?.role, "user?.role")
-  // const [dateRange, setDateRange] = useState<{
-  //   start_date: string;
-  //   end_date: string;
-  // }>({ start_date: "", end_date: "" });
-    const [dateRange, setDateRange] = useState<{start_date: string, end_date: string}>(() => {
-    const today = new Date();
-    // const thirtyDaysAgo = new Date();
-    // thirtyDaysAgo.setDate(today.getDate() - 30);
 
+  const [dateRange, setDateRange] = useState<{ start_date: string; end_date: string }>(() => {
+    const today = new Date();
     return {
-      // start_date: thirtyDaysAgo.toISOString().split('T')[0],
-      start_date: today.toISOString().split('T')[0],
-      end_date: today.toISOString().split('T')[0]
+      start_date: today.toISOString().split("T")[0],
+      end_date: today.toISOString().split("T")[0],
     };
   });
 
   usePageTitle("Sales Orders");
 
-  // 3. BREADCRUMBS: Update breadcrumbs
   const breadcrumbs: IBreadcrumbItem[] = [
     { label: "Store", url: "/store" },
     { label: "Orders", url: "/orders", isActive: true },
   ];
 
-  // 4. FILTER OPTIONS: Change status to payment method filter
   const paymentMethodOptions: SelectOption[] = [
     { value: "all", label: "All Methods" },
     { value: "Cash", label: "Cash" },
     { value: "Mobile Money", label: "Mobile Money" },
   ];
 
-  // 5. COLUMNS: Define columns for Orders data
   const columns: TableColumn[] = [
     {
       header: "Order Code",
@@ -95,13 +90,11 @@ export default function OrdersList() {
     },
     {
       header: "Items",
-      // Show the number of unique items
       value: (item: IOrder) => `${item.items.length} unique items`,
       type: "column",
     },
     {
       header: "Total Amount",
-      // Assuming a currency (e.g., GHS) for display
       value: (item: IOrder) =>
         `GHS ${item.total.toLocaleString(undefined, {
           minimumFractionDigits: 2,
@@ -113,15 +106,11 @@ export default function OrdersList() {
       header: "Payment Method",
       value: (item: IOrder) => item.payment.payment_method,
       type: "status",
-      // You can define custom status classes based on payment method if needed
       statusClasses: (item: IOrder) => {
         switch (item.payment.payment_method) {
-          case "Cash":
-            return "bg-success-10 text-success";
-          case "Mobile Money":
-            return "bg-info-10 text-info";
-          default:
-            return "bg-gray-10 text-gray";
+          case "Cash":        return "bg-success-10 text-success";
+          case "Mobile Money": return "bg-info-10 text-info";
+          default:            return "bg-gray-10 text-gray";
         }
       },
     },
@@ -138,7 +127,6 @@ export default function OrdersList() {
     },
   ];
 
-  // 6. BREADCRUMB ACTIONS: Keep Export
   const actions: IBreadcrumbAction[] = [
     {
       label: loading ? "Syncing Orders..." : "Sync Orders",
@@ -158,7 +146,6 @@ export default function OrdersList() {
     },
   ];
 
-  // 7. CUSTOM ACTIONS: Define actions for individual order rows
   const getCustomActions = (item: IOrder): CustomAction[] => [
     {
       title: "Print Receipt",
@@ -187,19 +174,14 @@ export default function OrdersList() {
 
   const handlePrint = (item: IOrder) => {
     const success = printReceiptDirectly(item, entity!);
-
-    if (success) {
-      // toast.success("Opening print preview...");
-    } else {
+    if (!success) {
       toast.error("Failed to open print window. Please check popup blocker.");
     }
   };
 
   const handleDownload = async (item: IOrder) => {
     toast.info("Generating PDF...");
-
     const success = await downloadReceiptAsPDF(item, entity!);
-
     if (success) {
       toast.success("Receipt downloaded successfully");
     } else {
@@ -207,120 +189,108 @@ export default function OrdersList() {
     }
   };
 
-  // 8. DATA FETCHING: Update function to fetch Orders
-  const convertDBOrderToIOrder = (dbOrder: DBOrder): IOrder => {
-    return {
-      id: dbOrder.server_id || dbOrder.id?.toString() || `local-${dbOrder.id}`,
-      code: dbOrder.code || `LOCAL-${dbOrder.id}`,
-      cashier: dbOrder.cashier || "",
-      customer: dbOrder.customer || "",
-      total: dbOrder.total || 0,
-      subtotal: dbOrder.subtotal || dbOrder.total || 0,
-      discount: dbOrder.discount || 0,
-      tendered_cash: dbOrder.tendered_cash || 0,
-      balance: dbOrder.balance || 0,
-      balance_label: dbOrder.balance_label || "Change",
-      items: dbOrder.items || [],
-      payment: dbOrder.payment || { payment_method: "Cash", amount_paid: 0 },
-      created_at: dbOrder.created_at || new Date().toISOString(),
-      // Type assertion - add IndexedDB fields to IOrder
-    } as IOrder & { status?: string; synced_at?: string; entity_id?: string };
-  };
+  const convertDBOrderToIOrder = (dbOrder: DBOrder): IOrder => ({
+    id: dbOrder.server_id || dbOrder.id?.toString() || `local-${dbOrder.id}`,
+    code: dbOrder.code || `LOCAL-${dbOrder.id}`,
+    cashier: dbOrder.cashier || "",
+    customer: dbOrder.customer || "",
+    total: dbOrder.total || 0,
+    subtotal: dbOrder.subtotal || dbOrder.total || 0,
+    discount: dbOrder.discount || 0,
+    tendered_cash: dbOrder.tendered_cash || 0,
+    balance: dbOrder.balance || 0,
+    balance_label: dbOrder.balance_label || "Change",
+    items: dbOrder.items || [],
+    payment: dbOrder.payment || { payment_method: "Cash", amount_paid: 0 },
+    created_at: dbOrder.created_at || new Date().toISOString(),
+  } as IOrder & { status?: string; synced_at?: string; entity_id?: string });
 
-  // In your component
-  type DisplayOrder = IOrder & {
-    status?: string;
-    synced_at?: string;
-    entity_id?: string;
-  };
-
-  // Update the fetchOrdersData function to use this conversion
   const fetchOrdersData = useCallback(
     async (
-      pageParam: number = 1,
-      search: string = "",
-      payment_method: string = "All",
-      dateRange?: { start_date: string; end_date: string },
+      pageParam = 1,
+      search = "",
+      payment_method = "all",
+      dateRangeParam?: { start_date: string; end_date: string }
     ) => {
       if (loadingRef.current) return;
-
       loadingRef.current = true;
       setLoading(true);
 
       try {
-        const payload = {
-          page: pageParam,
-          search,
-          payment_method,
-          dateRange,
-        };
-
-        let orders: IOrder[] = [];
+        let mergedOrders: IOrder[] = [];
         let count = 0;
 
         if (isOnline) {
           try {
-            const serverResponse = await appService.getOrders(payload);
+            // FIX: pass start_date/end_date as flat fields, not nested under dateRange
+            const serverPayload: any = {
+              page: pageParam,
+              search,
+              payment_method,
+            };
+            if (dateRangeParam?.start_date) serverPayload.start_date = dateRangeParam.start_date;
+            if (dateRangeParam?.end_date)   serverPayload.end_date   = dateRangeParam.end_date;
+
+            const serverResponse = await appService.getOrders(serverPayload);
 
             if (serverResponse.success && serverResponse.results) {
-              // Server orders are already IOrder[]
-              orders = serverResponse.results as IOrder[];
+              const serverOrders = serverResponse.results as IOrder[];
               count = serverResponse.count as number;
               setTotalOrders(serverResponse.total_orders || count);
               setTotalSales(serverResponse.total_sales || 0);
-              // Save server orders to IndexedDB
-              await indexedDBService.saveOrders(orders);
+
+              await indexedDBService.saveOrders(serverOrders);
+
+              // FIX: Always merge local pending orders (not synced yet) so they
+              // show up in the list even when online — they are real sales.
+              const localResponse = await indexedDBService.getPendingOrders();
+              const localPending: DBOrder[] = localResponse.results || [];
+              const converted = localPending.map(convertDBOrderToIOrder);
+
+              // Deduplicate: server orders win by ID; pending orders have temp IDs
+              const orderMap = new Map<string, IOrder>();
+              serverOrders.forEach((o) => orderMap.set(o.id, o));
+              converted.forEach((o) => {
+                if (!orderMap.has(o.id)) orderMap.set(o.id, o);
+              });
+
+              mergedOrders = Array.from(orderMap.values());
+              // Sort newest first
+              mergedOrders.sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime()
+              );
+              count = mergedOrders.length;
             }
           } catch (serverError) {
-            console.log("Server fetch failed, using local data:", serverError);
+            console.log("Server fetch failed, falling back to local:", serverError);
           }
-        } else {
-          // ALWAYS get local orders (including pending)
+        }
+
+        // Offline path OR server fetch failed and mergedOrders is still empty
+        if (mergedOrders.length === 0) {
           const localResponse = await indexedDBService.getAllOrders({
             includePending: true,
-            ...payload,
+            page: pageParam,
+            search,
+            payment_method,
+            dateRange: dateRangeParam,
           });
 
           if (localResponse.success && localResponse.results) {
             const localOrders = localResponse.results as DBOrder[];
-
-            // Convert DBOrder to IOrder
-            const convertedLocalOrders = localOrders.map(
-              convertDBOrderToIOrder,
-            );
-
-            // Merge with server orders
-            if (orders.length > 0) {
-              // Create a map of orders by ID to avoid duplicates
-              const orderMap = new Map<string, IOrder>();
-
-              // Add server orders first
-              orders.forEach((order) => orderMap.set(order.id, order));
-
-              // Add local orders (pending ones will have different IDs)
-              convertedLocalOrders.forEach((order) => {
-                if (!orderMap.has(order.id)) {
-                  orderMap.set(order.id, order);
-                }
-              });
-
-              orders = Array.from(orderMap.values());
-            } else {
-              orders = convertedLocalOrders;
-            }
-
+            mergedOrders = localOrders.map(convertDBOrderToIOrder);
             count = localResponse.count as number;
 
-            // Set totals from local data when offline
             setTotalOrders(count);
-            const localTotalSales = convertedLocalOrders.reduce(
-              (acc, o) => acc + (o.total || 0),
-              0,
+            setTotalSales(
+              mergedOrders.reduce((acc, o) => acc + (o.total || 0), 0)
             );
-            setTotalSales(localTotalSales);
           }
         }
-        setOrders(orders);
+
+        setOrders(mergedOrders);
         setTotalCount(count);
       } catch (error) {
         toast.error("Failed to load orders");
@@ -333,213 +303,120 @@ export default function OrdersList() {
         setLoading(false);
       }
     },
-    [isOnline],
+    [isOnline]
   );
 
-  // 9. EFFECT HOOKS: Adjust dependencies and remove wallet fetching
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, selectedPaymentMethod, dateRange]);
 
   useEffect(() => {
-    fetchOrdersData(
-      currentPage,
-      debouncedSearchTerm,
-      selectedPaymentMethod,
-      dateRange,
-    );
-  }, [
-    fetchOrdersData,
-    currentPage,
-    debouncedSearchTerm,
-    selectedPaymentMethod,
-    dateRange,
-  ]);
+    fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange);
+  }, [fetchOrdersData, currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange]);
 
   useEffect(() => {
-    const handleRefresh = () => {
-      fetchOrdersData(
-        currentPage,
-        debouncedSearchTerm,
-        selectedPaymentMethod,
-        dateRange,
-      );
-    };
-
+    const handleRefresh = () =>
+      fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange);
     eventService.onRefresh(handleRefresh);
+    return () => eventService.offRefresh(handleRefresh);
+  }, [fetchOrdersData, currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange]);
 
-    return () => {
-      eventService.offRefresh(handleRefresh);
-    };
-  }, [
-    fetchOrdersData,
-    currentPage,
-    debouncedSearchTerm,
-    selectedPaymentMethod,
-    dateRange,
-  ]);
-
-  // 10. HANDLERS: Update handler logic
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-  };
-
-  const handleFilter = (filterValue: string) => {
-    setSelectedPaymentMethod(filterValue);
-  };
+  const handlePageChange = (page: number) => setCurrentPage(page);
+  const handleSearch = (term: string) => setSearchTerm(term);
+  const handleFilter = (filterValue: string) => setSelectedPaymentMethod(filterValue);
 
   const onViewDetails = async (item: IOrder) => {
-    // Logic to open Order Details Modal (Uncomment and replace with your modal logic)
-
     const res = await openModal(OrderDetailsModal, {
-      data: {
-        title: "Order Details",
-        subtitle: `Code: ${item.code}`,
-        order: item,
-      },
+      data: { title: "Order Details", subtitle: `Code: ${item.code}`, order: item },
       size: "3xl",
       side: "right",
-
       backdropClose: true,
     });
-
-    if (res?.action === "print_receipt") {
-      handleOpenReceipt(item);
-    }
-    if (res?.action === "download_receipt") {
-    }
+    if (res?.action === "print_receipt") handleOpenReceipt(item);
   };
 
   const handleOpenReceipt = async (item: IOrder) => {
     await openModal(OrderReceipt, {
-      data: {
-        title: "Order Receipt",
-        subtitle: `Code: ${item.code}`,
-        order: item,
-      },
+      data: { title: "Order Receipt", subtitle: `Code: ${item.code}`, order: item },
       size: "xl",
       side: "right",
       backdropClose: false,
     });
   };
 
-  // Manual sync trigger
   const handleManualSync = async () => {
-    if (!isOnline) {
-      toast.error("No internet connection");
-      return;
-    }
-
+    if (!isOnline) { toast.error("No internet connection"); return; }
     try {
       toast.info("Syncing orders...");
       const result = await syncService.syncOrders();
-
       if (result.success) {
-        // Refresh current view
-        fetchOrdersData(1, searchTerm, selectedPaymentMethod);
-        toast.success(`Orders synced successfully`);
+        fetchOrdersData(1, searchTerm, selectedPaymentMethod, dateRange);
+        toast.success("Orders synced successfully");
       }
-    } catch (error) {
-      toast.error("Sync failed");
-    }
+    } catch { toast.error("Sync failed"); }
   };
 
-  //force sync a single order
-  //eslint-disable-next-line
-  const forceSyncSingleOrder = async (orderId: number) => {
-    try {
-      const result = await syncService.forceSyncOrder(orderId);
-      if (result) {
-      }
-    } catch {
-      toast.error("Sync single order failed");
-    }
-  };
-
-  // 11. EXPORT LOGIC: Update export logic for Orders
+  // FIX: export uses /all-style call with no page limit so all matching
+  // orders are exported, not just the current page.
   const handleExport = async (): Promise<void> => {
     setExportLoading(true);
     try {
-      const payload = {
-        page: currentPage,
+      const serverPayload: any = {
         search: debouncedSearchTerm,
         payment_method: selectedPaymentMethod,
       };
-      const res = await appService.getOrders(payload);
+      if (dateRange?.start_date) serverPayload.start_date = dateRange.start_date;
+      if (dateRange?.end_date)   serverPayload.end_date   = dateRange.end_date;
+
+      const res = await appService.getOrders(serverPayload);
 
       if (res.success && res.results && res.results.length > 0) {
         const exportData: IOrder[] = res.results;
 
         const csvHeaders = [
-          { key: "code", label: "Order Code" },
-          { key: "customer", label: "Customer Name" },
-          { key: "total", label: "Total Amount" },
-          { key: "discount", label: "Discount" },
-          { key: "payment.payment_method", label: "Payment Method" },
-          { key: "created_at", label: "Order Date" },
-          { key: "cashier", label: "Cashier ID" },
+          { key: "code",                    label: "Order Code" },
+          { key: "customer",                label: "Customer Name" },
+          { key: "total",                   label: "Total Amount" },
+          { key: "discount",                label: "Discount" },
+          { key: "payment.payment_method",  label: "Payment Method" },
+          { key: "created_at",              label: "Order Date" },
+          { key: "cashier",                 label: "Cashier" },
         ];
 
-        const csvData = exportData.map((order: IOrder) => {
-          const getNestedValue = (obj: any, path: string) => {
-            return path
-              .split(".")
-              .reduce(
-                (acc, part) =>
-                  acc && acc[part] !== undefined ? acc[part] : "",
-                obj,
-              );
-          };
+        const getNestedValue = (obj: any, path: string) =>
+          path.split(".").reduce((acc, part) => (acc && acc[part] !== undefined ? acc[part] : ""), obj);
 
-          return {
-            code: order.code,
-            customer: order.customer,
-            total: order.total,
-            discount: order.discount,
-            "payment.payment_method": getNestedValue(
-              order,
-              "payment.payment_method",
-            ),
-            created_at: new Date(order.created_at).toLocaleString(),
-            cashier: order.cashier,
-          };
-        });
+        const csvData = exportData.map((order: IOrder) => ({
+          code: order.code,
+          customer: order.customer,
+          total: order.total,
+          discount: order.discount,
+          "payment.payment_method": getNestedValue(order, "payment.payment_method"),
+          created_at: new Date(order.created_at).toLocaleString(),
+          cashier: order.cashier,
+        }));
 
         const csvContent = await convertToCSV(csvData, csvHeaders);
-
         const timestamp = new Date().toISOString().split("T")[0];
-        const filename = `orders-export-${timestamp}.csv`;
-
-        await downloadCSV(csvContent, filename);
+        await downloadCSV(csvContent, `orders-export-${timestamp}.csv`);
 
         toast.success("Export Successful", {
           description: `${exportData.length} order records exported successfully.`,
         });
       } else {
-        toast.error("No Data", {
-          description: "No order records found to export.",
-        });
+        toast.error("No Data", { description: "No order records found to export." });
       }
-    } catch (error) {
-      toast.error("Export Error", {
-        description: "Failed to export orders. Please try again.",
-      });
+    } catch {
+      toast.error("Export Error", { description: "Failed to export orders. Please try again." });
     } finally {
       setExportLoading(false);
     }
   };
-  const handleDateRangeChange = (dateRange: {
-    start_date: string;
-    end_date: string;
-  }) => {
-    setDateRange(dateRange);
+
+  const handleDateRangeChange = (dr: { start_date: string; end_date: string }) => {
+    setDateRange(dr);
   };
 
-  // 12. RENDER: Remove Payout-specific UI elements (Wallet Summary)
   return (
     <div className="flex flex-col h-full">
       <div className="rounded-sm shadow-sm overflow-hidden flex-1 flex flex-col">
@@ -550,22 +427,16 @@ export default function OrdersList() {
           actions={actions}
         />
 
-        {/* Removed Payout Wallet Summary/Request Section */}
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 mb-3`}>
-          <div className="bg-card rounded-sm p-4 item-center">
-            <div className="text-sm text-text-light font-medium mb-1">
-              Total Sales
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+          <div className="bg-card rounded-sm p-4">
+            <div className="text-sm text-text-light font-medium mb-1">Total Sales</div>
             <div className="text-2xl font-bold text-text">
-              GHS {parseFloat(totalSales.toFixed(2))}
+              GHS {totalSales.toFixed(2)}
             </div>
             <div className="text-xs text-text-light mt-1">Ready for review</div>
           </div>
-
-          <div className="bg-card rounded-sm p-4 item-center">
-            <div className="text-sm text-text-light font-medium mb-1">
-              Total Orders
-            </div>
+          <div className="bg-card rounded-sm p-4">
+            <div className="text-sm text-text-light font-medium mb-1">Total Orders</div>
             <div className="text-2xl font-bold text-success">{totalOrders || 0}</div>
             <div className="text-xs text-text-light mt-1">All time orders</div>
           </div>

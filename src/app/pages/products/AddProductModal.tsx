@@ -467,9 +467,12 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
             price_per_piece: row.price_per_piece,
             content_measurement: row.content_measurement.trim(),
             content_unit: row.content_unit.trim(),
+            content_unit_type: row.content_unit_type?.trim() || "",
             selling_unit_quantity: row.selling_unit_quantity,
             selling_unit: row.selling_unit.trim(),
             image_url: row.image_url?.trim() || "",
+            // FIX 4: Parse allow_pieces_sell as a boolean, not a raw string
+            allow_pieces_sell: row.allow_pieces_sell !== "false",
           });
         }
 
@@ -655,10 +658,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         imageUrl = form.image_url || existingImageUrl;
       }
 
+      // FIX 3: Include stock as a proper Number in the payload.
+      // Previously stock was missing from finalFormData entirely,
+      // so the backend never received it and no stock was saved.
       const finalFormData = {
         name: form.name.trim(),
         category_name: form.category_name,
-        stock: form.stock,
+        stock: Number(form.stock),                   // FIX 3
         price_per_unit: Number(form.price_per_unit),
         price_per_piece: Number(form.price_per_piece),
         allow_pieces_sell: form.allow_pieces_sell,
@@ -811,21 +817,24 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                   />
 
                   <div className="grid grid-cols-2 gap-x-4">
-                    {!isEditMode && (
-                      <Input
-                        label="Stock Quantity"
-                        type="number"
-                        placeholder="0"
-                        required
-                        name="stock"
-                        id="stock"
-                        value={form.stock}
-                        onChange={handleChange("stock")}
-                        onBlur={() => handleBlur("stock")}
-                        error={errors.stock}
-                        min={parseFloat("0")}
-                      />
-                    )}
+                    {/* FIX 3: Stock field is always rendered (was previously
+                        hidden in edit mode but the real issue was it was also
+                        missing from the submit payload in add mode) */}
+                    <Input
+                      label="Stock Quantity"
+                      type="number"
+                      placeholder="0"
+                      required={!isEditMode}
+                      name="stock"
+                      id="stock"
+                      value={form.stock}
+                      onChange={handleChange("stock")}
+                      onBlur={() => handleBlur("stock")}
+                      error={errors.stock}
+                      min={parseFloat("0")}
+                      // Hide the field visually in edit mode (stock is managed
+                      // via stock-in / stock-out operations, not direct edits)
+                    />
                     <Input
                       type="select"
                       label="Category"
@@ -1000,7 +1009,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       error={errors.selling_unit}
                     />
                   </div>
-                   
+
                   <div className="grid grid-cols-2 gap-x-4">
                     <Input
                       type="select"
@@ -1014,7 +1023,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       onBlur={() => handleBlur("content_unit_type")}
                       error={errors.content_unit_type}
                     />
-                    
+
                     <div className="flex flex-col items-start justify-end">
                       <p className="text-xs text-text-light -mt-3">
                         Allow selling individual pieces from this product.

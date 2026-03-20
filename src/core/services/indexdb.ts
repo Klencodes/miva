@@ -479,6 +479,8 @@ class IndexedDBService {
     const store = transaction.objectStore('orders');
 
     // Transform the payload to match DBOrder structure
+    // ensure every item has a quantity_type (fallback to 'units') so
+    // later sync logic can behave consistently.
     const orderToSave: Omit<DBOrder, 'id'> = {
       entity_id: entityId,
       cashier: orderData.cashier,
@@ -490,7 +492,10 @@ class IndexedDBService {
       balance: orderData.balance,
       balance_label: orderData.balance_label,
       code: orderData.code,
-      items: orderData.items,
+      items: orderData.items.map(item => ({
+        ...item,
+        quantity_type: item.quantity_type || 'units'
+      })),
       payment: orderData.payment,
       status: 'pending',
       created_at: new Date().toISOString(),

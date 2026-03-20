@@ -5,7 +5,6 @@ import { DateFormatEnums, dateUtils } from "../../../core/utils/date-format";
 
 // Import the Order interfaces defined earlier
 import { IOrder, IOrderItem } from "../../../core/interfaces/IOrder"; 
-import { formatQuantity } from "../../../core/utils/formatQuantity";
 
 interface OrderDetailsModalProps {
   order: IOrder; // Changed from payout to order
@@ -159,7 +158,10 @@ export const OrderDetailsModal: React.FC = () => {
                                     <div className="text-xs text-text-light">{item.category_name}</div>
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-center">
-                                    {formatQuantity(item.quantity)}
+                                  {item.quantity_type === "units" || item.quantity_type === item.selling_unit
+                                    ? `${item.quantity} ${item.selling_unit}${item.quantity !== 1 ? "s" : ""}`
+                                    : `${item.quantity} ${item.quantity_type || "piece"}${item.quantity !== 1 ? "s" : ""}`
+                                  }                                
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-right">
                                     {formatCurrency(item.unit_price)}

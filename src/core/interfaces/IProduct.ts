@@ -61,6 +61,8 @@ export interface IBulkAddProduct {
   selling_unit_quantity: string;
   selling_unit: string;
   image_url?: string;
+  content_unit_type?: string;
+  allow_pieces_sell?: boolean;
   image_alt?: string; // Added this optional field
   entity_id?: string; // Added this optional field
 }
