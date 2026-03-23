@@ -3,7 +3,6 @@ import { IEntityItem } from "../interfaces/IEntity";
 import { IUser } from "../interfaces/IUser";
 import * as CryptoJS from "crypto-js";
 import { urlConfig } from "../services/url-config";
-import { syncService } from "../services/sync";
 
 export const USER_KEY = "USER";
 export const ENTITY_KEY = "ENTITY";

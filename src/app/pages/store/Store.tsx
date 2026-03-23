@@ -7,10 +7,17 @@ import { appService } from "../../../core/services/app";
 import { IProduct, CartItem } from "../../../core/interfaces/IProduct";
 import { indexedDBService } from "../../../core/services/indexdb";
 import { syncService } from "../../../core/services/sync";
-import { ENTITY_KEY, getStoredItem, useStore } from "../../../core/hooks/useStore";
+import {
+  ENTITY_KEY,
+  getStoredItem,
+  useStore,
+} from "../../../core/hooks/useStore";
 import { useModal } from "../../../core/hooks/useModal";
 import CustomerModal from "./CustomerModal";
-import { formatQuantity, formatStockBadge } from "../../../core/utils/formatQuantity";
+import {
+  formatQuantity,
+  formatStockBadge,
+} from "../../../core/utils/formatQuantity";
 import useNetworkStatus from "../../../core/hooks/useNetworkStatus";
 import { SelectOption } from "../../../core/interfaces/ISelectOption";
 import CartContent from "./CartContent";
@@ -23,6 +30,7 @@ import CustomQuantityModal, {
   resolvePiecesPerUnit,
   resolveUnitPrice,
 } from "./CustomQuantityModal";
+import { CATEGORIES } from "./categories";
 
 const ModernStore: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
@@ -65,12 +73,23 @@ const ModernStore: React.FC = () => {
   const loadingRef = useRef(false);
   const isOnlineRef = useRef(isOnline);
   const fetchProductsRef = useRef<
-    ((pageParam?: number, search?: string, category?: string) => Promise<void>) | null
+    | ((
+        pageParam?: number,
+        search?: string,
+        category?: string,
+      ) => Promise<void>)
+    | null
   >(null);
 
-  useEffect(() => { pageRef.current = page; }, [page]);
-  useEffect(() => { loadingRef.current = loading; }, [loading]);
-  useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+  useEffect(() => {
+    isOnlineRef.current = isOnline;
+  }, [isOnline]);
 
   // ── form helpers ──────────────────────────────────────────────────────────
 
@@ -81,7 +100,11 @@ const ModernStore: React.FC = () => {
     }
     setOrderFormData((prev) => ({ ...prev, [name]: value }));
     if (formErrors[name]) {
-      setFormErrors((prev) => { const e = { ...prev }; delete e[name]; return e; });
+      setFormErrors((prev) => {
+        const e = { ...prev };
+        delete e[name];
+        return e;
+      });
     }
   };
 
@@ -89,12 +112,15 @@ const ModernStore: React.FC = () => {
     const errors: FormErrors = {};
     if (field === "discount") {
       const v = parseFloat(orderFormData.discount);
-      if (isNaN(v) || v < 0) errors.discount = "Discount must be a positive number";
-      else if (v > subTotal) errors.discount = "Discount cannot exceed subtotal";
+      if (isNaN(v) || v < 0)
+        errors.discount = "Discount must be a positive number";
+      else if (v > subTotal)
+        errors.discount = "Discount cannot exceed subtotal";
     }
     if (field === "tenderedCash") {
       const v = parseFloat(orderFormData.tenderedCash);
-      if (isNaN(v) || v < 0) errors.tenderedCash = "Amount must be a positive number";
+      if (isNaN(v) || v < 0)
+        errors.tenderedCash = "Amount must be a positive number";
     }
     if (field === "paymentMethod" && !orderFormData.paymentMethod?.trim()) {
       errors.paymentMethod = "Payment method is required";
@@ -120,9 +146,18 @@ const ModernStore: React.FC = () => {
           try {
             const sr = await appService.getAllProducts(params);
             if (sr.success) {
-              response = { success: true, message: sr.message, results: sr.results, next: sr.next || null, count: sr.count || sr.results.length, previous: sr.previous || null };
+              response = {
+                success: true,
+                message: sr.message,
+                results: sr.results,
+                next: sr.next || null,
+                count: sr.count || sr.results.length,
+                previous: sr.previous || null,
+              };
               if (sr.results?.length) {
-                try { await indexedDBService.saveProducts(sr.results); } catch {}
+                try {
+                  await indexedDBService.saveProducts(sr.results);
+                } catch {}
               }
             } else {
               const local = await indexedDBService.getProducts(params);
@@ -138,7 +173,9 @@ const ModernStore: React.FC = () => {
         }
         if (response.success) {
           setProducts((prev) =>
-            pageParam === 1 ? response.results || [] : [...prev, ...(response.results || [])]
+            pageParam === 1
+              ? response.results || []
+              : [...prev, ...(response.results || [])],
           );
           setHasMore(!!response.next);
           setPage(pageParam);
@@ -154,23 +191,28 @@ const ModernStore: React.FC = () => {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
-  useEffect(() => { fetchProductsRef.current = fetchProducts; }, [fetchProducts]);
+  useEffect(() => {
+    fetchProductsRef.current = fetchProducts;
+  }, [fetchProducts]);
 
   useEffect(() => {
-    appService.getProductExtraInfo().then((res) => {
-      if (res.success) {
-        setCategories([
-          { label: "All", value: "All" },
-          ...(res.results?.categories?.map((c: SelectOption) => c) || []),
-        ]);
-      }
-    }).catch(console.error);
+    // appService.getProductExtraInfo().then((res) => {
+    //   if (res.success) {
+    setCategories(
+     
+      CATEGORIES
+      // ...(res.results?.categories?.map((c: SelectOption) => c) || []),
+    );
+    //   }
+    // }).catch(console.error);
   }, []);
 
-  useEffect(() => { fetchProductsRef.current?.(); }, []);
+  useEffect(() => {
+    fetchProductsRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (initialLoadComplete && isOnline)
@@ -178,7 +220,8 @@ const ModernStore: React.FC = () => {
   }, [isOnline, initialLoadComplete, searchTerm, selectedCategory]);
 
   useEffect(() => {
-    const handleRefresh = () => fetchProductsRef.current?.(1, searchTerm, selectedCategory);
+    const handleRefresh = () =>
+      fetchProductsRef.current?.(1, searchTerm, selectedCategory);
     eventService.onRefresh(handleRefresh);
     return () => eventService.offRefresh(handleRefresh);
   }, [searchTerm, selectedCategory]);
@@ -186,15 +229,23 @@ const ModernStore: React.FC = () => {
   // ── order calculations ────────────────────────────────────────────────────
 
   const {
-    subTotal, discountValue, total, tenderedCashValue,
-    balanceDue, balanceLabel, getPricePerPiece,
+    subTotal,
+    discountValue,
+    total,
+    tenderedCashValue,
+    balanceDue,
+    balanceLabel,
+    getPricePerPiece,
   } = useOrderCalculations(cartItems, orderFormData);
 
   // ── stock helpers ─────────────────────────────────────────────────────────
 
   const getStockLevel = (product: IProduct): number => {
-    if (product.stock !== undefined && product.stock !== null) return product.stock;
-    return Math.floor((product.stock_in_pieces ?? 0) / (product.selling_unit_quantity || 1));
+    if (product.stock !== undefined && product.stock !== null)
+      return product.stock;
+    return Math.floor(
+      (product.stock_in_pieces ?? 0) / (product.selling_unit_quantity || 1),
+    );
   };
 
   const deductStockLocally = (soldItems: CartItem[]) => {
@@ -202,11 +253,16 @@ const ModernStore: React.FC = () => {
       prev.map((product) => {
         const soldItem = soldItems.find((item) => item.id === product.id);
         if (!soldItem) return product;
-        const qtyType = soldItem.quantity_type ||
-          (soldItem.isPieces ? product.content_unit_type : product.selling_unit);
+        const qtyType =
+          soldItem.quantity_type ||
+          (soldItem.isPieces
+            ? product.content_unit_type
+            : product.selling_unit);
         const piecesPerUnit = resolvePiecesPerUnit(qtyType || "units", product);
         const soldPieces = soldItem.quantity * piecesPerUnit;
-        const currentPieces = product.stock_in_pieces ?? (product.stock || 0) * (product.selling_unit_quantity || 1);
+        const currentPieces =
+          product.stock_in_pieces ??
+          (product.stock || 0) * (product.selling_unit_quantity || 1);
         const newPieces = Math.max(0, currentPieces - soldPieces);
         return {
           ...product,
@@ -214,7 +270,7 @@ const ModernStore: React.FC = () => {
           stock_in_pieces: newPieces,
           is_available: newPieces > 0,
         };
-      })
+      }),
     );
   };
 
@@ -229,7 +285,8 @@ const ModernStore: React.FC = () => {
   };
 
   const prepareOrder = () => ({
-    cashier: `${user?.first_name} ${user?.last_name?.[0] || ""}`.trim() || "Cashier",
+    cashier:
+      `${user?.first_name} ${user?.last_name?.[0] || ""}`.trim() || "Cashier",
     customer: selectedCustomer || "Walk-in Customer",
     total: parseFloat(total?.toFixed(2)) || 0,
     subtotal: parseFloat(subTotal?.toFixed(2)) || 0,
@@ -239,8 +296,9 @@ const ModernStore: React.FC = () => {
     balance_label: balanceLabel,
     code: generateOrderCode(),
     items: cartItems.map((item) => {
-      const quantityType = item.quantity_type ||
-        (item.isPieces ? (item.content_unit_type || "piece") : "units");
+      const quantityType =
+        item.quantity_type ||
+        (item.isPieces ? item.content_unit_type || "piece" : "units");
       const unitPrice = resolveUnitPrice(quantityType, item as any);
       return {
         product_id: item.id,
@@ -272,28 +330,46 @@ const ModernStore: React.FC = () => {
     toast.success(message || "Order submitted successfully");
     deductStockLocally(cartItems);
     setCartItems([]);
-    setOrderFormData({ discount: "0", tenderedCash: "0", paymentMethod: "Cash", transactionId: "" });
+    setOrderFormData({
+      discount: "0",
+      tenderedCash: "0",
+      paymentMethod: "Cash",
+      transactionId: "",
+    });
     setSelectedCustomer(null);
     setIsCartOpen(false);
     setFormErrors({});
     if (isOnline && fetchProductsRef.current) {
-      setTimeout(() => fetchProductsRef.current!(1, searchTerm, selectedCategory), 800);
+      setTimeout(
+        () => fetchProductsRef.current!(1, searchTerm, selectedCategory),
+        800,
+      );
     }
   };
 
   const submitOrder = async () => {
-    if (cartItems.length === 0) { toast.error("Cart is empty"); return; }
+    if (cartItems.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
     const errors: FormErrors = {};
     if (discountValue < 0) errors.discount = "Discount cannot be negative";
-    if (discountValue > subTotal) errors.discount = "Discount cannot exceed subtotal";
-    if (tenderedCashValue < 0) errors.tenderedCash = "Amount cannot be negative";
-    if (Object.keys(errors).length > 0) { setFormErrors(errors); toast.error("Please fix form errors"); return; }
+    if (discountValue > subTotal)
+      errors.discount = "Discount cannot exceed subtotal";
+    if (tenderedCashValue < 0)
+      errors.tenderedCash = "Amount cannot be negative";
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error("Please fix form errors");
+      return;
+    }
 
     setCreatingOrder(true);
     try {
       const orderData = prepareOrder();
       const localResponse = await indexedDBService.createOrder(orderData);
-      if (!localResponse.success) throw new Error("Failed to save order locally");
+      if (!localResponse.success)
+        throw new Error("Failed to save order locally");
 
       const localOrderId = localResponse.results?.id;
       let orderDataForPrint = localResponse.results;
@@ -304,7 +380,9 @@ const ModernStore: React.FC = () => {
           if (serverResponse.success) {
             const serverOrderId = serverResponse?.results?.id;
             if (localOrderId && serverOrderId) {
-              await indexedDBService.updateOrderStatus(localOrderId, "synced", { serverId: serverOrderId });
+              await indexedDBService.updateOrderStatus(localOrderId, "synced", {
+                serverId: serverOrderId,
+              });
               orderDataForPrint = { ...orderDataForPrint, id: serverOrderId };
             }
             await cleanupOrderData("Order submitted successfully!");
@@ -314,11 +392,15 @@ const ModernStore: React.FC = () => {
             printReceiptDirectly(orderDataForPrint, entity!);
           }
         } catch {
-          await cleanupOrderData("Order saved locally - sync failed, will retry");
+          await cleanupOrderData(
+            "Order saved locally - sync failed, will retry",
+          );
           printReceiptDirectly(orderDataForPrint, entity!);
         }
       } else {
-        await cleanupOrderData("Order saved offline - will sync when back online");
+        await cleanupOrderData(
+          "Order saved offline - will sync when back online",
+        );
         printReceiptDirectly(orderDataForPrint, entity!);
       }
     } catch (error) {
@@ -335,7 +417,7 @@ const ModernStore: React.FC = () => {
     product: IProduct,
     quantity: number = 1,
     isPieces: boolean = true,
-    quantityType?: string
+    quantityType?: string,
   ) => {
     if (!product.is_available || getStockLevel(product) === 0) {
       toast.error("Product is out of stock", { duration: 3000 });
@@ -344,22 +426,28 @@ const ModernStore: React.FC = () => {
 
     const resolvedQtyType =
       quantityType ||
-      (isPieces ? (product.content_unit_type || "piece") : "units");
+      (isPieces ? product.content_unit_type || "piece" : "units");
 
     const piecesPerUnit = resolvePiecesPerUnit(resolvedQtyType, product);
     const quantityInPieces = quantity * piecesPerUnit;
 
     if (piecesPerUnit > 1 && !Number.isInteger(quantity)) {
-      toast.error(`${product.selling_unit} quantity must be a whole number`, { duration: 3000 });
+      toast.error(`${product.selling_unit} quantity must be a whole number`, {
+        duration: 3000,
+      });
       return;
     }
 
     const availablePieces =
-      product.stock_in_pieces ?? (product.stock || 0) * product.selling_unit_quantity;
+      product.stock_in_pieces ??
+      (product.stock || 0) * product.selling_unit_quantity;
 
     if (quantityInPieces > availablePieces) {
       const maxInUnit = Math.floor(availablePieces / piecesPerUnit);
-      toast.error(`Not enough stock. Available: ${maxInUnit} ${resolvedQtyType}s`, { duration: 3000 });
+      toast.error(
+        `Not enough stock. Available: ${maxInUnit} ${resolvedQtyType}s`,
+        { duration: 3000 },
+      );
       return;
     }
 
@@ -377,7 +465,8 @@ const ModernStore: React.FC = () => {
 
     setCartItems((prev) => {
       const existing = prev.find(
-        (item) => item.id === product.id && item.quantity_type === resolvedQtyType
+        (item) =>
+          item.id === product.id && item.quantity_type === resolvedQtyType,
       );
 
       if (existing) {
@@ -386,27 +475,36 @@ const ModernStore: React.FC = () => {
           toast.error("Not enough stock available", { duration: 3000 });
           return prev;
         }
-        toast.success(`${product.short_name} updated to ${quantity} ${resolvedQtyType}s`);
+        toast.success(
+          `${product.short_name} updated to ${quantity} ${resolvedQtyType}s`,
+        );
         return prev.map((item) =>
           item.id === product.id && item.quantity_type === resolvedQtyType
             ? { ...item, quantity }
-            : item
+            : item,
         );
       }
 
       const alreadyCommittedPieces = prev
         .filter((item) => item.id === product.id)
         .reduce((sum, item) => {
-          const pp = resolvePiecesPerUnit(item.quantity_type || "units", product);
+          const pp = resolvePiecesPerUnit(
+            item.quantity_type || "units",
+            product,
+          );
           return sum + item.quantity * pp;
         }, 0);
 
       if (alreadyCommittedPieces + quantityInPieces > availablePieces) {
-        toast.error("Not enough stock for combined quantity", { duration: 3000 });
+        toast.error("Not enough stock for combined quantity", {
+          duration: 3000,
+        });
         return prev;
       }
 
-      toast.success(`${product.short_name} (${resolvedQtyType} ×${quantity}) added`);
+      toast.success(
+        `${product.short_name} (${resolvedQtyType} ×${quantity}) added`,
+      );
       return [
         ...prev,
         {
@@ -422,14 +520,22 @@ const ModernStore: React.FC = () => {
     });
   };
 
-  const openCustomQuantityModal = (product: IProduct, qty?: number, isPieces?: boolean) => {
+  const openCustomQuantityModal = (
+    product: IProduct,
+    qty?: number,
+    isPieces?: boolean,
+  ) => {
     setSelectedProductForCustomQty(product);
     setCurrentQuantity(qty || 0);
     setCurrentIsPieces(isPieces !== false);
     setShowCustomQuantityModal(true);
   };
 
-  const handleCustomQuantitySubmit = (quantity: number, isPieces: boolean, quantityType: string) => {
+  const handleCustomQuantitySubmit = (
+    quantity: number,
+    isPieces: boolean,
+    quantityType: string,
+  ) => {
     if (selectedProductForCustomQty && quantity > 0) {
       addToCart(selectedProductForCustomQty, quantity, isPieces, quantityType);
     }
@@ -439,33 +545,53 @@ const ModernStore: React.FC = () => {
 
   const removeFromCart = (product: IProduct) => {
     setCartItems((prev) => prev.filter((item) => item.id !== product.id));
-    toast.success(`${product.short_name} removed from cart`, { duration: 3000 });
+    toast.success(`${product.short_name} removed from cart`, {
+      duration: 3000,
+    });
   };
 
   const updateQuantity = (product: IProduct, newQuantity: number) => {
-    if (newQuantity <= 0) { removeFromCart(product); return; }
+    if (newQuantity <= 0) {
+      removeFromCart(product);
+      return;
+    }
     const prod = products.find((p) => p.id === product.id);
     if (prod) {
-      const avail = prod.stock_in_pieces ?? (prod.stock || 0) * prod.selling_unit_quantity;
+      const avail =
+        prod.stock_in_pieces ?? (prod.stock || 0) * prod.selling_unit_quantity;
       if (newQuantity > avail) {
-        toast.error(`Not enough stock for ${product.short_name}`, { duration: 3000 });
+        toast.error(`Not enough stock for ${product.short_name}`, {
+          duration: 3000,
+        });
         return;
       }
     }
     setCartItems((prev) =>
-      prev.map((item) => item.id === product.id ? { ...item, quantity: newQuantity } : item)
+      prev.map((item) =>
+        item.id === product.id ? { ...item, quantity: newQuantity } : item,
+      ),
     );
-    toast.warning(`${product.short_name} updated to ${formatQuantity(newQuantity)}`, { duration: 3000 });
+    toast.warning(
+      `${product.short_name} updated to ${formatQuantity(newQuantity)}`,
+      { duration: 3000 },
+    );
   };
 
-  const searchProducts = useCallback(async (term: string) => {
-    setSearchTerm(term);
-    fetchProductsRef.current?.(1, term, selectedCategory);
-  }, [selectedCategory]);
+  const searchProducts = useCallback(
+    async (term: string) => {
+      setSearchTerm(term);
+      fetchProductsRef.current?.(1, term, selectedCategory);
+    },
+    [selectedCategory],
+  );
 
   const loadMoreProducts = useCallback(() => {
     if (!loadingRef.current && hasMore && fetchProductsRef.current)
-      fetchProductsRef.current(pageRef.current + 1, searchTerm, selectedCategory);
+      fetchProductsRef.current(
+        pageRef.current + 1,
+        searchTerm,
+        selectedCategory,
+      );
   }, [hasMore, searchTerm, selectedCategory]);
 
   const observer = useRef<IntersectionObserver | null>(null);
@@ -478,11 +604,14 @@ const ModernStore: React.FC = () => {
       });
       if (node) observer.current.observe(node);
     },
-    [loading, loadMoreProducts]
+    [loading, loadMoreProducts],
   );
 
   const handleManualSync = async () => {
-    if (!isOnline) { toast.error("No internet connection"); return; }
+    if (!isOnline) {
+      toast.error("No internet connection");
+      return;
+    }
     try {
       toast.info("Syncing products...");
       const result = await syncService.syncProducts();
@@ -490,31 +619,50 @@ const ModernStore: React.FC = () => {
         toast.success("Products synced successfully");
         fetchProductsRef.current?.(1, searchTerm, selectedCategory);
       }
-    } catch { toast.error("Sync failed"); }
+    } catch {
+      toast.error("Sync failed");
+    }
   };
 
   const openCustomerModal = async () => {
-    const result = await openModal(CustomerModal, { side: "right", size: "lg" });
+    const result = await openModal(CustomerModal, {
+      side: "right",
+      size: "lg",
+    });
     if (result) setSelectedCustomer(result?.full_name);
   };
 
   const calculateHoldOrderTotals = (order: any) => {
     const st = order.items.reduce((sum: number, item: any) => {
-      const ppp = item.price_per_piece || item.unit_price / (item.selling_unit_quantity || 1);
+      const ppp =
+        item.price_per_piece ||
+        item.unit_price / (item.selling_unit_quantity || 1);
       return sum + ppp * (parseFloat(item.quantity) || 0);
     }, 0);
     const disc = Math.min(Math.max(0, parseFloat(order.discount) || 0), st);
     const tot = Math.max(0, st - disc);
     const tc = Math.max(0, parseFloat(order.tendered_cash) || 0);
     const bal = tc - tot;
-    return { subTotal: st, discount: disc, total: tot, tenderedCash: tc, balance: bal, balanceLabel: bal >= 0 ? "Change" : "Owings" };
+    return {
+      subTotal: st,
+      discount: disc,
+      total: tot,
+      tenderedCash: tc,
+      balance: bal,
+      balanceLabel: bal >= 0 ? "Change" : "Owings",
+    };
   };
 
   const openHoldOrdersModal = useCallback(async () => {
-    const result = await openModal(HoldOrdersModal, { side: "right", size: "lg" });
+    const result = await openModal(HoldOrdersModal, {
+      side: "right",
+      size: "lg",
+    });
     if (result?.success && result?.orderId) {
       try {
-        const response = await indexedDBService.getHoldOrderById(result.orderId);
+        const response = await indexedDBService.getHoldOrderById(
+          result.orderId,
+        );
         if (response.success && response.results) {
           const order = response.results;
           const totals = calculateHoldOrderTotals(order);
@@ -523,7 +671,9 @@ const ModernStore: React.FC = () => {
             name: item.product_name || item.name || "",
             short_name: item.short_name || item.product_name || "",
             price: parseFloat(item.unit_price) || 0,
-            price_per_piece: item.price_per_piece || item.unit_price / (item.selling_unit_quantity || 1),
+            price_per_piece:
+              item.price_per_piece ||
+              item.unit_price / (item.selling_unit_quantity || 1),
             price_per_unit: item.unit_price || 0,
             quantity: parseFloat(item.quantity) || 0,
             stock: parseFloat(item.stock) || 0,
@@ -541,7 +691,9 @@ const ModernStore: React.FC = () => {
             expanded: false,
           }));
           setCartItems(cartItemsFromHold);
-          setSelectedCustomer(order.customer === "Walk-in Customer" ? null : order.customer);
+          setSelectedCustomer(
+            order.customer === "Walk-in Customer" ? null : order.customer,
+          );
           setOrderFormData({
             discount: totals.discount.toString(),
             tenderedCash: totals.tenderedCash.toString(),
@@ -561,18 +713,27 @@ const ModernStore: React.FC = () => {
   }, []);
 
   const holdOrder = async () => {
-    if (cartItems.length === 0) { toast.error("Cart is empty"); return; }
+    if (cartItems.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
     try {
       const orderData = prepareOrder();
       const localResponse = await indexedDBService.createHoldOrder(orderData);
-      if (!localResponse.success) throw new Error("Failed to save hold order locally");
+      if (!localResponse.success)
+        throw new Error("Failed to save hold order locally");
       toast.success("Order on hold", {
         description: `Order ${orderData.code} saved for later`,
         duration: 5000,
         action: { label: "View Holds", onClick: () => openHoldOrdersModal() },
       });
       setCartItems([]);
-      setOrderFormData({ discount: "0", tenderedCash: "0", paymentMethod: "Cash", transactionId: "" });
+      setOrderFormData({
+        discount: "0",
+        tenderedCash: "0",
+        paymentMethod: "Cash",
+        transactionId: "",
+      });
       setSelectedCustomer(null);
       setIsCartOpen(false);
       setFormErrors({});
@@ -593,15 +754,28 @@ const ModernStore: React.FC = () => {
           <div className="rounded-sm shadow-sm mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0 hidden sm:block">
-                <h1 className="text-2xl font-bold text-text truncate">Products</h1>
-                <p className="text-text-light mt-1 truncate">Browse and add items to your cart</p>
+                <h1 className="text-2xl font-bold text-text truncate">
+                  Products
+                </h1>
+                <p className="text-text-light mt-1 truncate">
+                  Browse and add items to your cart
+                </p>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto sm:gap-y-5">
                 <div className="relative flex-1 sm:flex-none sm:w-64 -mb-5">
-                  <Input type="text" label="Search products..." value={searchTerm} onChange={searchProducts} prefixIcon="search" />
+                  <Input
+                    type="text"
+                    label="Search products..."
+                    value={searchTerm}
+                    onChange={searchProducts}
+                    prefixIcon="search"
+                  />
                 </div>
                 <div className="lg:hidden relative flex-shrink-0">
-                  <Button onClick={() => setIsCartOpen(true)} aria-label="View Cart">
+                  <Button
+                    onClick={() => setIsCartOpen(true)}
+                    aria-label="View Cart"
+                  >
                     <i className="ri-shopping-cart-2-line text-xl"></i>
                     {cartItems.length > 0 && (
                       <span className="absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 w-5 h-5 bg-danger text-xs text-white rounded-full flex items-center justify-center">
@@ -613,7 +787,9 @@ const ModernStore: React.FC = () => {
                 {isOnline && (
                   <Button onClick={handleManualSync} className="flex-shrink-0">
                     <span className="hidden sm:block">Sync Products</span>
-                    <span className="block sm:hidden"><i className="ri-refresh-line text-xl"></i></span>
+                    <span className="block sm:hidden">
+                      <i className="ri-refresh-line text-xl"></i>
+                    </span>
                   </Button>
                 )}
               </div>
@@ -626,8 +802,19 @@ const ModernStore: React.FC = () => {
                     {categories.map((category) => (
                       <Button
                         key={category.value}
-                        onClick={() => { setSelectedCategory(category.value); fetchProductsRef.current?.(1, searchTerm, category.value); }}
-                        variant={selectedCategory === category.value ? "primary" : "ghost"}
+                        onClick={() => {
+                          setSelectedCategory(category.value);
+                          fetchProductsRef.current?.(
+                            1,
+                            searchTerm,
+                            category.value,
+                          );
+                        }}
+                        variant={
+                          selectedCategory === category.value
+                            ? "primary"
+                            : "ghost"
+                        }
                         className="whitespace-nowrap flex-shrink-0"
                       >
                         {category.label || category.value}
@@ -646,7 +833,8 @@ const ModernStore: React.FC = () => {
               {products.map((product, index) => {
                 const stockLevel = getStockLevel(product);
                 const stockInPieces =
-                  product.stock_in_pieces ?? stockLevel * (product.selling_unit_quantity || 1);
+                  product.stock_in_pieces ??
+                  stockLevel * (product.selling_unit_quantity || 1);
 
                 // FIX: build the badge using full pack + leftover pieces
                 // e.g. "3 packs 5 strips left" or "2 sacks left"
@@ -654,7 +842,7 @@ const ModernStore: React.FC = () => {
                   stockInPieces,
                   product.selling_unit || "unit",
                   product.content_unit_type || product.content_unit || "piece",
-                  product.selling_unit_quantity || 1
+                  product.selling_unit_quantity || 1,
                 );
 
                 return (
@@ -663,45 +851,66 @@ const ModernStore: React.FC = () => {
                     ref={index === products.length - 1 ? lastProductRef : null}
                     className="group"
                   >
-                    <div className={`relative bg-background rounded-sm shadow-sm hover:shadow-sm border border-border transition-all duration-400 overflow-hidden ${!product.is_available || stockLevel === 0 ? "opacity-60" : ""}`}>
+                    <div
+                      className={`relative bg-background rounded-sm shadow-sm hover:shadow-sm border border-border transition-all duration-400 overflow-hidden ${!product.is_available || stockLevel === 0 ? "opacity-60" : ""}`}
+                    >
                       <div className="relative h-40 bg-card overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
-                        <img src={product.image_url} alt={product.image_alt} className="w-full h-full object-cover" />
+                        <img
+                          src={product.image_url}
+                          alt={product.image_alt}
+                          className="w-full h-full object-cover"
+                        />
 
                         {/* Stock badge — uses formatStockBadge */}
-                        <div className={`absolute top-1 right-1 text-xs px-2 py-1 rounded-full z-10 max-w-[90%] text-right leading-tight ${
-                          stockLevel > 10
-                            ? "bg-success text-white"
-                            : stockLevel > 0
-                            ? "bg-info text-white"
-                            : "bg-danger text-white"
-                        }`}>
+                        <div
+                          className={`absolute top-1 right-1 text-xs px-2 py-1 rounded-full z-10 max-w-[90%] text-right leading-tight ${
+                            stockLevel > 10
+                              ? "bg-success text-white"
+                              : stockLevel > 0
+                                ? "bg-info text-white"
+                                : "bg-danger text-white"
+                          }`}
+                        >
                           {stockBadge}
                         </div>
 
                         {stockLevel === 0 && (
                           <div className="absolute inset-0 bg-background backdrop-blur-[2px] flex items-center justify-center">
-                            <div className="bg-card text-text px-3 py-1.5 rounded-full text-xs font-medium">Sold Out</div>
+                            <div className="bg-card text-text px-3 py-1.5 rounded-full text-xs font-medium">
+                              Sold Out
+                            </div>
                           </div>
                         )}
                       </div>
 
                       <div className="p-3">
                         <div className="mb-2">
-                          <h3 className="font-medium text-text text-sm line-clamp-1 mb-1">{product.short_name}</h3>
+                          <h3 className="font-medium text-text text-sm line-clamp-1 mb-1">
+                            {product.short_name}
+                          </h3>
                           <p className="text-xs text-text-light">
-                            {product.selling_unit_quantity > 1 && `${product.selling_unit_quantity}×`}
-                            {product.content_measurement}{product.content_unit} / {product.selling_unit}
+                            {product.selling_unit_quantity > 1 &&
+                              `${product.selling_unit_quantity}×`}
+                            {product.content_measurement}
+                            {product.content_unit} / {product.selling_unit}
                           </p>
                         </div>
                         <div className="flex items-center justify-between mb-3">
                           <div className="text-left">
                             <div className="font-bold text-text">
-                              GHC {product.price_per_unit?.toFixed(2)}/{product.selling_unit}
+                              GHC {product.price_per_unit?.toFixed(2)}/
+                              {product.selling_unit}
                             </div>
                             {product.selling_unit_quantity > 1 && (
                               <div className="text-xs text-text-light">
-                                GHC {(product.price_per_piece || product.price_per_unit / product.selling_unit_quantity).toFixed(2)}/{product.content_unit_type}
+                                GHC{" "}
+                                {(
+                                  product.price_per_piece ||
+                                  product.price_per_unit /
+                                    product.selling_unit_quantity
+                                ).toFixed(2)}
+                                /{product.content_unit_type}
                               </div>
                             )}
                           </div>
@@ -729,7 +938,9 @@ const ModernStore: React.FC = () => {
               </div>
             )}
             {!hasMore && products.length > 0 && (
-              <div className="text-center py-8 text-text-light">No more products to load</div>
+              <div className="text-center py-8 text-text-light">
+                No more products to load
+              </div>
             )}
           </div>
         </div>
@@ -737,20 +948,33 @@ const ModernStore: React.FC = () => {
         {/* Cart — Desktop */}
         <div className="hidden lg:block lg:w-96 h-full border border-border">
           <CartContent
-            cartItems={cartItems} subTotal={subTotal} total={total}
-            discount={discountValue.toString()} tenderedCash={tenderedCashValue.toString()}
-            paymentMethod={orderFormData.paymentMethod} transactionId={orderFormData.transactionId}
-            balanceDue={balanceDue} balanceLabel={balanceLabel} selectedCustomer={selectedCustomer}
-            paymentOptions={paymentOptions} creatingOrder={creatingOrder}
+            cartItems={cartItems}
+            subTotal={subTotal}
+            total={total}
+            discount={discountValue.toString()}
+            tenderedCash={tenderedCashValue.toString()}
+            paymentMethod={orderFormData.paymentMethod}
+            transactionId={orderFormData.transactionId}
+            balanceDue={balanceDue}
+            balanceLabel={balanceLabel}
+            selectedCustomer={selectedCustomer}
+            paymentOptions={paymentOptions}
+            creatingOrder={creatingOrder}
             setDiscount={(v) => handleFormChange("discount")(v.toString())}
-            setTenderedCash={(v) => handleFormChange("tenderedCash")(v.toString())}
+            setTenderedCash={(v) =>
+              handleFormChange("tenderedCash")(v.toString())
+            }
             setPaymentMethod={(v) => handleFormChange("paymentMethod")(v)}
             setTransactionId={(v) => handleFormChange("transactionId")(v)}
-            removeFromCart={removeFromCart} updateQuantity={updateQuantity}
-            openCustomerModal={openCustomerModal} submitOrder={submitOrder}
-            holdOrder={holdOrder} openCustomQuantityModal={openCustomQuantityModal}
+            removeFromCart={removeFromCart}
+            updateQuantity={updateQuantity}
+            openCustomerModal={openCustomerModal}
+            submitOrder={submitOrder}
+            holdOrder={holdOrder}
+            openCustomQuantityModal={openCustomQuantityModal}
             openHoldOrdersModal={openHoldOrdersModal}
-            formErrors={formErrors} handleFormBlur={handleFormBlur}
+            formErrors={formErrors}
+            handleFormBlur={handleFormBlur}
           />
         </div>
       </div>
@@ -762,7 +986,10 @@ const ModernStore: React.FC = () => {
           currentQuantity={currentQuantity}
           currentIsPieces={currentIsPieces}
           isOpen={showCustomQuantityModal}
-          onClose={() => { setShowCustomQuantityModal(false); setSelectedProductForCustomQty(null); }}
+          onClose={() => {
+            setShowCustomQuantityModal(false);
+            setSelectedProductForCustomQty(null);
+          }}
           onSubmit={handleCustomQuantitySubmit}
         />
       )}
@@ -770,29 +997,49 @@ const ModernStore: React.FC = () => {
       {/* Cart — Mobile */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsCartOpen(false)} aria-hidden="true" />
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsCartOpen(false)}
+            aria-hidden="true"
+          />
           <div className="absolute right-0 top-0 w-full h-full sm:w-3/4 md:w-1/2 lg:w-96 bg-card shadow-xl flex flex-col">
             <div className="flex justify-end items-center p-4 border-b border-border bg-card mt-12">
-              <button onClick={() => setIsCartOpen(false)} className="text-text-light hover:text-text">
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="text-text-light hover:text-text"
+              >
                 <i className="ri-close-line text-2xl"></i>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
               <CartContent
-                cartItems={cartItems} subTotal={subTotal} total={total}
-                discount={discountValue.toString()} tenderedCash={tenderedCashValue.toString()}
-                paymentMethod={orderFormData.paymentMethod} transactionId={orderFormData.transactionId}
-                balanceDue={balanceDue} balanceLabel={balanceLabel} selectedCustomer={selectedCustomer}
-                paymentOptions={paymentOptions} creatingOrder={creatingOrder}
+                cartItems={cartItems}
+                subTotal={subTotal}
+                total={total}
+                discount={discountValue.toString()}
+                tenderedCash={tenderedCashValue.toString()}
+                paymentMethod={orderFormData.paymentMethod}
+                transactionId={orderFormData.transactionId}
+                balanceDue={balanceDue}
+                balanceLabel={balanceLabel}
+                selectedCustomer={selectedCustomer}
+                paymentOptions={paymentOptions}
+                creatingOrder={creatingOrder}
                 setDiscount={(v) => handleFormChange("discount")(v.toString())}
-                setTenderedCash={(v) => handleFormChange("tenderedCash")(v.toString())}
+                setTenderedCash={(v) =>
+                  handleFormChange("tenderedCash")(v.toString())
+                }
                 setPaymentMethod={(v) => handleFormChange("paymentMethod")(v)}
                 setTransactionId={(v) => handleFormChange("transactionId")(v)}
-                removeFromCart={removeFromCart} updateQuantity={updateQuantity}
-                openCustomerModal={openCustomerModal} submitOrder={submitOrder}
-                holdOrder={holdOrder} openCustomQuantityModal={openCustomQuantityModal}
+                removeFromCart={removeFromCart}
+                updateQuantity={updateQuantity}
+                openCustomerModal={openCustomerModal}
+                submitOrder={submitOrder}
+                holdOrder={holdOrder}
+                openCustomQuantityModal={openCustomQuantityModal}
                 openHoldOrdersModal={openHoldOrdersModal}
-                formErrors={formErrors} handleFormBlur={handleFormBlur}
+                formErrors={formErrors}
+                handleFormBlur={handleFormBlur}
               />
             </div>
           </div>
