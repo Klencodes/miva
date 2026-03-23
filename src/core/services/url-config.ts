@@ -6,7 +6,7 @@ export interface UrlConfig {
 
 const getEnvConfig = (): UrlConfig => {
   const env: UrlConfig = {
-    API_BASE_URL: process.env.REACT_APP_API_BASE_URL || "",
+    API_BASE_URL: process.env.REACT_APP_API_BASE_URL || "https://god-did-server.vercel.app/",
     SECRET: process.env.REACT_APP_SECRET || "",
     NODE_ENV: process.env.REACT_APP_ENV || "development", 
   };
