@@ -21,7 +21,6 @@ class ApiService {
 
   constructor() {
     this.baseApi = `${urlConfig.API_BASE_URL}api/`;
-
     this.client = axios.create({
       baseURL: this.baseApi,
       timeout: 20000,
