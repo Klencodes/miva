@@ -3,7 +3,7 @@
   "version": "0.5.1",
   "private": true,
   "main": "build/electron.js",
-    "homepage": "https://goddidmart.vercel.app",
+  "homepage": "/",
   "build": {
     "appId": "com.goddidmart.app",
     "productName": "GodDid Mart",
