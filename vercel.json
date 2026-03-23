@@ -6,7 +6,7 @@
   "framework": "create-react-app",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!static|favicon.ico|logo.*\\.png|manifest\\.json|service-worker\\.js).*)",
       "destination": "/index.html"
     }
   ],
