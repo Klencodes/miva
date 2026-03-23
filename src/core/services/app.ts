@@ -240,35 +240,31 @@ export class AppService {
   /**
    * Get Order
    */
-  async getOrders(payload: any): Promise<IOrderResponse> {
-    try {
-      const params: Record<string, string> = {
-        page: payload?.page.toString(),
-      };
-      if (payload?.search) {
-        params.search = payload?.search;
-      }
-      if (
-        payload?.payment_method &&
-        payload?.payment_method.toLowerCase() !== "all"
-      ) {
-        params.payment_method = payload?.payment_method;
-      }
-      if(payload?.dateRange?.start_date){
-        params.start_date = payload?.dateRange?.start_date
-      }
-       if(payload?.dateRange?.end_date){
-        params.end_date = payload?.dateRange?.end_date
-      }
+async getOrders(payload: any): Promise<IOrderResponse> {
+  const params: Record<string, string> = {
+    page: payload?.page.toString(),
+  };
 
-      const queryParams = new URLSearchParams(params).toString();
-      return await apiService.get<IOrderResponse>(
-        `${apiValues.GET_ORDERS_ENDPOINT}?${queryParams}`
-      );
-    } catch (error: any) {
-      throw new Error(handleError(error));
-    }
+  if (payload?.search) {
+    params.search = payload.search;
   }
+  if (payload?.payment_method && payload.payment_method.toLowerCase() !== "all") {
+    params.payment_method = payload.payment_method;
+  }
+
+  // ✅ Read flat fields, not nested dateRange
+  if (payload?.start_date) {
+    params.start_date = payload.start_date;
+  }
+  if (payload?.end_date) {
+    params.end_date = payload.end_date;
+  }
+
+  const queryParams = new URLSearchParams(params).toString();
+  return await apiService.get<IOrderResponse>(
+    `${apiValues.GET_ORDERS_ENDPOINT}?${queryParams}`
+  );
+}
   /**
    * Create new customer
    */
