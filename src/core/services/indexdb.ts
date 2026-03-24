@@ -6,7 +6,7 @@ import { IOrderResponse, IResponse } from "../interfaces/IResponse";
 
 class IndexedDBService {
   private dbName = 'GodDidMart';
-  private version = 10; // Incremented version for new hold_orders store
+  private version = 11; 
   private db: IDBDatabase | null = null;
   private readonly pageSize = 10;
 
