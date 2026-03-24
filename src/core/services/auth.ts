@@ -38,7 +38,7 @@ export class AuthService {
   async verifyOTP(payload: any): Promise<any> {
     try {
       return await apiService.postNoToken<IResponse>(
-        apiValues.VERIFY_OTP_ENDPOINT,
+        apiValues.SIGNUP_ENDPOINT,
         payload
       );
     } catch (error: any) {
@@ -52,7 +52,7 @@ export class AuthService {
   async resendOTP(payload: any): Promise<any> {
     try {
       return await apiService.postNoToken<IResponse>(
-        apiValues.RESEND_OTP_ENDPOINT,
+        apiValues.SIGNUP_ENDPOINT,
         payload
       );
     } catch (error: any) {

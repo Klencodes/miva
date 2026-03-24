@@ -310,44 +310,45 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     parseCsvFile(file);
   };
 
-  const parseCsvFile = (file: File) => {
+    const parseCsvFile = (file: File) => {
     const reader = new FileReader();
 
     reader.onload = (e) => {
-      const content = e.target?.result as string;
+      let content = e.target?.result as string;
       if (!content) {
-        toast.error("File Error", {
-          description: "Failed to read CSV file",
-        });
+        toast.error("File Error", { description: "Failed to read CSV file" });
         return;
       }
+
+      // 1. Strip UTF-8 BOM (0xEF 0xBB 0xBF) that Excel/Sheets often prepends.
+      //    Without this, the very first header name becomes "\uFEFFname" which
+      //    never matches "name" in the requiredHeaders check.
+      content = content.replace(/^\uFEFF/, "");
 
       const lines = content
-        .split("\n")
+        .split(/\r?\n/)                // handle both CRLF and LF line endings
         .map((line) => line.trim())
         .filter((line) => line !== "");
+
       if (lines.length === 0) {
-        toast.error("Empty File", {
-          description: "The CSV file is empty",
-        });
+        toast.error("Empty File", { description: "The CSV file is empty" });
         return;
       }
 
-      // Parse headers - handle quoted headers and different separators
+      // 2. Detect separator (comma vs semicolon).
       const firstLine = lines[0];
-      let headers: string[] = [];
+      const separator = firstLine.includes(";") ? ";" : ",";
 
-      // Try comma separator first
-      headers = firstLine.split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+      // 3. Parse & fully normalise headers:
+      //    • split on separator
+      //    • strip surrounding whitespace
+      //    • strip surrounding single/double quotes (exported files often quote headers)
+      //    • lowercase so the comparison is case-insensitive
+      const headers: string[] = firstLine
+        .split(separator)
+        .map((h) => h.trim().replace(/^["']+|["']+$/g, "").toLowerCase());
 
-      // If only one column found, try semicolon
-      if (headers.length === 1 && firstLine.includes(";")) {
-        headers = firstLine
-          .split(";")
-          .map((h) => h.trim().replace(/^"|"$/g, ""));
-      }
-
-      // Validate headers
+      // 4. Validate required headers.
       const requiredHeaders = [
         "name",
         "category_name",
@@ -360,12 +361,10 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         "selling_unit",
       ];
 
-      const headerMap: { [key: string]: string } = {};
-      headers.forEach((header) => {
-        headerMap[header.toLowerCase()] = header;
-      });
+      const missingHeaders = requiredHeaders.filter(
+        (h) => !headers.includes(h),
+      );
 
-      const missingHeaders = requiredHeaders.filter((h) => !headerMap[h]);
       if (missingHeaders.length > 0) {
         toast.error("Invalid CSV Format", {
           description: `Missing required columns: ${missingHeaders.join(", ")}`,
@@ -375,47 +374,31 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
       const validationErrors: { row: number; errors: string[] }[] = [];
       const validProducts: IBulkAddProduct[] = [];
-      const previewRows = [];
+      const previewRows: any[] = [];
 
-      // Parse data rows
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        let values: string[];
 
-        // Check if line contains commas
-        if (line.includes(",") && !line.includes(";")) {
-          values = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
-        } else if (line.includes(";")) {
-          values = line.split(";").map((v) => v.trim().replace(/^"|"$/g, ""));
-        } else {
-          // If no separator found, treat entire line as first column
-          values = [line];
+        // 5. Split row values using the same separator detected above.
+        let values: string[] = line
+          .split(separator)
+          .map((v) => v.trim().replace(/^["']+|["']+$/g, ""));
+
+        // Pad or trim to match header count.
+        while (values.length < headers.length) values.push("");
+        if (values.length > headers.length) {
+          const extra = values.slice(headers.length - 1).join(separator);
+          values = [...values.slice(0, headers.length - 1), extra];
         }
 
-        if (values.length < headers.length) {
-          // Pad with empty strings if missing values
-          while (values.length < headers.length) {
-            values.push("");
-          }
-        } else if (values.length > headers.length) {
-          // Join extra values into the last column
-          const extraValues = values.slice(headers.length);
-          values = values.slice(0, headers.length - 1);
-          values[headers.length - 1] = [
-            ...values.slice(headers.length - 1),
-            ...extraValues,
-          ].join(",");
-        }
-
-        const row: any = {};
-        headers.forEach((header, index) => {
-          const headerKey = header.toLowerCase();
-          row[headerKey] = values[index] || "";
+        // Build a plain object keyed by normalised header name.
+        const row: Record<string, string> = {};
+        headers.forEach((header, idx) => {
+          row[header] = values[idx] ?? "";
         });
 
         const rowErrors: string[] = [];
 
-        // Validate required fields
         if (!row.name?.trim()) rowErrors.push("Product name is required");
         if (!row.category_name?.trim()) rowErrors.push("Category is required");
 
@@ -424,11 +407,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
           rowErrors.push("Valid stock quantity is required");
 
         const pricePerUnitNum = Number(row.price_per_unit);
-        if (
-          !row.price_per_unit ||
-          isNaN(pricePerUnitNum) ||
-          pricePerUnitNum < 0
-        )
+        if (!row.price_per_unit || isNaN(pricePerUnitNum) || pricePerUnitNum < 0)
           rowErrors.push("Valid price per unit is required");
 
         const pricePerPieceNum = Number(row.price_per_piece);
@@ -444,14 +423,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
         if (!row.content_unit?.trim())
           rowErrors.push("Content unit is required");
 
-        const sellingUnitQuantityNum = Number(row.selling_unit_quantity);
+        const sellingUnitQtyNum = Number(row.selling_unit_quantity);
         if (
           !row.selling_unit_quantity ||
-          isNaN(sellingUnitQuantityNum) ||
-          sellingUnitQuantityNum < 0
-        ) {
+          isNaN(sellingUnitQtyNum) ||
+          sellingUnitQtyNum < 0
+        )
           rowErrors.push("Valid selling unit quantity is required");
-        }
 
         if (!row.selling_unit?.trim())
           rowErrors.push("Selling unit is required");
@@ -467,19 +445,15 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
             price_per_piece: row.price_per_piece,
             content_measurement: row.content_measurement.trim(),
             content_unit: row.content_unit.trim(),
-            content_unit_type: row.content_unit_type?.trim() || "",
+            content_unit_type: row.content_unit_type?.trim() ?? "",
             selling_unit_quantity: row.selling_unit_quantity,
             selling_unit: row.selling_unit.trim(),
-            image_url: row.image_url?.trim() || "",
-            // FIX 4: Parse allow_pieces_sell as a boolean, not a raw string
-            allow_pieces_sell: row.allow_pieces_sell !== "false",
+            image_url: row.image_url?.trim() ?? "",
+            allow_pieces_sell: row.allow_pieces_sell?.trim().toLowerCase() !== "false",
           });
         }
 
-        // Add to preview (limit to 5 rows for preview)
-        if (i <= 5) {
-          previewRows.push(row);
-        }
+        if (i <= 5) previewRows.push(row);
       }
 
       setCsvData(validProducts);
@@ -492,9 +466,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     };
 
     reader.onerror = () => {
-      toast.error("File Read Error", {
-        description: "Failed to read CSV file",
-      });
+      toast.error("File Read Error", { description: "Failed to read CSV file" });
     };
 
     reader.readAsText(file);
@@ -596,8 +568,8 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
     try {
       setBulkLoading(true);
 
-      const response = await appService.bulkAddProducts({ products });
-
+      const response = await appService.bulkAddProducts({products});
+      console.log(response, "response>>>>>>>>")
       if (response.success) {
         toast.success("Bulk Import Successful", {
           description: `Successfully imported ${response.summary?.successCount || 0} products. ${response.summary?.failedCount || 0} failed.`,
@@ -605,14 +577,13 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
 
         // Show detailed errors if any
         if (response.errors && response.errors.length > 0) {
-          console.warn("Bulk import errors:", response.errors);
           toast.warning("Some Products Failed", {
             description: `${response.errors.length} products failed. Check console for details.`,
           });
         }
 
         // Close the modal upon success
-        modalRef!.close({ success: true, bulk: true });
+          modalRef!.close({ success: true, product: response.results });
       } else {
         throw new Error(response.message || "Failed to bulk add products");
       }

@@ -13,11 +13,12 @@ export const apiValues = {
   get DASHBOARD_ANALYTICS_ENDPOINT() { return 'analytics/business-dashboard/' },
   get REVENUE_TIME_SERIES_ENDPOINT() { return 'analytics/revenue-time-series/' },
   get PRODUCTS_ENDPOINT() { return 'products/' },
+  get PRODUCT_BULK_UPLOAD_ENDPOINT() { return 'products/bulk_upload/' },
   get ALL_PRODUCTS_ENDPOINT() { return 'products/all/' },
-  get UPDATE_PRODUCT_AVAILABILITY_ENDPOINT() { return 'products/update-availability/' },
-  get UPDATE_PRODUCT_STOCK_ENDPOINT() { return 'products/update-stock/' },
-  get UPDATE_PRODUCT_PRICE_ENDPOINT() { return 'products/update-price/' },
-  get GET_PRODUCT_EXTRA_INFO_ENDPOINT() { return 'products/extra-product-data/' },
+  get UPDATE_PRODUCT_AVAILABILITY_ENDPOINT() { return 'products/update_availability/' },
+  get UPDATE_PRODUCT_STOCK_ENDPOINT() { return 'products/update_stock/' },
+  get UPDATE_PRODUCT_PRICE_ENDPOINT() { return 'products/update_price/' },
+  get GET_PRODUCT_EXTRA_INFO_ENDPOINT() { return 'products/extra_product_data/' },
   get GET_ORDERS_ENDPOINT() { return 'orders/' },
   get CREATE_ORDER_ENDPOINT() { return 'orders/create/' },
   get GET_CUSTOMERS_ENDPOINT() { return 'users/customers/' },
@@ -28,19 +29,6 @@ export const apiValues = {
   get SUPPLIERS_ENDPOINT() { return 'suppliers/' },
   get ADD_SUPPLIER_ENDPOINT() { return 'suppliers/add/' },
 
-
-
-
-
-
-
-
-  get SESSIONS_ENDPOINT() { return 'analytics/business-dashboard/' },
-
-  get SIGN_OUT_USER_ENDPOINT() { return 'users/mct/signout/' },
-  get VERIFY_OTP_ENDPOINT() { return 'users/verify-otp/' },
-  get RESEND_OTP_ENDPOINT() { return 'users/resend-otp/' },
-  
   get PAYOUTS_ENDPOINT() { return 'transactions/mct/payouts/' },
   get PAYOUT_WALLET_ENDPOINT() { return 'transactions/mct/payout-wallet/' },
   get PAYOUT_ACCOUNTS_ENDPOINT() { return 'transactions/mct/payout-accounts/' },

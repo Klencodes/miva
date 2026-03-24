@@ -141,7 +141,7 @@ export class AppService {
   async bulkAddProducts(payload: any): Promise<any> {
     try {
       return await apiService.post<IResponse>(
-        apiValues.PRODUCTS_ENDPOINT,
+        apiValues.PRODUCT_BULK_UPLOAD_ENDPOINT,
         payload
       );
     } catch (error: any) {

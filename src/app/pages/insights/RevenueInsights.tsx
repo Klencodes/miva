@@ -176,7 +176,7 @@ useEffect(() => {
   }, [fetchData]);
 
   const breadcrumbs: IBreadcrumbItem[] = [
-    { label: "Dashboard", url: "/dashboard" },
+    { label: "Store", url: "/store" },
     { label: "Revenue Insights", url: "/insights/revenue", isActive: true },
   ];
 

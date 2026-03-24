@@ -20,7 +20,7 @@ const SystemPreferences: React.FC = () => {
   const [customDarkTheme, setCustomDarkTheme] = useState<ThemeColors>(themes.dark);
 
   const breadcrumbs: IBreadcrumbItem[] = [
-    { label: 'Dashboard', url: '/dashboard' },
+    { label: 'Store', url: '/store' },
     { label: 'System Preferences', url: '/settings/preference', isActive: true }
   ];
 
