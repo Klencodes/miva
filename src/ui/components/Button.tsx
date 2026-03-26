@@ -77,11 +77,14 @@ const Button: React.FC<ButtonProps> = ({
         "bg-primary text-white hover:bg-primary-80 border border-primary",
       secondary:
         "bg-secondary text-white hover:bg-secondary-80 border border-secondary",
-      info: "bg-info text-white hover:bg-info-80 border border-info",
-      danger: "bg-danger text-white hover:bg-danger-80 border border-danger",
+      info:
+        "bg-info text-white hover:bg-info-80 border border-info",
+      danger:
+        "bg-danger text-white hover:bg-danger-80 border border-danger",
       ghost:
-        "bg-transparent text-text hover:bg-primary-10 border border-border",
-      link: "-pl-2 text-primary hover:text-primary-80 underline bg-transparent border-none",
+        "bg-transparent text-text-light hover:bg-primary-10 hover:text-primary border border-border",
+      link:
+        "text-primary hover:text-primary-80 underline bg-transparent border-none",
       outline:
         "bg-transparent text-primary border border-primary hover:bg-primary-10 hover:text-primary-80",
       transparent:

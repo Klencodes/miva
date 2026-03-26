@@ -93,6 +93,21 @@ const equivalentStr = (
   return `= ${pieceStr(pieces, pieceLabel)}`;
 };
 
+// ─── Fractional selling helpers ───────────────────────────────────────────────
+
+/** Products that support fractional (1/4, 1/2, 3/4, 1) selling only */
+const isFractionalProduct = (name: string): boolean => {
+  const lower = (name || "").toLowerCase();
+  return lower.includes("indomie") || lower.includes("spaghetti");
+};
+
+const FRACTIONS: { label: string; value: number }[] = [
+  { label: "¼", value: 0.25 },
+  { label: "½", value: 0.5 },
+  { label: "¾", value: 0.75 },
+  // { label: "1", value: 1 },
+];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface CustomQuantityModalProps {
@@ -120,6 +135,13 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
   const [error, setError] = useState<string>("");
   const [selectedQuick, setSelectedQuick] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // ── fractional state ──────────────────────────────────────────────────────
+  const isFractional = isFractionalProduct(product.short_name || product.name || "");
+  // How many whole packs are selected in fractional mode
+  const [fracPackCount, setFracPackCount] = useState<number>(1);
+  // Which fraction of a pack is selected (0.25 / 0.5 / 0.75 / 1)
+  const [selectedFraction, setSelectedFraction] = useState<number>(1);
 
   // Derived product values
   const sellingQty  = product.selling_unit_quantity || 1;
@@ -157,6 +179,10 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
       setQuantity("1");
       setMode(product.allow_pieces_sell && sellingQty > 1 ? "pieces" : "containers");
     }
+
+    // Reset fractional state
+    setFracPackCount(1);
+    setSelectedFraction(1);
     setSelectedQuick(null);
     setError("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,6 +205,12 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
     { length: Math.min(5, Math.floor(maxAvailable)) },
     (_, i) => i + 1
   );
+
+  // ── fractional derived ────────────────────────────────────────────────────
+  // Total quantity in "packs" for fractional mode (e.g. 2 packs + ½ = 2.5)
+  const fracTotalPacks  = fracPackCount - 1 + selectedFraction; // packs are 1-based selector
+  const fracTotalPieces = fracTotalPacks * sellingQty;
+  const fracTotalPrice  = fracTotalPacks * pricePerPack;
 
   // ── validation ────────────────────────────────────────────────────────────
   const validate = (): boolean => {
@@ -216,7 +248,27 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
     return true;
   };
 
+  const validateFractional = (): boolean => {
+    if (fracTotalPacks <= 0) {
+      setError("Please select a quantity");
+      return false;
+    }
+    if (fracTotalPieces > availablePieces) {
+      setError(`Only ${packStr(availablePacks, packLabel)} available`);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = () => {
+    if (isFractional) {
+      if (!validateFractional()) return;
+      // Submit as fractional packs → quantityType "units" so resolvePiecesPerUnit
+      // returns sellingQty, making the pieces deduction correct
+      onSubmit(fracTotalPacks, false, "units");
+      onClose();
+      return;
+    }
     if (!validate()) return;
     const quantityType = isPiecesMode ? pieceLabel : "units";
     onSubmit(parseFloat(quantity), isPiecesMode, quantityType);
@@ -283,7 +335,6 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
               <p className="text-xs text-text-light">
                 {sellingQty}×{product.content_measurement}{product.content_unit} per {packLabel}
               </p>
-              {/* FIX: use stockSummary helper — shows "122 strips (12 packs 2 strips)" */}
               <p className="text-xs text-text-light mt-0.5">
                 {stockSummary(availablePieces, availablePacks, leftoverPieces, pieceLabel, packLabel, sellingQty)} available
               </p>
@@ -300,142 +351,255 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
             </div>
           </div>
 
-          {/* Mode toggle */}
-          {product.allow_pieces_sell && sellingQty > 1 && (
-            <div className="grid grid-cols-2 gap-2 p-1 bg-background rounded-lg">
-              <button
-                onClick={() => switchMode("pieces")}
-                className={`py-2.5 rounded-md text-sm font-medium transition-all ${
-                  mode === "pieces"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-text-light hover:text-text"
-                }`}
-              >
-                By {pieceLabel}
-                <span className="block text-xs opacity-75 font-normal">
-                  GHS {pricePerPiece.toFixed(2)} each
-                </span>
-              </button>
-              <button
-                onClick={() => switchMode("containers")}
-                className={`py-2.5 rounded-md text-sm font-medium transition-all ${
-                  mode === "containers"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-text-light hover:text-text"
-                }`}
-              >
-                By {packLabel}
-                <span className="block text-xs opacity-75 font-normal">
-                  GHS {pricePerPack.toFixed(2)} each
-                </span>
-              </button>
-            </div>
-          )}
+          {/* ── FRACTIONAL MODE (Indomie / Spaghetti) ── */}
+          {isFractional ? (
+            <div className="space-y-4">
+              {/* Info banner */}
+              <div className="flex items-start gap-2 p-3 bg-info-5 border border-info-20 rounded-lg">
+                <i className="ri-information-line text-info mt-0.5"></i>
+                <p className="text-xs text-info">
+                  This product is sold in fractions. Select how many {packLabel}s
+                  and the fraction below.
+                </p>
+              </div>
 
-          {/* Quick picks */}
-          {quickOptions.length > 0 && (
-            <div>
-              <p className="text-xs text-text-light uppercase tracking-wide mb-2 font-medium">
-                Quick select
-              </p>
-              <div className="grid grid-cols-5 gap-2">
-                {quickOptions.map((n) => (
+              {/* Pack count stepper */}
+              <div>
+                <p className="text-xs text-text-light uppercase tracking-wide mb-2 font-medium">
+                  Number of {packLabel}s
+                </p>
+                <div className="flex items-center gap-3">
                   <button
-                    key={n}
-                    onClick={() => selectQuick(n)}
-                    className={`p-2 rounded-lg border text-center transition-all ${
-                      selectedQuick === n
-                        ? "bg-primary border-primary text-white"
-                        : "bg-background border-border hover:border-primary text-text"
-                    }`}
+                    onClick={() => {
+                      setFracPackCount((p) => Math.max(1, p - 1));
+                      setError("");
+                    }}
+                    className="w-10 h-10 rounded-lg border border-border bg-background flex items-center justify-center text-text hover:border-primary transition-colors disabled:opacity-40"
+                    disabled={fracPackCount <= 1}
                   >
-                    {/* FIX: plain number + unit label, no formatQuantityWithPieces */}
-                    <div className="font-semibold text-sm">{n}</div>
-                    <div className="text-xs opacity-70">
-                      GHS {(n * unitPrice).toFixed(2)}
-                    </div>
+                    <i className="ri-subtract-line"></i>
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Custom quantity input */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-sm font-medium text-text">
-                Quantity ({unitLabel}s):
-              </label>
-              {/* FIX: plain "Max: 12 packs" or "Max: 122 strips" */}
-              <span className="text-xs text-text-light">
-                Max:{" "}
-                {isPiecesMode
-                  ? pieceStr(availablePieces, pieceLabel)
-                  : packStr(availablePacks, packLabel)}
-              </span>
-            </div>
-
-            <div className="relative">
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => handleQuantityChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full border border-border rounded-lg px-4 py-3 text-xl font-semibold text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-text"
-                placeholder={`Enter ${unitLabel}s`}
-                min="1"
-                step="1"
-                autoFocus
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-light text-sm pointer-events-none">
-                {unitLabel}{qty !== 1 ? "s" : ""}
-              </span>
-            </div>
-
-            {error && (
-              <p className="mt-1.5 text-danger text-sm flex items-center gap-1">
-                <i className="ri-error-warning-line"></i>
-                {error}
-              </p>
-            )}
-          </div>
-
-          {/* Price summary */}
-          {qty > 0 && (
-            <div className="p-3 bg-background rounded-lg space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-text-light">Unit price:</span>
-                <span className="text-text">
-                  GHS {unitPrice.toFixed(2)} / {unitLabel}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-light">Quantity:</span>
-                <span className="text-text">
-                  {/* FIX: plain quantity + unit, then equivalent in brackets */}
-                  {isPiecesMode ? pieceStr(qty, pieceLabel) : packStr(qty, packLabel)}
-                  {sellingQty > 1 && (
-                    <span className="text-text-light ml-1.5">
-                      ({equivalentStr(qty, isPiecesMode, sellingQty, pieceLabel, packLabel)})
-                    </span>
-                  )}
-                </span>
-              </div>
-              {sellingQty > 1 && (
-                <div className="flex justify-between">
-                  <span className="text-text-light">Stock used:</span>
-                  <span className="text-text">
-                    {pieceStr(Math.round(requestedPieces), pieceLabel)}
+                  <span className="text-2xl font-bold text-text w-10 text-center">
+                    {fracPackCount - 1}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setFracPackCount((p) => Math.min(p + 1, availablePacks + 1));
+                      setError("");
+                    }}
+                    className="w-10 h-10 rounded-lg border border-border bg-background flex items-center justify-center text-text hover:border-primary transition-colors"
+                  >
+                    <i className="ri-add-line"></i>
+                  </button>
+                  <span className="text-sm text-text-light">
+                    whole {packLabel}{fracPackCount - 1 !== 1 ? "s" : ""}
                   </span>
                 </div>
-              )}
-              <div className="flex justify-between font-bold border-t border-border pt-1.5 mt-1.5">
-                <span className="text-text">Total:</span>
-                <span className="text-primary text-base">
-                  GHS {totalPrice.toFixed(2)}
-                </span>
               </div>
+
+              {/* Fraction selector */}
+              <div>
+                <p className="text-xs text-text-light uppercase tracking-wide mb-2 font-medium">
+                  Fraction of a {packLabel}
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {FRACTIONS.map(({ label, value }) => (
+                    <button
+                      key={value}
+                      onClick={() => {
+                        setSelectedFraction(value);
+                        setError("");
+                      }}
+                      className={`py-3 rounded-lg border text-center font-semibold text-lg transition-all ${
+                        selectedFraction === value
+                          ? "bg-primary border-primary text-white shadow-sm"
+                          : "bg-background border-border hover:border-primary text-text"
+                      }`}
+                    >
+                      {label}
+                      <div className="text-xs font-normal opacity-70 mt-0.5">
+                        GHS {(value * pricePerPack).toFixed(2)}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fractional price summary */}
+              {fracTotalPacks > 0 && (
+                <div className="p-3 bg-background rounded-lg space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-light">Selected:</span>
+                    <span className="text-text font-medium">
+                      {fracPackCount - 1 > 0 && `${fracPackCount - 1} whole + `}
+                      {FRACTIONS.find((f) => f.value === selectedFraction)?.label}{" "}
+                      {packLabel}
+                      {" "}
+                      <span className="text-text-light">
+                        (= {fracTotalPacks} {packLabel}s)
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-light">Stock used:</span>
+                    <span className="text-text">
+                      ≈ {Math.ceil(fracTotalPieces)} {pieceLabel}s
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-bold border-t border-border pt-1.5 mt-1.5">
+                    <span className="text-text">Total:</span>
+                    <span className="text-primary text-base">
+                      GHS {fracTotalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <p className="text-danger text-sm flex items-center gap-1">
+                  <i className="ri-error-warning-line"></i>
+                  {error}
+                </p>
+              )}
             </div>
+          ) : (
+            /* ── NORMAL MODE (all other products) ── */
+            <>
+              {/* Mode toggle */}
+              {product.allow_pieces_sell && sellingQty > 1 && (
+                <div className="grid grid-cols-2 gap-2 p-1 bg-background rounded-lg">
+                  <button
+                    onClick={() => switchMode("pieces")}
+                    className={`py-2.5 rounded-md text-sm font-medium transition-all ${
+                      mode === "pieces"
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-text-light hover:text-text"
+                    }`}
+                  >
+                    By {pieceLabel}
+                    <span className="block text-xs opacity-75 font-normal">
+                      GHS {pricePerPiece.toFixed(2)} each
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => switchMode("containers")}
+                    className={`py-2.5 rounded-md text-sm font-medium transition-all ${
+                      mode === "containers"
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-text-light hover:text-text"
+                    }`}
+                  >
+                    By {packLabel}
+                    <span className="block text-xs opacity-75 font-normal">
+                      GHS {pricePerPack.toFixed(2)} each
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {/* Quick picks */}
+              {quickOptions.length > 0 && (
+                <div>
+                  <p className="text-xs text-text-light uppercase tracking-wide mb-2 font-medium">
+                    Quick select
+                  </p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {quickOptions.map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => selectQuick(n)}
+                        className={`p-2 rounded-lg border text-center transition-all ${
+                          selectedQuick === n
+                            ? "bg-primary border-primary text-white"
+                            : "bg-background border-border hover:border-primary text-text"
+                        }`}
+                      >
+                        <div className="font-semibold text-sm">{n}</div>
+                        <div className="text-xs opacity-70">
+                          GHS {(n * unitPrice).toFixed(2)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom quantity input */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium text-text">
+                    Quantity ({unitLabel}s):
+                  </label>
+                  <span className="text-xs text-text-light">
+                    Max:{" "}
+                    {isPiecesMode
+                      ? pieceStr(availablePieces, pieceLabel)
+                      : packStr(availablePacks, packLabel)}
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => handleQuantityChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full border border-border rounded-lg px-4 py-3 text-xl font-semibold text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-text"
+                    placeholder={`Enter ${unitLabel}s`}
+                    min="1"
+                    step="1"
+                    autoFocus
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-light text-sm pointer-events-none">
+                    {unitLabel}{qty !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {error && (
+                  <p className="mt-1.5 text-danger text-sm flex items-center gap-1">
+                    <i className="ri-error-warning-line"></i>
+                    {error}
+                  </p>
+                )}
+              </div>
+
+              {/* Price summary */}
+              {qty > 0 && (
+                <div className="p-3 bg-background rounded-lg space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-light">Unit price:</span>
+                    <span className="text-text">
+                      GHS {unitPrice.toFixed(2)} / {unitLabel}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-light">Quantity:</span>
+                    <span className="text-text">
+                      {isPiecesMode ? pieceStr(qty, pieceLabel) : packStr(qty, packLabel)}
+                      {sellingQty > 1 && (
+                        <span className="text-text-light ml-1.5">
+                          ({equivalentStr(qty, isPiecesMode, sellingQty, pieceLabel, packLabel)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {sellingQty > 1 && (
+                    <div className="flex justify-between">
+                      <span className="text-text-light">Stock used:</span>
+                      <span className="text-text">
+                        {pieceStr(Math.round(requestedPieces), pieceLabel)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold border-t border-border pt-1.5 mt-1.5">
+                    <span className="text-text">Total:</span>
+                    <span className="text-primary text-base">
+                      GHS {totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -447,7 +611,11 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
           <Button
             onClick={handleSubmit}
             className="flex-1"
-            disabled={!quantity || parseFloat(quantity) <= 0}
+            disabled={
+              isFractional
+                ? fracTotalPacks <= 0
+                : !quantity || parseFloat(quantity) <= 0
+            }
           >
             {isEditMode ? "Update" : "Add to Cart"}
           </Button>

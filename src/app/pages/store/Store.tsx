@@ -31,6 +31,7 @@ import CustomQuantityModal, {
   resolveUnitPrice,
 } from "./CustomQuantityModal";
 import { CATEGORIES } from "./categories";
+import { useDebounce } from "../../../core/hooks/useDebounce"; // Import the debounce hook
 
 const ModernStore: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
@@ -58,6 +59,9 @@ const ModernStore: React.FC = () => {
     transactionId: "",
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+
+  // Use the debounce hook - 500ms delay for search
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const paymentOptions = [
     { value: "Cash", label: "Cash" },
@@ -199,32 +203,34 @@ const ModernStore: React.FC = () => {
   }, [fetchProducts]);
 
   useEffect(() => {
-    // appService.getProductExtraInfo().then((res) => {
-    //   if (res.success) {
-    setCategories(
-     
-      CATEGORIES
-      // ...(res.results?.categories?.map((c: SelectOption) => c) || []),
-    );
-    //   }
-    // }).catch(console.error);
+    setCategories(CATEGORIES);
   }, []);
 
+  // Initial load
   useEffect(() => {
     fetchProductsRef.current?.();
   }, []);
 
+  // Handle search with debounced value
   useEffect(() => {
-    if (initialLoadComplete && isOnline)
-      fetchProductsRef.current?.(1, searchTerm, selectedCategory);
-  }, [isOnline, initialLoadComplete, searchTerm, selectedCategory]);
+    if (initialLoadComplete && fetchProductsRef.current) {
+      fetchProductsRef.current(1, debouncedSearchTerm, selectedCategory);
+    }
+  }, [debouncedSearchTerm, selectedCategory, initialLoadComplete]);
+
+  // Handle online status changes
+  useEffect(() => {
+    if (initialLoadComplete && isOnline) {
+      fetchProductsRef.current?.(1, debouncedSearchTerm, selectedCategory);
+    }
+  }, [isOnline, initialLoadComplete, debouncedSearchTerm, selectedCategory]);
 
   useEffect(() => {
     const handleRefresh = () =>
-      fetchProductsRef.current?.(1, searchTerm, selectedCategory);
+      fetchProductsRef.current?.(1, debouncedSearchTerm, selectedCategory);
     eventService.onRefresh(handleRefresh);
     return () => eventService.offRefresh(handleRefresh);
-  }, [searchTerm, selectedCategory]);
+  }, [debouncedSearchTerm, selectedCategory]);
 
   // ── order calculations ────────────────────────────────────────────────────
 
@@ -341,7 +347,7 @@ const ModernStore: React.FC = () => {
     setFormErrors({});
     if (isOnline && fetchProductsRef.current) {
       setTimeout(
-        () => fetchProductsRef.current!(1, searchTerm, selectedCategory),
+        () => fetchProductsRef.current!(1, debouncedSearchTerm, selectedCategory),
         800,
       );
     }
@@ -577,22 +583,19 @@ const ModernStore: React.FC = () => {
     );
   };
 
-  const searchProducts = useCallback(
-    async (term: string) => {
-      setSearchTerm(term);
-      fetchProductsRef.current?.(1, term, selectedCategory);
-    },
-    [selectedCategory],
-  );
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    // Don't fetch here - the debounced value will trigger the fetch
+  };
 
   const loadMoreProducts = useCallback(() => {
     if (!loadingRef.current && hasMore && fetchProductsRef.current)
       fetchProductsRef.current(
         pageRef.current + 1,
-        searchTerm,
+        debouncedSearchTerm,
         selectedCategory,
       );
-  }, [hasMore, searchTerm, selectedCategory]);
+  }, [hasMore, debouncedSearchTerm, selectedCategory]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastProductRef = useCallback(
@@ -617,7 +620,7 @@ const ModernStore: React.FC = () => {
       const result = await syncService.syncProducts();
       if (result.success) {
         toast.success("Products synced successfully");
-        fetchProductsRef.current?.(1, searchTerm, selectedCategory);
+        fetchProductsRef.current?.(1, debouncedSearchTerm, selectedCategory);
       }
     } catch {
       toast.error("Sync failed");
@@ -767,7 +770,7 @@ const ModernStore: React.FC = () => {
                     type="text"
                     label="Search products..."
                     value={searchTerm}
-                    onChange={searchProducts}
+                    onChange={handleSearchChange}
                     prefixIcon="search"
                   />
                 </div>
@@ -806,7 +809,7 @@ const ModernStore: React.FC = () => {
                           setSelectedCategory(category.value);
                           fetchProductsRef.current?.(
                             1,
-                            searchTerm,
+                            debouncedSearchTerm,
                             category.value,
                           );
                         }}
@@ -836,8 +839,6 @@ const ModernStore: React.FC = () => {
                   product.stock_in_pieces ??
                   stockLevel * (product.selling_unit_quantity || 1);
 
-                // FIX: build the badge using full pack + leftover pieces
-                // e.g. "3 packs 5 strips left" or "2 sacks left"
                 const stockBadge = formatStockBadge(
                   stockInPieces,
                   product.selling_unit || "unit",
@@ -862,7 +863,6 @@ const ModernStore: React.FC = () => {
                           className="w-full h-full object-cover"
                         />
 
-                        {/* Stock badge — uses formatStockBadge */}
                         <div
                           className={`absolute top-1 right-1 text-xs px-2 py-1 rounded-full z-10 max-w-[90%] text-right leading-tight ${
                             stockLevel > 10
