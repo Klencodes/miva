@@ -131,17 +131,17 @@ export default function ProductsList() {
       value: (item: IProduct) => {
         const totalPieces = item.stock_in_pieces ?? item.stock * item.selling_unit_quantity;
         const stockLevel = item.stock;
-        const isLowStock = stockLevel <= 5;
+        const isLowStock = stockLevel <= 3;
         const isOutOfStock = stockLevel === 0;
         
         return (
           <div className={`${isOutOfStock ? 'text-danger' : isLowStock ? 'text-info' : 'text-text'}`}>
             <div className="font-semibold">
-  {item.stock} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
-</div>
-<div className="text-xs">
-  {item.stock_in_pieces ?? totalPieces} {item.content_unit_type}s
-</div>
+              {item.stock} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
+            </div>
+            <div className="text-xs">
+              {item.stock_in_pieces ?? totalPieces} {item.content_unit_type}s
+            </div>
             {isLowStock && (
               <div className="text-xs mt-1">
                 {isOutOfStock ? (
@@ -151,6 +151,18 @@ export default function ProductsList() {
                 )}
               </div>
             )}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Whole Stock",
+      value: (item: IProduct) => {
+        return (
+          <div className="text-right">
+            <div className="font-semibold text-text">
+              {item.whole_stock}
+            </div>
           </div>
         );
       },
@@ -181,22 +193,36 @@ export default function ProductsList() {
 
   // 6. BREADCRUMB ACTIONS: Add 'Add Product' and keep 'Export'
   const actions: IBreadcrumbAction[] = [
-    {
-      label: "Add Product",
-      action: () => handleAddProduct(),
-      icon: "add",
-      size: "sm",
-      variant: "primary",
-    },
-    {
-      label: exportLoading ? "Exporting..." : "Export as CSV",
-      action: () => handleExport(),
-      icon: exportLoading ? "loader-4-line" : "download",
-      size: "sm",
-      variant: "outline",
-      disabled: exportLoading,
-    },
-  ];
+  {
+    label: "Add Product",
+    action: () => handleAddProduct(),
+    icon: "add",          // → ri-add-line ✓
+    size: "sm",
+    variant: "primary",
+  },
+  {
+    label: "Sync Prices",
+    action: () => handleSyncPrices(),
+    icon: "refresh",      // → ri-refresh-line ✓
+    size: "sm",
+    variant: "ghost",
+  },
+  {
+    label: "Sync Inventory",
+    action: () => handleSyncInventory(),
+    icon: "refresh",      // → ri-refresh-line ✓
+    size: "sm",
+    variant: "ghost",
+  },
+  {
+    label: exportLoading ? "Exporting..." : "Export CSV",
+    action: () => handleExport(),
+    icon: exportLoading ? "loader-4" : "download-2", // → ri-download-2-line ✓
+    size: "sm",
+    variant: "outline",
+    disabled: exportLoading,
+  },
+];
 
   // 7. CUSTOM ACTIONS: Define actions for individual product rows
   const getCustomActions = (item: IProduct): CustomAction[] => [
@@ -479,6 +505,34 @@ export default function ProductsList() {
       setExportLoading(false);
     }
   };
+  const handleSyncPrices = async () => {
+    try {
+      const res = await appService.syncProductsPrices();
+      if (res.success) {
+        toast.success("Prices synced successfully");
+      } else {
+        toast.error("Failed to sync prices");
+      }
+    } catch (error) {
+      console.error("Failed to sync prices:", error);
+      toast.error("Failed to sync prices");
+    }
+  };
+
+  const handleSyncInventory = async () => {
+    try {
+      const res = await appService.syncWholeStock();
+      if (res.success) {
+        toast.success("Inventory synced successfully");
+      } else {
+        toast.error("Failed to sync inventory");
+      }
+    } catch (error) {
+      console.error("Failed to sync inventory:", error);
+      toast.error("Failed to sync inventory");
+    }
+  };
+
 
   const handleAddProduct = async () => {
     const result = await openModal(AddProductModal, {

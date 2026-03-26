@@ -112,7 +112,7 @@ const Button: React.FC<ButtonProps> = ({
             style={{ color: getLoadingColor() }}
           ></i>
         )}
-        {!loading && icon && <i className={icon}></i>}
+        {!loading && icon && (<i className={`${icon} mr-1.5 text-sm`}></i>  )}
         {!loading && title && title}
         {children}
       </button>

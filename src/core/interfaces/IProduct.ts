@@ -4,6 +4,7 @@ export interface IProduct {
   name: string;
   category_name: string;
   stock: number;
+  whole_stock?: number;
   stock_in_pieces: number;
   price_per_unit: number; // Price per selling unit (box, sack, etc.)
   price_per_piece: number; // Price per individual piece

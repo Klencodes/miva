@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import Button from './Button';
+import React from "react";
+import { Link } from "react-router-dom";
+import Button from "./Button";
 
 export interface IBreadcrumbItem {
   label: string;
@@ -12,8 +12,16 @@ export interface IBreadcrumbAction {
   label: string;
   action: () => void;
   icon?: string;
-  size?: 'sm' | 'md' | 'lg';
-  variant?: 'primary' | 'secondary' | 'info' | 'danger' | 'ghost' | 'link' | 'outline' | 'transparent';
+  size?: "sm" | "md" | "lg";
+  variant?:
+    | "primary"
+    | "secondary"
+    | "info"
+    | "danger"
+    | "ghost"
+    | "link"
+    | "outline"
+    | "transparent";
   disabled?: boolean;
 }
 
@@ -28,22 +36,18 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
   breadcrumbs = [],
   pageTitle,
   pageSubtitle,
-  actions = []
+  actions = [],
 }) => {
   return (
     <div className="my-3">
       <div className="flex justify-between items-start ">
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-text">
-            {pageTitle}
-          </h2>
+          <h2 className="text-2xl font-bold text-text">{pageTitle}</h2>
           {pageSubtitle && (
-            <p className="text-sm text-text-light mt-1">
-              {pageSubtitle}
-            </p>
+            <p className="text-sm text-text-light mt-1">{pageSubtitle}</p>
           )}
         </div>
-        
+
         <div className="flex items-end flex-col flex-wrap">
           {actions && actions.length > 0 && (
             <div>
@@ -53,31 +57,24 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
                   className="ml-2"
                   onClick={action.action}
                   disabled={action.disabled ?? false}
-                  variant={action.variant ?? 'primary'}
-                  size={action.size ?? 'sm'}
+                  variant={action.variant ?? "primary"}
+                  size={action.size ?? "sm"}
+                  icon={action.icon ? `ri-${action.icon}-line` : undefined} // ← pass to Button
                 >
-                  {action.icon && (
-                    <span className="mr-1 inline-block">
-                      <i className={`ri-${action.icon}-line`}></i>
-                    </span>
-                  )}
                   {action.label}
                 </Button>
               ))}
             </div>
           )}
-          
+
           {breadcrumbs.length > 0 && (
             <nav className="py-2">
               <ol className="flex flex-wrap items-center text-sm">
                 {breadcrumbs.map((breadcrumb, index) => {
                   const isLast = index === breadcrumbs.length - 1;
-                  
+
                   return (
-                    <li
-                      key={index}
-                      className="flex items-center"
-                    >
+                    <li key={index} className="flex items-center">
                       {!isLast && breadcrumb.url ? (
                         <Link
                           to={breadcrumb.url}
@@ -86,13 +83,13 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
                           {breadcrumb.label}
                         </Link>
                       ) : (
-                        <span 
+                        <span
                           className={`text-md ${
-                            isLast 
-                              ? 'text-text font-semibold' 
-                              : 'text-text-light'
+                            isLast
+                              ? "text-text font-semibold"
+                              : "text-text-light"
                           }`}
-                          aria-current={isLast ? 'page' : undefined}
+                          aria-current={isLast ? "page" : undefined}
                         >
                           {breadcrumb.label}
                         </span>

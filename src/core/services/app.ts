@@ -237,6 +237,27 @@ export class AppService {
     }
   }
   
+  async syncWholeStock(): Promise<any> {
+    try {
+      return await apiService.post<IResponse>(
+        apiValues.SYNC_PRODUCTS_WHOLE_STOCK_ENDPOINT);
+    }
+    catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+    
+         
+  async syncProductsPrices(): Promise<any> {
+    try {
+      return await apiService.post<IResponse>(
+        apiValues.SYNC_PRODUCTS_PRICE_CALCULATION_ENDPOINT);
+    }
+    catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }
+     
   /**
    * Get Order
    */
