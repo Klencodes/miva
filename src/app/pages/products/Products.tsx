@@ -137,7 +137,7 @@ export default function ProductsList() {
         return (
           <div className={`${isOutOfStock ? 'text-danger' : isLowStock ? 'text-info' : 'text-text'}`}>
             <div className="font-semibold">
-              {item.stock?.toFixed(3)} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
+              {item.whole_stock === 0 ? '0' : item.whole_stock?.toFixed(2)} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
             </div>
             <div className="text-xs">
               {item.stock_in_pieces ?? totalPieces} {item.content_unit_type}s
@@ -161,7 +161,7 @@ export default function ProductsList() {
         return (
           <div className="text-right">
             <div className="font-semibold text-text">
-             {item.whole_stock?.toFixed(3)}/{item.selling_unit}
+             {item.whole_stock === 0 ? '0' : item.whole_stock?.toFixed(2)}/{item.selling_unit}
             </div>
             {/* <div className="text-xs text-text-light">
               {item.selling_unit}
