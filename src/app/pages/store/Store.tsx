@@ -430,14 +430,11 @@ const ModernStore: React.FC = () => {
       return;
     }
 
-    const resolvedQtyType =
-      quantityType ||
-      (isPieces ? product.content_unit_type || "piece" : "units");
+    const resolvedQtyType = quantityType || (isPieces ? product.content_unit_type || "piece" : "units");
 
     const piecesPerUnit = resolvePiecesPerUnit(resolvedQtyType, product);
     const quantityInPieces = quantity * piecesPerUnit;
-
-    if (piecesPerUnit > 1 && !Number.isInteger(quantity)) {
+    if (piecesPerUnit > 1 && !Number.isInteger(quantityInPieces)) {
       toast.error(`${product.selling_unit} quantity must be a whole number`, {
         duration: 3000,
       });

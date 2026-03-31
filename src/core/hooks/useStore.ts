@@ -3,7 +3,7 @@ import { IEntityItem } from "../interfaces/IEntity";
 import { IUser } from "../interfaces/IUser";
 import * as CryptoJS from "crypto-js";
 import { urlConfig } from "../services/url-config";
-
+import { syncService } from "../../core/services/sync";
 export const USER_KEY = "USER";
 export const ENTITY_KEY = "ENTITY";
 export const NO_ENTITY_KEY = "PENDING_ENTITY";
@@ -148,7 +148,7 @@ export const useStore = () => {
   }, []);
 
   const logout = useCallback(async() => {
-    // await syncService.syncOrders();
+    await syncService.syncOrders();
     setUserState(null);
     setEntityState(null);
     setStoreEntitiesState(null);

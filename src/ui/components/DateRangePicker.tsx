@@ -2,6 +2,7 @@
 import React from 'react';
 import Button from './Button';
 import { Roles } from '../../core/enums/roles';
+import Input from './Input';
 
 interface DateRangePickerProps {
   startDate: string;
@@ -105,7 +106,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   const isDateRangeValid = validateDateRange(startDate, endDate);
   const maxStartDate = getMaxStartDate();
-
+  const range = { start: maxStartDate, end: maxEndDate}
   return (
     <div className="flex flex-col space-y-2">
       <div className="flex items-center space-x-3 p-1 rounded-sm border border-border bg-card">
@@ -139,6 +140,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           Apply
         </Button>
       </div>
+      <Input type='date-range' 
+      value={range}
+          onChange={(val)=>{ }}
+          showQuickSelect={false}
+          autoApply={true}
+          />
+      
       
       {/* Warning message for SALES role */}
       {userRole === Roles.SALES && (

@@ -27,6 +27,7 @@
           "arch": ["ia32"]
         }
       ],
+      "executableName": "GodDid Mart",
     
       "icon": "public/logo512.png"
     },

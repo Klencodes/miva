@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Input, { SelectOption } from "./Input";
-import { DateRangePicker } from "./DateRangePicker";
+import Input, { SelectOption, DateRangeValue } from "./Input";
 
 interface SearchFilterProps {
   placeholder?: string;
@@ -13,8 +12,10 @@ interface SearchFilterProps {
   onSearchChange: (term: string) => void;
   onSortChange: (sort: string) => void;
   onFilterChange: (filter: string) => void;
-  onDateRangeChange: ( dateRange: { start_date: string; end_date: string } | null ) => void;
+  onDateRangeChange: (dateRange: { start_date: string; end_date: string } | null) => void;
   currentDateRange?: { start_date: string; end_date: string } | null;
+  autoApply?: boolean; // New prop to control auto-apply behavior
+  showQuickSelect?: boolean; // New prop to show quick select options
 }
 
 export const SearchFilter: React.FC<SearchFilterProps> = ({
@@ -30,24 +31,22 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   onDateRangeChange,
   currentDateRange,
   userRole,
-  // currentDateRange = null, 
+  autoApply = true, // Default to auto-apply mode
+  showQuickSelect = true, // Default to showing quick select
 }) => {
-  // const today = new Date();
-  // const thirtyDaysAgo = new Date();
-  // thirtyDaysAgo.setDate(today.getDate() - 30);
-  // const defaultStart = thirtyDaysAgo.toISOString().split('T')[0];
-  // const defaultEnd = today.toISOString().split('T')[0];
-
-  // const [startDate, setStartDate] = useState( defaultStart);
-  // const [endDate, setEndDate] = useState( defaultEnd);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSort, setSelectedSort] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("");
-  const showDateRange = !!onDateRangeChange || false;
+  
+  // Convert string dates to Date objects for the date-range input
+  const [dateRangeValue, setDateRangeValue] = useState<DateRangeValue>({
+    start: currentDateRange?.start_date ? new Date(currentDateRange.start_date) : null,
+    end: currentDateRange?.end_date ? new Date(currentDateRange.end_date) : null,
+  });
 
-  // Debounce search remains immediate
+  const showDateRange = !!onDateRangeChange;
+
+  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       onSearchChange(searchTerm);
@@ -66,30 +65,45 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
     onFilterChange(value);
   };
 
-  // Sync local draft when parent-applied range changes (e.g. page load, reset from elsewhere)
+  // Sync local state when parent-applied range changes (e.g., page load, reset from elsewhere)
   useEffect(() => {
     if (currentDateRange) {
-      setStartDate(currentDateRange.start_date);
-      setEndDate(currentDateRange.end_date);
+      setDateRangeValue({
+        start: currentDateRange.start_date ? new Date(currentDateRange.start_date) : null,
+        end: currentDateRange.end_date ? new Date(currentDateRange.end_date) : null,
+      });
     }
   }, [currentDateRange]);
 
-  const handleApplyDateRange = () => {
-    if (startDate && endDate) {
-      const newRange = { start_date: startDate, end_date: endDate };
-      onDateRangeChange(newRange);
-
-      // Optional: also update local state immediately (already up to date)
-      setStartDate(startDate);
-      setEndDate(endDate);
+  // Handle date range changes from the Input component
+  const handleDateRangeChange = (range: DateRangeValue) => {
+    setDateRangeValue(range);
+    
+    // If auto-apply is enabled, immediately notify parent
+    if (autoApply && range.start && range.end) {
+      onDateRangeChange({
+        start_date: range.start.toISOString().split('T')[0],
+        end_date: range.end.toISOString().split('T')[0],
+      });
     }
   };
 
-  // const handleResetDateRange = () => {
-  //   setStartDate(defaultStart);
-  //   setEndDate(defaultEnd);
-  //   onDateRangeChange({ start_date: defaultStart, end_date: defaultEnd });
-  // };
+  // Optional: Manual apply function for when autoApply is false
+  const handleManualApply = () => {
+    if (dateRangeValue.start && dateRangeValue.end) {
+      onDateRangeChange({
+        start_date: dateRangeValue.start.toISOString().split('T')[0],
+        end_date: dateRangeValue.end.toISOString().split('T')[0],
+      });
+    }
+  };
+
+  // Optional: Reset date range
+  const handleResetDateRange = () => {
+    const resetRange = { start: null, end: null };
+    setDateRangeValue(resetRange);
+    onDateRangeChange(null);
+  };
 
   return (
     <div className="flex flex-col md:flex-row md:items-start gap-4">
@@ -135,24 +149,41 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           />
         </div>
       )}
+      
       {/* Date Range Filter */}
       {showDateRange && (
-        <div className="flex gap-x-2">
-         <DateRangePicker
-          startDate={startDate}
-          endDate={endDate}
-          onChange={handleApplyDateRange}
-          onStartChange={setStartDate}
-          onEndChange={setEndDate}
-          userRole={userRole}
-        />
-        {/* Optional: add a reset button */}
-        {/* <Button size="sm" variant="outline" onClick={handleResetDateRange}>
-          Reset
-        </Button>         */}
+        <div className="flex gap-x-2 items-end">
+          <div className="min-w-[280px] -mb-5">
+            <Input
+              type="date-range"
+              label="Date Range"
+              placeholder="Select date range"
+              value={dateRangeValue}
+              onChange={handleDateRangeChange}
+              autoApply={false}
+              showQuickSelect={false}
+              variant="outline"
+              size="md"
+              radius="sm"
+            />
+          </div>
+          
+          {/* Optional reset button */}
+          {(dateRangeValue.start || dateRangeValue.end) && (
+            <button
+              onClick={handleResetDateRange}
+              className="px-4 py-2 text-sm font-medium rounded-md transition-colors"
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--color-danger, #ef4444)',
+                border: '1px solid var(--color-border, #e5e7eb)',
+              }}
+            >
+              Reset
+            </button>
+          )}
         </div>
       )}
-
     </div>
   );
 };

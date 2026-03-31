@@ -432,9 +432,8 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
                     <span className="text-text-light">Selected:</span>
                     <span className="text-text font-medium">
                       {fracPackCount - 1 > 0 && `${fracPackCount - 1} whole + `}
-                      {FRACTIONS.find((f) => f.value === selectedFraction)?.label}{" "}
+                      {FRACTIONS.find((f) => f.value === selectedFraction)?.label}
                       {packLabel}
-                      {" "}
                       <span className="text-text-light">
                         (= {fracTotalPacks} {packLabel}s)
                       </span>

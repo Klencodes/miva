@@ -595,32 +595,47 @@ async saveOrders(orders: any[]): Promise<void> {
         return;
       }
 
-      try {
-        // First, check if order exists by server_id
-        let existingOrder: DBOrder | undefined;
-        if (order.id) {
-          existingOrder = await new Promise<DBOrder | undefined>((resolve, reject) => {
-            const request = store.index('server_id').get(order.id);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-          });
-        }
+     try {
+  // Check if order exists by server_id
+  let existingOrder: DBOrder | undefined;
+  if (order.id) {
+    existingOrder = await new Promise<DBOrder | undefined>((resolve) => {
+      const request = store.index('server_id').get(String(order.id));
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(undefined); // don't reject, just skip
+    });
+  }
 
-        const orderToSave = this.prepareOrderForSave(order, existingOrder);
+  const orderToSave = this.prepareOrderForSave(order, existingOrder);
 
-        await new Promise<void>((resolve, reject) => {
-          const request = store.put(orderToSave);
-          request.onsuccess = () => {
-            savedCount++;
-            resolve();
-          };
-          request.onerror = () => reject(request.error);
-        });
+  // CRITICAL: if no existing order found by server_id,
+  // do NOT insert a new record — it may already exist as 'pending'
+  // Only upsert if we found an existing match or can confirm it's new
+  if (!existingOrder) {
+    // Check if a pending order with same code already exists
+    const allOrders = await new Promise<DBOrder[]>((resolve) => {
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve([]);
+    });
+    const matchByCode = allOrders.find(
+      (o) => o.code === order.code && o.entity_id === entityId
+    );
+    if (matchByCode) {
+      orderToSave.id = matchByCode.id; // preserve local id
+    }
+  }
 
-      } catch (error) {
-        console.error('Error saving order:', error);
-        errorCount++;
-      }
+  await new Promise<void>((resolve, reject) => {
+    const request = store.put(orderToSave);
+    request.onsuccess = () => { savedCount++; resolve(); };
+    request.onerror = () => reject(request.error);
+  });
+
+} catch (error) {
+  console.error('Error saving order:', error);
+  errorCount++;
+}
 
       // Process next order
       processNextOrder(index + 1);

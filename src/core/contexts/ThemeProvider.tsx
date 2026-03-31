@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { getStoredItem, setStoredItem } from '../hooks/useStore';
 import { appService } from '../services/app';
-
+import { useLayout } from "../hooks/useLayout"
+import { LayoutMode } from "../../app/layouts/types/layout"
 export const THEME_MODE_KEY = 'theme-mode';
 export type Theme = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
@@ -24,6 +25,7 @@ export interface AppThemes {
   light: ThemeColors;
   dark: ThemeColors;
 }
+
 
 export interface ThemeContextType {
   theme: Theme;
@@ -89,7 +91,7 @@ export function ThemeProvider({
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
   const [themes, setThemes] = useState<AppThemes>(defaultThemes);
   const [isThemeReady, setIsThemeReady] = useState<boolean>(false);
-
+  const { setLayoutMode } = useLayout();
   // Use refs to prevent infinite loops
   const themesRef = useRef(themes);
   const themeRef = useRef(theme);
@@ -186,8 +188,11 @@ export function ThemeProvider({
       // Then fetch API theme
       try {
         const res = await appService.getTheme();
-        if (res.success && res.results && res.results.themes) {
-          updateThemes(res.results.themes);
+        if (res.success && res.results && res.results.themes.theme) {
+          updateThemes(res.results.themes.theme);
+          console.log(res.results.themes.app_layout, "res.results.themes.app_layout>>>")
+          setTheme(res.results.themes.theme_mode)
+          setLayoutMode(res.results.themes.app_layout as LayoutMode)
         }
       } catch (error) {
         console.error("Failed to fetch API theme:", error);
