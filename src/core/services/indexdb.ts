@@ -6,7 +6,7 @@ import { IOrderResponse, IResponse } from "../interfaces/IResponse";
 
 class IndexedDBService {
   private dbName = 'GodDidMart';
-  private version = 11; 
+  private version = 12; 
   private db: IDBDatabase | null = null;
   private readonly pageSize = 10;
 
@@ -566,90 +566,102 @@ private prepareOrderForSave(order: any, existingOrder?: DBOrder): any {
 async saveOrders(orders: any[]): Promise<void> {
   const db = await this.ensureDB();
   const entityId = this.entityIdString;
-
+ 
   if (!entityId) {
     throw new Error('Entity ID is required to save orders');
   }
-
+ 
+  // Filter to only orders belonging to the current entity up-front.
+  const relevant = orders.filter(o => o.entity_id === entityId);
+  if (relevant.length === 0) return;
+ 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['orders'], 'readwrite');
     const store = transaction.objectStore('orders');
-    
-    let savedCount = 0;
-    let skippedCount = 0;
-    let errorCount = 0;
-
-    const processNextOrder = async (index: number) => {
-      if (index >= orders.length) {
-        console.log(`Orders saved: ${savedCount}, skipped: ${skippedCount}, errors: ${errorCount}`);
+ 
+    // ── Step 1: load everything in ONE synchronous request ──
+    // Keeping this as a single getAll means the transaction
+    // stays open — no auto-commit between records.
+    const getAllRequest = store.getAll();
+ 
+    getAllRequest.onerror = () => reject(getAllRequest.error);
+ 
+    getAllRequest.onsuccess = () => {
+      const existing: DBOrder[] = getAllRequest.result;
+ 
+      // Build fast-lookup maps from the snapshot.
+      const byServerId = new Map<string, DBOrder>();
+      const byCode     = new Map<string, DBOrder>();
+ 
+      for (const o of existing) {
+        if (o.server_id)  byServerId.set(String(o.server_id), o);
+        if (o.code && o.entity_id === entityId) byCode.set(o.code, o);
+      }
+ 
+      let saved   = 0;
+      let skipped = 0;
+      let errored = 0;
+ 
+      // ── Step 2: write every incoming order synchronously ──
+      // No awaits here — the transaction stays open the whole time.
+      for (const order of relevant) {
+        try {
+          // Find the matching local record (prefer server_id match,
+          // fall back to code match so a pending order is updated
+          // rather than duplicated).
+          const existingOrder =
+            (order.id ? byServerId.get(String(order.id)) : undefined) ??
+            (order.code ? byCode.get(order.code) : undefined);
+ 
+          const orderToSave = this.prepareOrderForSave(order, existingOrder);
+ 
+          // put() uses the keyPath 'id' — if orderToSave.id is
+          // undefined IDB auto-assigns a new key (insert);
+          // if it carries an existing local id it's an update.
+          const putReq = store.put(orderToSave);
+ 
+          // Capture loop variable for the closure.
+          const capturedCode = order.code;
+          putReq.onsuccess = () => {
+            saved++;
+            console.log(`✅ Saved order ${capturedCode}`);
+          };
+          putReq.onerror = (ev) => {
+            errored++;
+            console.error(
+              `❌ Failed to save order ${capturedCode}:`,
+              (ev.target as IDBRequest).error
+            );
+            // Don't abort — continue writing the rest.
+            ev.stopPropagation();
+          };
+        } catch (err) {
+          errored++;
+          console.error('Unexpected error preparing order:', err);
+        }
+      }
+ 
+      // ── Step 3: resolve/reject when the transaction settles ──
+      transaction.oncomplete = () => {
+        console.log(
+          `Orders sync: ${saved} saved, ${skipped} skipped, ${errored} errors`
+        );
         resolve();
-        return;
-      }
-
-      const order = orders[index];
-      
-      // Only save orders that belong to current entity
-      if (order.entity_id !== entityId) {
-        skippedCount++;
-        processNextOrder(index + 1);
-        return;
-      }
-
-     try {
-  // Check if order exists by server_id
-  let existingOrder: DBOrder | undefined;
-  if (order.id) {
-    existingOrder = await new Promise<DBOrder | undefined>((resolve) => {
-      const request = store.index('server_id').get(String(order.id));
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => resolve(undefined); // don't reject, just skip
-    });
-  }
-
-  const orderToSave = this.prepareOrderForSave(order, existingOrder);
-
-  // CRITICAL: if no existing order found by server_id,
-  // do NOT insert a new record — it may already exist as 'pending'
-  // Only upsert if we found an existing match or can confirm it's new
-  if (!existingOrder) {
-    // Check if a pending order with same code already exists
-    const allOrders = await new Promise<DBOrder[]>((resolve) => {
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve([]);
-    });
-    const matchByCode = allOrders.find(
-      (o) => o.code === order.code && o.entity_id === entityId
-    );
-    if (matchByCode) {
-      orderToSave.id = matchByCode.id; // preserve local id
-    }
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const request = store.put(orderToSave);
-    request.onsuccess = () => { savedCount++; resolve(); };
-    request.onerror = () => reject(request.error);
-  });
-
-} catch (error) {
-  console.error('Error saving order:', error);
-  errorCount++;
-}
-
-      // Process next order
-      processNextOrder(index + 1);
-    };
-
-    // Start processing
-    processNextOrder(0);
-    
-    transaction.onerror = (event) => {
-      console.error('Transaction error:', event);
-      reject(transaction.error);
+      };
+ 
+      transaction.onerror = () => {
+        console.error('saveOrders transaction error:', transaction.error);
+        reject(transaction.error);
+      };
+ 
+      transaction.onabort = () => {
+        console.error('saveOrders transaction aborted:', transaction.error);
+        reject(transaction.error ?? new Error('Transaction aborted'));
+      };
     };
   });
 }
+ 
 
 // Enhanced updateOrderStatus method
 async updateOrderStatus(

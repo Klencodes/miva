@@ -204,7 +204,6 @@ class SyncService {
               "synced",
               serverOrderId ? { serverId: serverOrderId } : undefined
             );
-
             result.success++;
             console.log(`✅ Order ${order.code} synced (server ID: ${serverOrderId})`);
           } else {

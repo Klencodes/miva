@@ -392,7 +392,6 @@ const DateRangePickerPopup: React.FC<{
     for (let i = 1; i <= daysInMonth; i++) cells.push(new Date(viewYear, viewMonth, i));
   }
 
-  const effectiveEnd = tempValue.end || hovered;
 
   const quickSelectOptions = [
     { label: 'Today', getRange: () => ({ start: new Date(), end: new Date() }) },

@@ -88,16 +88,6 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
     }
   };
 
-  // Optional: Manual apply function for when autoApply is false
-  const handleManualApply = () => {
-    if (dateRangeValue.start && dateRangeValue.end) {
-      onDateRangeChange({
-        start_date: dateRangeValue.start.toISOString().split('T')[0],
-        end_date: dateRangeValue.end.toISOString().split('T')[0],
-      });
-    }
-  };
-
   // Optional: Reset date range
   const handleResetDateRange = () => {
     const resetRange = { start: null, end: null };
