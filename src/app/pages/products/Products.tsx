@@ -137,7 +137,7 @@ export default function ProductsList() {
         return (
           <div className={`${isOutOfStock ? 'text-danger' : isLowStock ? 'text-info' : 'text-text'}`}>
             <div className="font-semibold">
-              {item.whole_stock === 0 ? '0' : item.whole_stock?.toFixed(2)} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
+              {item.stock === 0 ? '0' : item.stock?.toFixed(2)} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
             </div>
             <div className="text-xs">
               {item.stock_in_pieces ?? totalPieces} {item.content_unit_type}s
