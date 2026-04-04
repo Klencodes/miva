@@ -372,6 +372,23 @@ async getOrders(payload: any): Promise<IOrderResponse> {
   }
 
   /**
+   * Uppdate Order
+   * @param id 
+   * @param payload 
+   */
+  async updateOrder(id: string, payload: any): Promise<IResponse> {
+    try{
+      return await apiService.put<IResponse>(
+        apiValues.GET_ORDERS_ENDPOINT + id + "/",
+        payload
+      );
+    }catch(error: any){
+      throw new Error(handleError(error));
+    }
+  }
+
+
+  /**
    * Get Product Categories
    */
   async getProductExtraInfo(): Promise<any> {

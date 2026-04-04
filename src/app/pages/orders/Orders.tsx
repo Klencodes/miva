@@ -27,7 +27,7 @@ import {
 } from "../../../core/utils/receipt";
 import { ENTITY_KEY, getStoredItem, useStore } from "../../../core/hooks/useStore";
 import { IEntityItem } from "../../../core/interfaces/IEntity";
-
+import { EditOrderModal } from "./EditOrder"
 type DisplayOrder = IOrder & {
   status?: string;
   synced_at?: string;
@@ -82,6 +82,7 @@ export default function OrdersList() {
       value: (item: IOrder) => item.code,
       type: "column",
       bold: true,
+      onClick: (item: IOrder) => onViewDetails(item)
     },
     {
       header: "Customer",
@@ -147,6 +148,12 @@ export default function OrdersList() {
   ];
 
   const getCustomActions = (item: IOrder): CustomAction[] => [
+    ...((user?.role === "admin" || user?.role === "super_admin") ? [{
+      title: "Edit Order",
+      handler: () => handleEditOrder(item),
+      icon: "edit-line",
+      classes: "",
+    }] : []),
     {
       title: "Print Receipt",
       handler: () => handlePrint(item),
@@ -328,7 +335,7 @@ export default function OrdersList() {
   const onViewDetails = async (item: IOrder) => {
     const res = await openModal(OrderDetailsModal, {
       data: { title: "Order Details", subtitle: `Code: ${item.code}`, order: item },
-      size: "3xl",
+      size: "xl",
       side: "right",
       backdropClose: true,
     });
@@ -338,11 +345,32 @@ export default function OrdersList() {
   const handleOpenReceipt = async (item: IOrder) => {
     await openModal(OrderReceipt, {
       data: { title: "Order Receipt", subtitle: `Code: ${item.code}`, order: item },
-      size: "xl",
+      size: "lg",
       side: "right",
       backdropClose: false,
     });
   };
+
+  const handleEditOrder = async (order: IOrder) => {
+  const result = await openModal(EditOrderModal, {
+    side: "right",
+    size: "xl",
+    data: {
+      order: order,
+      title: "Edit Order",
+      subtitle: `Modify order ${order.code}`,
+      onOrderUpdated: () => {
+            fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange);
+            // toast.success("Order updated successfully");
+      }
+    }
+  });
+  
+  if (result?.action === "updated") {
+    // Order was updated successfully
+    console.log("Order updated:", result.order);
+  }
+};
 
   const handleManualSync = async () => {
     if (!isOnline) { toast.error("No internet connection"); return; }
