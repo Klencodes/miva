@@ -190,7 +190,6 @@ export function ThemeProvider({
         const res = await appService.getTheme();
         if (res.success && res.results && res.results.themes.theme) {
           updateThemes(res.results.themes.theme);
-          console.log(res.results.themes.app_layout, "res.results.themes.app_layout>>>")
           setTheme(res.results.themes.theme_mode)
           setLayoutMode(res.results.themes.app_layout as LayoutMode)
         }

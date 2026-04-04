@@ -2,6 +2,7 @@ import { IResponse, UploadResult } from "../interfaces/IResponse";
 import { apiService } from "./api";
 import { apiValues } from "./api-values";
 import { handleError } from "./error-handler";
+import { ExportFilters } from "../../app/pages/products/ExportProductsModal"
 export interface IOrderResponse extends IResponse {
   total_orders?: number;
   total_sales?: number;
@@ -191,6 +192,33 @@ export class AppService {
    * Get products
    */
   async getProducts(payload: any): Promise<any> {
+    try {
+      const params: Record<string, string> = {
+        page: payload?.page.toString(),
+      };
+      if (payload?.search) {
+        params.search = payload?.search;
+      }
+      if (payload?.category && payload?.category.toLowerCase() !== "all") {
+        params.category = payload?.category;
+      }
+      if(payload?.is_available){
+        params.is_available = payload.is_available
+      }
+
+      const queryParams = new URLSearchParams(params).toString();
+      return await apiService.get<IResponse>(
+        `${apiValues.PRODUCTS_ENDPOINT}?${queryParams}`
+      );
+    } catch (error: any) {
+      throw new Error(handleError(error));
+    }
+  }  
+  
+  /**
+   * Get products
+   */
+  async exportProducts(payload: any): Promise<IResponse> {
     try {
       const params: Record<string, string> = {
         page: payload?.page.toString(),

@@ -19,6 +19,7 @@ import UpdateStockModal from "./UpdateStockModal";
 import UpdateAvailabilityModal from "./UpdateAvailabilityModal";
 import UpdatePriceModal from "./UpdatePriceModal";
 import { useStore } from "../../../core/hooks/useStore";
+import { ExportProductsModal, ExportFilters } from "./ExportProductsModal";
 
 export default function ProductsList() {
   // 1. STATE ADJUSTMENTS: Use IProduct interface
@@ -29,7 +30,8 @@ export default function ProductsList() {
   const [totalCount, setTotalCount] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedAvailability, setSelectedAvailability] = useState<string>("all");
+  const [selectedAvailability, setSelectedAvailability] =
+    useState<string>("all");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { openModal } = useModal();
   const { user } = useStore();
@@ -70,10 +72,10 @@ export default function ProductsList() {
       value: (item: IProduct) => item.image_url,
       type: "image",
       imageConfig: {
-        size: "sm"
+        size: "sm",
       },
       bold: true,
-    },  
+    },
     {
       header: "Product Name",
       value: (item: IProduct) => item.short_name,
@@ -129,15 +131,20 @@ export default function ProductsList() {
       header: "Stock",
       // Display stock with unit and total pieces
       value: (item: IProduct) => {
-        const totalPieces = item.stock_in_pieces ?? item.stock * item.selling_unit_quantity;
+        const totalPieces =
+          item.stock_in_pieces ?? item.stock * item.selling_unit_quantity;
         const stockLevel = item.stock;
         const isLowStock = stockLevel <= 3;
         const isOutOfStock = stockLevel === 0;
-        
+
         return (
-          <div className={`${isOutOfStock ? 'text-danger' : isLowStock ? 'text-info' : 'text-text'}`}>
+          <div
+            className={`${isOutOfStock ? "text-danger" : isLowStock ? "text-info" : "text-text"}`}
+          >
             <div className="font-semibold">
-              {item.stock === 0 ? '0' : item.stock?.toFixed(2)} {item.selling_unit}{item.stock !== 1 ? "s" : ""}
+              {item.stock === 0 ? "0" : item.stock?.toFixed(2)}{" "}
+              {item.selling_unit}
+              {item.stock !== 1 ? "s" : ""}
             </div>
             <div className="text-xs">
               {item.stock_in_pieces ?? totalPieces} {item.content_unit_type}s
@@ -161,7 +168,8 @@ export default function ProductsList() {
         return (
           <div className="text-right">
             <div className="font-semibold text-text">
-             {item.whole_stock === 0 ? '0' : item.whole_stock?.toFixed(2)}/{item.selling_unit}
+              {item.whole_stock === 0 ? "0" : item.whole_stock?.toFixed(2)}/
+              {item.selling_unit}
             </div>
             {/* <div className="text-xs text-text-light">
               {item.selling_unit}
@@ -172,16 +180,17 @@ export default function ProductsList() {
     },
     {
       header: "Availability",
-      value: (item: IProduct) => item.is_available ? "Available" : "Unavailable",
+      value: (item: IProduct) =>
+        item.is_available ? "Available" : "Unavailable",
       type: "status",
       // Define status classes based on availability
       statusClasses: (item: IProduct) => {
         if (item.is_available) {
-          return item.stock > 5 
-            ? "bg-success-10 text-success" 
-            : item.stock > 0 
-            ? "bg-info-10 text-info" 
-            : "bg-danger-10 text-danger";
+          return item.stock > 5
+            ? "bg-success-10 text-success"
+            : item.stock > 0
+              ? "bg-info-10 text-info"
+              : "bg-danger-10 text-danger";
         }
         return "bg-danger-10 text-danger";
       },
@@ -190,42 +199,42 @@ export default function ProductsList() {
       header: "Last Updated",
       value: (item: IProduct) => item.updated_at,
       type: "date",
-      format: "short_date", 
+      format: "short_date",
     },
   ];
 
   // 6. BREADCRUMB ACTIONS: Add 'Add Product' and keep 'Export'
   const actions: IBreadcrumbAction[] = [
-  {
-    label: "Add Product",
-    action: () => handleAddProduct(),
-    icon: "add",          // → ri-add-line ✓
-    size: "sm",
-    variant: "primary",
-  },
-  {
-    label: "Sync Prices",
-    action: () => handleSyncPrices(),
-    icon: "refresh",      // → ri-refresh-line ✓
-    size: "sm",
-    variant: "ghost",
-  },
-  {
-    label: "Sync Inventory",
-    action: () => handleSyncInventory(),
-    icon: "refresh",      // → ri-refresh-line ✓
-    size: "sm",
-    variant: "ghost",
-  },
-  {
-    label: exportLoading ? "Exporting..." : "Export CSV",
-    action: () => handleExport(),
-    icon: exportLoading ? "loader-4" : "download-2", // → ri-download-2-line ✓
-    size: "sm",
-    variant: "outline",
-    disabled: exportLoading,
-  },
-];
+    {
+      label: "Add Product",
+      action: () => handleAddProduct(),
+      icon: "add", // → ri-add-line ✓
+      size: "sm",
+      variant: "primary",
+    },
+    {
+      label: "Sync Prices",
+      action: () => handleSyncPrices(),
+      icon: "refresh", // → ri-refresh-line ✓
+      size: "sm",
+      variant: "ghost",
+    },
+    {
+      label: "Sync Inventory",
+      action: () => handleSyncInventory(),
+      icon: "refresh", // → ri-refresh-line ✓
+      size: "sm",
+      variant: "ghost",
+    },
+    {
+      label: exportLoading ? "Exporting..." : "Export CSV",
+      action: () => handleExport(),
+      icon: exportLoading ? "loader-4" : "download-2", // → ri-download-2-line ✓
+      size: "sm",
+      variant: "outline",
+      disabled: exportLoading,
+    },
+  ];
 
   // 7. CUSTOM ACTIONS: Define actions for individual product rows
   const getCustomActions = (item: IProduct): CustomAction[] => [
@@ -236,19 +245,19 @@ export default function ProductsList() {
       classes: "",
     },
     {
-      title: "Update Stock", 
+      title: "Update Stock",
       handler: () => handleUpdateStock(item),
       icon: "truck-line",
       classes: "",
     },
     {
-      title: "Update Price", 
+      title: "Update Price",
       handler: () => handleUpdatePrice(item),
       icon: "money-dollar-circle-line",
       classes: "",
     },
     {
-      title: item.is_available ? "Mark Unavailable" : "Mark Available", 
+      title: item.is_available ? "Mark Unavailable" : "Mark Available",
       handler: () => handleUpdateAvailability(item),
       icon: item.is_available ? "forbid-line" : "check-double-line",
       classes: item.is_available ? "text-info" : "text-success",
@@ -267,7 +276,7 @@ export default function ProductsList() {
       page: number,
       search: string,
       category: string,
-      availability: string = "all"
+      availability: string = "all",
     ): Promise<void> => {
       setLoading(true);
       try {
@@ -286,19 +295,21 @@ export default function ProductsList() {
 
         if (res.success) {
           // Ensure all products have price_per_piece calculated if not present
-          const productsWithPiecePrice = res.results.map((product: IProduct) => {
-            const pricePerPiece = calculatePricePerPiece(product);
-            const pricePerUnit = product.price_per_unit || 0;
-            
-            return {
-              ...product,
-              price_per_piece: pricePerPiece,
-              price_per_unit: pricePerUnit,
-              // Ensure price field exists for backward compatibility
-              price: pricePerUnit,
-            };
-          });
-          
+          const productsWithPiecePrice = res.results.map(
+            (product: IProduct) => {
+              const pricePerPiece = calculatePricePerPiece(product);
+              const pricePerUnit = product.price_per_unit || 0;
+
+              return {
+                ...product,
+                price_per_piece: pricePerPiece,
+                price_per_unit: pricePerUnit,
+                // Ensure price field exists for backward compatibility
+                price: pricePerUnit,
+              };
+            },
+          );
+
           setProducts(productsWithPiecePrice as IProduct[]);
           setTotalCount(res.count);
         } else {
@@ -314,7 +325,7 @@ export default function ProductsList() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -324,8 +335,8 @@ export default function ProductsList() {
         if (res.success) {
           setProductExtraData(res.results);
           setCategories([
-            { label: "All", value: "all" }, 
-            ...res.results?.categories?.map((category: any) => category)
+            { label: "All", value: "all" },
+            ...res.results?.categories?.map((category: any) => category),
           ]);
         }
       } catch (error) {
@@ -342,7 +353,12 @@ export default function ProductsList() {
   }, [debouncedSearchTerm, selectedCategory, selectedAvailability]);
 
   useEffect(() => {
-    fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
+    fetchProductsData(
+      currentPage,
+      debouncedSearchTerm,
+      selectedCategory,
+      selectedAvailability,
+    );
   }, [
     fetchProductsData,
     currentPage,
@@ -353,7 +369,12 @@ export default function ProductsList() {
 
   useEffect(() => {
     const handleRefresh = () => {
-      fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
+      fetchProductsData(
+        currentPage,
+        debouncedSearchTerm,
+        selectedCategory,
+        selectedAvailability,
+      );
     };
 
     eventService.onRefresh(handleRefresh);
@@ -386,28 +407,28 @@ export default function ProductsList() {
     setSelectedAvailability(filterValue);
   };
 
-
   const handleDeleteProduct = async (product: IProduct) => {
     toast.custom((id) => (
       <div className="bg-card p-4 rounded-md shadow-lg">
-        <div className="font-semibold text-text">Are you sure you want to delete this product?</div>
-        <p className="text-text-light text-sm mt-1">This action cannot be undone.</p>
+        <div className="font-semibold text-text">
+          Are you sure you want to delete this product?
+        </div>
+        <p className="text-text-light text-sm mt-1">
+          This action cannot be undone.
+        </p>
         <div className="flex justify-end gap-2 mt-3">
-          <Button
-            variant="ghost"
-            onClick={() => toast.dismiss(id)}
-          >
+          <Button variant="ghost" onClick={() => toast.dismiss(id)}>
             Cancel
           </Button>
           <Button
             variant="danger"
             onClick={async () => {
-              toast.dismiss(id); 
+              toast.dismiss(id);
               try {
                 const res = await appService.deleteProduct(product.id);
                 if (res.success) {
                   toast.success("Product deleted successfully");
-                  if(products){
+                  if (products) {
                     setProducts(products.filter((p) => p.id !== product.id));
                   }
                 } else {
@@ -427,87 +448,125 @@ export default function ProductsList() {
   };
 
   // 11. EXPORT LOGIC: Update export logic for Products - UPDATED FOR NEW PRICE FIELDS
+ 
   const handleExport = async (): Promise<void> => {
-    setExportLoading(true);
-    try {
-      const payload: any = {
-        page: currentPage,
-        search: debouncedSearchTerm,
-        category: selectedCategory !== "all" ? selectedCategory : undefined,
-        is_available: selectedAvailability !== "all" ? selectedAvailability : undefined
-      };
+  // Open the export modal
+  const result = await openModal(ExportProductsModal, {
+    side: "right",
+    size: "2xl",
+    backdropClose: false,
+    data: {
+      title: "Export Products",
+      subtitle: "Configure export settings and download product data",
+      categories: categories,
+    },
+  });
 
-      const res = await appService.getProducts(payload);
+  if (!result?.confirmed || !result?.filters) {
+    return; // User cancelled
+  }
 
-      if (res.success && res.results && res.results.length > 0) {
-        const exportData: IProduct[] = res.results as IProduct[];
+  const filters: ExportFilters = result.filters;
+  setExportLoading(true);
+  
+  try {
+    const payload: any = {
+      page: 1,
+      is_available: filters.isAvailable !== null ? filters.isAvailable : undefined,
+      stock_less_than: filters.stockLessThan !== null ? filters.stockLessThan : undefined,
+      payment_method: filters.paymentMethod !== "all" ? filters.paymentMethod : undefined,
+      search: filters.searchTerm || undefined,
+      category: filters.category !== "all" ? filters.category : undefined,
+    };
 
-        const csvHeaders = [
-          { key: "name", label: "Product Name" },
-          { key: "category_name", label: "Category" },
-          { key: "stock", label: "Stock (Boxes)" },
-          { key: "total_pieces", label: "Total Pieces" },
-          { key: "price_per_unit", label: "Price Per Box (GHS)" },
-          { key: "price_per_piece", label: "Price Per Piece (GHS)" },
-          { key: "content_measurement", label: "Content Measurement" },
-          { key: "content_unit", label: "Content Unit" },
-          { key: "selling_unit_quantity", label: "Pieces Per Box" },
-          { key: "selling_unit", label: "Selling Unit" },
-          { key: "is_available", label: "Availability" },
-          { key: "image_url", label: "Image URL" }
-        ];
-
-        const csvData = exportData.map((product: IProduct) => {
-          const pricePerPiece = calculatePricePerPiece(product);
-          const pricePerUnit = product.price_per_unit || 0;
-          const totalPieces = product.stock * product.selling_unit_quantity;
-          
-          return {
-            name: product.short_name,
-            category_name: product.category_name,
-            stock: String(product.stock),
-            total_pieces: String(totalPieces),
-            price_per_unit: pricePerUnit.toFixed(2),
-            price_per_piece: pricePerPiece.toFixed(2),
-            content_measurement: product.content_measurement,
-            content_unit: product.content_unit,
-            selling_unit_quantity: String(product.selling_unit_quantity),
-            selling_unit: product.selling_unit,
-            is_available: product.is_available ? "Available" : "Unavailable",
-            image_url: product.image_url || "https://placehold.co/300?text=No+Image"
-          };
-        });
-
-        const csvContent = await convertToCSV(csvData, csvHeaders);
-
-        const timestamp = new Date().toISOString().split("T")[0];
-        const filename = `products-inventory-${timestamp}.csv`;
-
-        await downloadCSV(csvContent, filename);
-
-        toast.success(
-          "Export Successful",
-          {
-            description: `${exportData.length} product records exported.`,
-          }
-        );
-      } else {
-        toast.error("No Data", { 
-          description: "No product records found to export.", 
-        });
-      }
-    } catch (error) {
-      console.error("Error exporting products:", error);
-      toast.error(
-        "Export Error",
-        {
-          description: "Failed to export products. Please try again.",
-        }
-      );
-    } finally {
-      setExportLoading(false);
+    // Add availability filter
+    if (filters.isAvailable !== null) {
+      payload.is_available = filters.isAvailable;
     }
-  };
+
+    // Add stock filter
+    if (filters.stockLessThan !== null && filters.stockLessThan > 0) {
+      payload.stock_less_than = filters.stockLessThan;
+    }
+
+    // Add payment method filter
+    if (filters.paymentMethod !== "all") {
+      payload.payment_method = filters.paymentMethod;
+    }
+
+    const res = await appService.exportProducts(payload);
+
+    if (res.success && res.results && res.results.length > 0) {
+      const exportData: IProduct[] = res.results as IProduct[];
+
+      const csvHeaders = [
+        { key: "short_name", label: "Short Name" },
+        { key: "name", label: "Product Name" },
+        { key: "category_name", label: "Category" },
+        { key: "stock", label: "Stock (Boxes)" },
+        { key: "whole_stock", label: "Whole Stock" },
+        { key: "stock_in_pieces", label: "Stock in Pieces" },
+        { key: "price_per_unit", label: "Price Per Unit (GHS)" },
+        { key: "price_per_piece", label: "Price Per Piece (GHS)" },
+        { key: "allow_pieces_sell", label: "Allow Pieces Sell" },
+        { key: "is_available", label: "Availability" },
+        { key: "image_url", label: "Image URL" },
+        { key: "image_alt", label: "Image Alt Text" },
+        { key: "content_measurement", label: "Content Measurement" },
+        { key: "content_unit", label: "Content Unit" },
+        { key: "content_unit_type", label: "Content Unit Type" },
+        { key: "selling_unit_quantity", label: "Pieces Per Selling Unit" },
+        { key: "selling_unit", label: "Selling Unit" },
+        { key: "entity_id", label: "Entity ID" },
+      ];
+
+      const csvData = exportData.map((product: IProduct) => {
+        return {
+          short_name: product.short_name || "",
+          name: product.name || "",
+          category_name: product.category_name || "",
+          stock: String(product.stock || 0),
+          whole_stock: product.whole_stock !== undefined ? String(product.whole_stock) : "",
+          stock_in_pieces: String(product.stock_in_pieces || 0),
+          price_per_unit: (product.price_per_unit || 0).toFixed(2),
+          price_per_piece: (product.price_per_piece || 0).toFixed(2),
+          allow_pieces_sell: product.allow_pieces_sell ? "Yes" : "No",
+          is_available: product.is_available ? "Available" : "Unavailable",
+          image_url: product.image_url || "",
+          image_alt: product.image_alt || "",
+          content_measurement: product.content_measurement || "",
+          content_unit: product.content_unit || "",
+          content_unit_type: product.content_unit_type || "",
+          selling_unit_quantity: String(product.selling_unit_quantity || 0),
+          selling_unit: product.selling_unit || "",
+          entity_id: product.entity_id || "",
+        };
+      });
+
+      const csvContent = await convertToCSV(csvData, csvHeaders);
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `products-export-${timestamp}.csv`;
+
+      await downloadCSV(csvContent, filename);
+
+      toast.success("Export Successful", {
+        description: `${exportData.length} product records exported with applied filters.`,
+      });
+    } else {
+      toast.error("No Data", {
+        description: "No product records found matching your filters.",
+      });
+    }
+  } catch (error) {
+    console.error("Error exporting products:", error);
+    toast.error("Export Error", {
+      description: "Failed to export products. Please try again.",
+    });
+  } finally {
+    setExportLoading(false);
+  }
+};
+
   const handleSyncPrices = async () => {
     try {
       const res = await appService.syncProductsPrices();
@@ -536,29 +595,35 @@ export default function ProductsList() {
     }
   };
 
-
   const handleAddProduct = async () => {
     const result = await openModal(AddProductModal, {
-      data: {product: null, productExtraData}, 
+      data: { product: null, productExtraData },
       size: "3xl",
       side: "right",
       backdropClose: false,
     });
     if (result?.success && result?.product) {
-      fetchProductsData(currentPage, debouncedSearchTerm, selectedCategory, selectedAvailability);
+      fetchProductsData(
+        currentPage,
+        debouncedSearchTerm,
+        selectedCategory,
+        selectedAvailability,
+      );
     }
   };
 
   const handleEditProduct = async (product: IProduct) => {
     const result = await openModal(AddProductModal, {
-      data: {product: product, productExtraData}, 
+      data: { product: product, productExtraData },
       size: "3xl",
       side: "right",
       backdropClose: false,
     });
-    if(result?.success && result?.product){
-      if(products)
-        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+    if (result?.success && result?.product) {
+      if (products)
+        setProducts(
+          products.map((p) => (p.id === product.id ? result.product : p)),
+        );
     }
   };
 
@@ -570,8 +635,10 @@ export default function ProductsList() {
       backdropClose: false,
     });
     if (result?.success && result?.product) {
-      if(products)
-        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+      if (products)
+        setProducts(
+          products.map((p) => (p.id === product.id ? result.product : p)),
+        );
     }
   };
 
@@ -583,8 +650,10 @@ export default function ProductsList() {
       backdropClose: false,
     });
     if (result?.success && result?.product) {
-      if(products)
-        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+      if (products)
+        setProducts(
+          products.map((p) => (p.id === product.id ? result.product : p)),
+        );
     }
   };
 
@@ -596,8 +665,10 @@ export default function ProductsList() {
       backdropClose: false,
     });
     if (result?.success && result?.product) {
-      if(products)
-        setProducts(products.map((p) => (p.id === product.id ? result.product : p)));
+      if (products)
+        setProducts(
+          products.map((p) => (p.id === product.id ? result.product : p)),
+        );
     }
   };
 

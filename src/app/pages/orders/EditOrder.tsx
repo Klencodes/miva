@@ -1,5 +1,7 @@
+// EditOrderModal.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { Button, Input } from "../../../ui";
+import { SelectOption } from "../../../ui/components/Input";
 import { useModal } from "../../../core/hooks/useModal";
 import { DateFormatEnums, dateUtils } from "../../../core/utils/date-format";
 import { appService } from "../../../core/services/app";
@@ -25,6 +27,19 @@ interface EditableItem extends IOrderItem {
   content_unit_type?: string | undefined;
 }
 
+// ─── Mirror of CustomQuantityModal's isFullPack check ────────────────────────
+// "units" OR the product's selling_unit → full pack; anything else → piece mode
+const isFullPackType = (
+  quantityType: string,
+  item: Pick<EditableItem, "selling_unit">
+): boolean => {
+  if (!quantityType) return false;
+  return (
+    quantityType === "units" ||
+    quantityType.toLowerCase() === (item.selling_unit || "").toLowerCase()
+  );
+};
+
 export const EditOrderModal: React.FC = () => {
   const { modalRef, modalData } = useModal();
   const { order, title, subtitle, onOrderUpdated } = modalData as EditOrderModalProps;
@@ -37,28 +52,32 @@ export const EditOrderModal: React.FC = () => {
   const [showProductSelector, setShowProductSelector] = useState(false);
   const [formErrors, setFormErrors] = useState<{ discount?: string; tenderedCash?: string }>({});
 
-  // Convert editableItems to CartItem format for useOrderCalculations
-  // This will automatically recalculate whenever editableItems changes
-  const cartItemsForCalculations = useMemo(() => editableItems.map(item => ({
-    id: item.product_id,
-    quantity: item.quantity,
-    quantity_type: item.quantity_type,
-    isPieces: item.quantity_type === 'pieces',
-    price_per_piece: item.price_per_piece,
-    price_per_unit: item.unit_price,
-    selling_unit_quantity: item.selling_unit_quantity,
-    selling_unit: item.selling_unit,
-    content_unit_type: item.content_unit_type,
-    content_measurement: item.content_measurement,
-    content_unit: item.content_unit,
-    name: item.product_name,
-    short_name: item.short_name,
-    category_name: item.category_name,
-    image_url: item.image_url,
-    image_alt: item.image_alt,
-  })), [editableItems]);
+  // Map editable items to the shape useOrderCalculations expects.
+  // unit_price on each item is already resolved, so we hand it straight through
+  // as price_per_unit so the hook doesn't need to re-derive it.
+  const cartItemsForCalculations = useMemo(
+    () =>
+      editableItems.map((item) => ({
+        id: item.product_id,
+        quantity: item.quantity,
+        quantity_type: item.quantity_type,
+        isPieces: !isFullPackType(item.quantity_type, item),
+        price_per_piece: item.price_per_piece,
+        price_per_unit: item.unit_price, // already resolved — use as source of truth
+        selling_unit_quantity: item.selling_unit_quantity,
+        selling_unit: item.selling_unit,
+        content_unit_type: item.content_unit_type,
+        content_measurement: item.content_measurement,
+        content_unit: item.content_unit,
+        name: item.product_name,
+        short_name: item.short_name,
+        category_name: item.category_name,
+        image_url: item.image_url,
+        image_alt: item.image_alt,
+      })),
+    [editableItems]
+  );
 
-  // Use the order calculations hook - totals will update automatically
   const {
     subTotal,
     discountValue,
@@ -66,7 +85,6 @@ export const EditOrderModal: React.FC = () => {
     tenderedCashValue,
     balanceDue,
     balanceLabel,
-    getPricePerPiece,
   } = useOrderCalculations(cartItemsForCalculations as any, {
     discount: editableOrder.discount?.toString() || "0",
     tenderedCash: editableOrder.tendered_cash?.toString() || "0",
@@ -74,7 +92,6 @@ export const EditOrderModal: React.FC = () => {
     transactionId: editableOrder.payment?.transaction_id || "",
   });
 
-  // Load available products for adding new items
   useEffect(() => {
     loadProducts();
   }, []);
@@ -82,138 +99,120 @@ export const EditOrderModal: React.FC = () => {
   const loadProducts = async () => {
     try {
       const response = await appService.getAllProducts({ page: 1, getAll: true });
-      if (response.success && response.results) {
-        setAvailableProducts(response.results);
-      }
+      if (response.success && response.results) setAvailableProducts(response.results);
     } catch (error) {
       console.error("Failed to load products:", error);
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = "GHS") => {
-    if (amount === undefined || amount === null) return "GHS 0.00";
-    let numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(numAmount)) return "GHS 0.00";
-    return `GHS ${numAmount.toFixed(2)}`;
+  const formatCurrency = (amount: number) => {
+    const n = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (isNaN(n)) return "GHS 0.00";
+    return `GHS ${n.toFixed(2)}`;
   };
 
-  const calculateItemSubtotal = (item: EditableItem): number => {
-    return item.unit_price * item.quantity;
-  };
+  // Subtotal for one row — unit_price is always the per-unit price for the
+  // current quantity_type, so simple multiplication is correct here.
+  const calculateItemSubtotal = (item: EditableItem) =>
+    item.unit_price * item.quantity;
 
-  const getProductStockInPieces = (product: IProduct): number => {
-    return product.stock_in_pieces ?? (product.stock || 0) * (product.selling_unit_quantity || 1);
-  };
+  const getProductStockInPieces = (p: IProduct) =>
+    p.stock_in_pieces ?? (p.stock || 0) * (p.selling_unit_quantity || 1);
 
-  const getProductStockLevel = (product: IProduct): number => {
-    if (product.stock !== undefined && product.stock !== null) return product.stock;
-    return Math.floor(getProductStockInPieces(product) / (product.selling_unit_quantity || 1));
-  };
+  const getProductStockLevel = (p: IProduct) =>
+    p.stock !== undefined && p.stock !== null
+      ? p.stock
+      : Math.floor(getProductStockInPieces(p) / (p.selling_unit_quantity || 1));
 
-  // Updated handleItemUpdate to properly handle unit_price changes when switching between pieces and units
-  const handleItemUpdate = (itemId: string, field: keyof EditableItem, value: any) => {
-    setEditableItems(prev => prev.map(item => {
-      if (item.product_id === itemId) {
-        const updatedItem = { ...item, [field]: value };
-        
-        // If quantity_type changes, update unit_price accordingly
-        if (field === 'quantity_type') {
-          const isUnitSale = value === 'units';
-          // When switching to units (box/pack), use price_per_unit
-          // When switching to pieces, use price_per_piece
+  // ─── Item update — mirrors CustomQuantityModal price + conversion logic ─────
+  const handleItemUpdate = (
+    itemId: string,
+    field: keyof EditableItem,
+    value: any
+  ) => {
+    setEditableItems((prev) =>
+      prev.map((item) => {
+        if (item.product_id !== itemId) return item;
+
+        const updated = { ...item, [field]: value };
+
+        if (field === "quantity_type") {
+          const newQtyType = value as string;
           const sellingQty = item.selling_unit_quantity || 1;
-          updatedItem.unit_price = isUnitSale 
-            ? (item.price_per_piece * sellingQty)
-            : item.price_per_piece;
-          
-          // Also update quantity_type
-          updatedItem.quantity_type = value;
+
+          // Use the same helper as CustomQuantityModal so the logic stays in sync
+          const productShape = {
+            selling_unit_quantity: sellingQty,
+            selling_unit: item.selling_unit,
+            price_per_unit: item.price_per_piece * sellingQty, // full-pack price
+            price_per_piece: item.price_per_piece,
+          };
+
+          // Resolve the new unit price exactly as CustomQuantityModal does
+          updated.unit_price = resolveUnitPrice(newQtyType, productShape);
+
+          // Convert quantity so that the number of pieces being sold stays the same.
+          // switching TO pieces → multiply current (pack) qty by pieces-per-pack
+          // switching TO packs → divide current (piece) qty by pieces-per-pack
+          const wasFullPack = isFullPackType(item.quantity_type, item);
+          const nowFullPack = isFullPackType(newQtyType, item);
+
+          if (wasFullPack && !nowFullPack) {
+            // packs → pieces
+            updated.quantity = item.quantity * sellingQty;
+          } else if (!wasFullPack && nowFullPack) {
+            // pieces → packs (floor so we never sell more than available)
+            updated.quantity = Math.max(1, Math.floor(item.quantity / sellingQty));
+          }
+          // same-to-same (e.g. two different piece labels): leave quantity as-is
+
+          updated.quantity_type = newQtyType;
         }
-        
-        // If quantity changes, just update the quantity
-        if (field === 'quantity') {
-          // Ensure quantity is positive
-          updatedItem.quantity = Math.max(0.01, parseFloat(value) || 0);
+
+        if (field === "quantity") {
+          updated.quantity = Math.max(0, parseFloat(value) || 0);
         }
-        
-        return updatedItem;
-      }
-      return item;
-    }));
+
+        return updated;
+      })
+    );
   };
 
   const handleRemoveItem = (itemId: string) => {
-    setEditableItems(prev => prev.filter(item => item.product_id !== itemId));
-    toast.success("Item removed from order");
+    setEditableItems((prev) => prev.filter((i) => i.product_id !== itemId));
+    toast.success("Item removed");
   };
 
-  // Updated handleAddProduct with full validation from addToCart
   const handleAddProduct = (product: IProduct) => {
-    // Check if product is available and in stock
     const stockLevel = getProductStockLevel(product);
     if (!product.is_available || stockLevel === 0) {
-      toast.error("Product is out of stock", { duration: 3000 });
+      toast.error("Product is out of stock");
+      return;
+    }
+    if (editableItems.find((i) => i.product_id === product.id)) {
+      toast.error("Product already in order.");
       return;
     }
 
-    // Check if product already exists in order
-    const existingItem = editableItems.find(item => item.product_id === product.id);
-    if (existingItem) {
-      toast.error("Product already in order. Edit quantity instead.", { duration: 3000 });
-      return;
-    }
-
-    // Default to pieces mode
-    const isPieces = true;
-    const resolvedQtyType = product.content_unit_type || "piece";
-    const piecesPerUnit = resolvePiecesPerUnit(resolvedQtyType, product);
-    const quantity = 1; // Default quantity
-    const quantityInPieces = quantity * piecesPerUnit;
-
-    // Check stock availability
-    const availablePieces = getProductStockInPieces(product);
-    if (quantityInPieces > availablePieces) {
-      const maxInUnit = Math.floor(availablePieces / piecesPerUnit);
-      toast.error(
-        `Not enough stock. Available: ${maxInUnit} ${resolvedQtyType}s`,
-        { duration: 3000 }
-      );
-      return;
-    }
-
-    // Check combined stock with existing items of same product
-    const alreadyCommittedPieces = editableItems
-      .filter(item => item.product_id === product.id)
-      .reduce((sum, item) => {
-        const pp = resolvePiecesPerUnit(item.quantity_type || "units", product);
-        return sum + item.quantity * pp;
-      }, 0);
-
-    if (alreadyCommittedPieces + quantityInPieces > availablePieces) {
-      toast.error("Not enough stock for combined quantity", { duration: 3000 });
-      return;
-    }
-
-    // Calculate prices
-    const pricePerPiece = product.price_per_piece && product.price_per_piece > 0
-      ? product.price_per_piece
-      : product.price_per_unit / (product.selling_unit_quantity || 1);
-
-    if (!pricePerPiece && !product.price_per_unit) {
-      toast.error("Product price is not set", { duration: 3000 });
-      return;
-    }
-
-    const unitPrice = resolveUnitPrice(resolvedQtyType, product);
+    // Default to piece mode when available, same as CustomQuantityModal's init
     const sellingQty = product.selling_unit_quantity || 1;
+    const defaultQtyType =
+      product.allow_pieces_sell && sellingQty > 1
+        ? product.content_unit_type || "piece"
+        : "units";
 
-    // Create new item
+    const pricePerPiece =
+      product.price_per_piece && product.price_per_piece > 0
+        ? product.price_per_piece
+        : product.price_per_unit / sellingQty;
+
     const newItem: EditableItem = {
       order_id: editableOrder.id || undefined,
       product_id: product.id,
-      quantity: quantity,
-      quantity_type: resolvedQtyType,
-      unit_price: unitPrice,
+      quantity: 1,
+      quantity_type: defaultQtyType,
+      // resolveUnitPrice mirrors exactly what CustomQuantityModal uses on submit
+      unit_price: resolveUnitPrice(defaultQtyType, product),
       price_per_piece: pricePerPiece,
       product_name: product.name,
       short_name: product.short_name || product.name,
@@ -225,51 +224,52 @@ export const EditOrderModal: React.FC = () => {
       selling_unit: product.selling_unit || "unit",
       image_url: product.image_url || "",
       image_alt: product.image_alt || "",
-      subtotal: unitPrice * quantity,
-      isEditing: false
+      subtotal: resolveUnitPrice(defaultQtyType, product),
+      isEditing: false,
     };
 
-    setEditableItems(prev => [...prev, newItem]);
+    setEditableItems((prev) => [...prev, newItem]);
     setShowProductSelector(false);
     setSearchTerm("");
-    toast.success(`${product.short_name} (${resolvedQtyType} ×${quantity}) added`, { duration: 3000 });
+    toast.success(`${product.short_name} added`);
   };
 
   const handleDiscountChange = (value: string) => {
-    const discount = parseFloat(value) || 0;
-    setEditableOrder(prev => ({ ...prev, discount }));
-    if (formErrors.discount) {
-      setFormErrors(prev => ({ ...prev, discount: undefined }));
-    }
+    setEditableOrder((prev) => ({ ...prev, discount: parseFloat(value) || 0 }));
   };
 
   const handleTenderedCashChange = (value: string) => {
-    const tendered = parseFloat(value) || 0;
-    setEditableOrder(prev => ({ ...prev, tendered_cash: tendered }));
-    if (formErrors.tenderedCash) {
-      setFormErrors(prev => ({ ...prev, tenderedCash: undefined }));
-    }
+    setEditableOrder((prev) => ({
+      ...prev,
+      tendered_cash: parseFloat(value) || 0,
+    }));
   };
 
   const validateDiscount = () => {
     if (discountValue < 0) {
-      setFormErrors(prev => ({ ...prev, discount: "Discount cannot be negative" }));
+      setFormErrors((p) => ({ ...p, discount: "Discount cannot be negative" }));
       return false;
     }
     if (discountValue > subTotal) {
-      setFormErrors(prev => ({ ...prev, discount: "Discount cannot exceed subtotal" }));
+      setFormErrors((p) => ({
+        ...p,
+        discount: "Discount cannot exceed subtotal",
+      }));
       return false;
     }
-    setFormErrors(prev => ({ ...prev, discount: undefined }));
+    setFormErrors((p) => ({ ...p, discount: undefined }));
     return true;
   };
 
   const validateTenderedCash = () => {
     if (tenderedCashValue < 0) {
-      setFormErrors(prev => ({ ...prev, tenderedCash: "Amount cannot be negative" }));
+      setFormErrors((p) => ({
+        ...p,
+        tenderedCash: "Amount cannot be negative",
+      }));
       return false;
     }
-    setFormErrors(prev => ({ ...prev, tenderedCash: undefined }));
+    setFormErrors((p) => ({ ...p, tenderedCash: undefined }));
     return true;
   };
 
@@ -279,40 +279,14 @@ export const EditOrderModal: React.FC = () => {
       return;
     }
 
-    if (total < 0) {
-      toast.error("Invalid total amount");
+    if (tenderedCashValue < total) {
+      toast.error(`Amount must be at least ${formatCurrency(total)}`);
       return;
     }
 
-    // Discount validation
-    if (discountValue < 0) {
-      toast.error("Discount cannot be negative");
-      setFormErrors(prev => ({ ...prev, discount: "Discount cannot be negative" }));
-      return;
-    }
-    
-    if (discountValue > subTotal) {
-      toast.error("Discount cannot exceed subtotal");
-      setFormErrors(prev => ({ ...prev, discount: "Discount cannot exceed subtotal" }));
-      return;
-    }
-    
-    // Tendered cash validation
-    if (tenderedCashValue < 0) {
-      toast.error("Amount cannot be negative");
-      setFormErrors(prev => ({ ...prev, tenderedCash: "Amount cannot be negative" }));
-      return;
-    }
-    
-    if (tenderedCashValue < total) {
-      toast.error(`Amount cannot be less than total (${formatCurrency(total)})`);
-      setFormErrors(prev => ({ ...prev, tenderedCash: `Amount must be at least ${formatCurrency(total)}` }));
-      return;
-    }
-  
     setLoading(true);
     try {
-      const updatedOrderData = {
+      const response = await appService.updateOrder(editableOrder.id, {
         cashier: editableOrder.cashier,
         customer: editableOrder.customer,
         total: parseFloat(total.toFixed(2)),
@@ -321,336 +295,373 @@ export const EditOrderModal: React.FC = () => {
         tendered_cash: tenderedCashValue,
         balance: parseFloat(balanceDue.toFixed(2)),
         balance_label: balanceLabel,
-        items: editableItems.map((item) => {
-          const quantityType = item.quantity_type || "pieces";
-          return {
-            product_id: item.product_id,
-            quantity: item.quantity,
-            quantity_type: quantityType,
-            unit_price: item.unit_price,
-            price_per_piece: item.price_per_piece,
-            product_name: item.product_name || "",
-            short_name: item.short_name || "",
-            category_name: item.category_name || "",
-            content_measurement: item.content_measurement || "",
-            content_unit: item.content_unit || "",
-            content_unit_type: item.content_unit_type || "",
-            selling_unit_quantity: item.selling_unit_quantity || 1,
-            selling_unit: item.selling_unit || "",
-            image_url: item.image_url || "",
-            image_alt: item.image_alt || "",
-          };
-        }),
+        items: editableItems,
         payment: {
           payment_method: editableOrder.payment?.payment_method || "Cash",
           amount_paid: tenderedCashValue,
           transaction_id: editableOrder.payment?.transaction_id || "",
         },
-      };
+      });
 
-      const response = await appService.updateOrder(editableOrder.id, updatedOrderData);
-      
       if (response.success) {
         toast.success("Order updated successfully");
-        if (onOrderUpdated) onOrderUpdated();
+        onOrderUpdated?.();
         modalRef?.close({ action: "updated", order: response.results });
-      } else {
-        toast.error(response.message || "Failed to update order");
       }
     } catch (error: any) {
-      console.error("Update order error:", error);
       toast.error(error.message || "Failed to update order");
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredProducts = availableProducts.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.short_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProducts = availableProducts.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.short_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const isBalancePositive = balanceDue >= 0;
+
+  const capitalizeFirst = (str: string) => {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  // ── UI Components ─────────────────────────────────────────────────────────
+
+  const StatPill = ({
+    label,
+    value,
+    accent = false,
+  }: {
+    label: string;
+    value: string;
+    accent?: boolean;
+  }) => (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] uppercase tracking-widest font-medium text-text-light">
+        {label}
+      </span>
+      <span
+        className={`text-sm font-medium font-mono ${
+          accent ? "text-primary" : "text-text"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-[10px] font-medium uppercase tracking-widest text-text-light mb-3">
+      {children}
+    </p>
+  );
+
+  // ── Per-row price breakdown (mirrors CustomQuantityModal's price summary) ──
+  const ItemPriceDetail = ({ item }: { item: EditableItem }) => {
+    const sellingQty = item.selling_unit_quantity || 1;
+    const isPiecesMode = !isFullPackType(item.quantity_type, item);
+    const pieceLabel = item.content_unit_type || "piece";
+    const packLabel = item.selling_unit || "unit";
+    const subtotal = calculateItemSubtotal(item);
+
+    // Equivalent label — same formula as CustomQuantityModal's equivalentStr
+    let equivalentLabel = "";
+    if (sellingQty > 1) {
+      if (isPiecesMode) {
+        const packs = item.quantity / sellingQty;
+        equivalentLabel = `≈ ${
+          packs % 1 === 0 ? packs : packs.toFixed(2)
+        } ${packLabel}${packs !== 1 ? "s" : ""}`;
+      } else {
+        const pieces = item.quantity * sellingQty;
+        equivalentLabel = `= ${pieces} ${pieceLabel}${pieces !== 1 ? "s" : ""}`;
+      }
+    }
+
+    return (
+      <div className="text-xs text-text-light space-y-0.5 mt-1">
+        <span>
+          {formatCurrency(item.unit_price)} /{" "}
+          {isPiecesMode ? pieceLabel : packLabel}
+          {equivalentLabel ? (
+            <span className="ml-1 opacity-70">({equivalentLabel})</span>
+          ) : null}
+        </span>
+        <span className="block font-mono font-medium text-text">
+          = {formatCurrency(subtotal)}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header */}
-      <div className="flex flex-row justify-between items-start mb-4 border-b border-border pb-3 sticky top-0 bg-card z-10 px-4">
-        <div>
-          <h2 className="text-xl text-text font-bold">{title}</h2>
-          <p className="text-sm text-text-light mt-1">{subtitle}</p>
+      <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-border bg-card sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+            <i className="ri-file-edit-line text-primary text-base" />
+          </div>
+          <div>
+            <h2 className="text-base font-medium text-text leading-tight">
+              {title}
+            </h2>
+            <p className="text-xs text-text-light mt-0.5">{subtitle}</p>
+          </div>
         </div>
         <button
           onClick={() => modalRef?.dismiss()}
-          className="w-8 h-8 rounded-full hover:bg-background transition-colors flex items-center justify-center"
+          className="w-7 h-7 rounded-md border border-border flex items-center justify-center hover:bg-background transition-colors text-text-light hover:text-text"
         >
-          <i className="ri-close-line text-xl text-text-light"></i>
+          <i className="ri-close-line text-sm" />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 space-y-4">
-        
-        {/* Order Summary Card */}
-        <div className="bg-primary-50 rounded-lg p-4">
-          <div className="flex justify-between items-start">
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+        {/* Order hero card */}
+        <div className="rounded-xl border border-border bg-background px-5 py-4">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-medium mb-1 opacity-80">Order Code</p>
-              <p className="text-base font-bold text-text">{editableOrder.code}</p>
+              <p className="text-[10px] uppercase tracking-widest font-medium text-text-light mb-1">
+                Order
+              </p>
+              <p className="text-lg font-medium text-text font-mono">
+                {editableOrder.code}
+              </p>
+              <p className="text-xs text-text-light mt-1">
+                {dateUtils.formatDate(
+                  editableOrder.created_at,
+                  DateFormatEnums.DATE_TIME_SHORT
+                )}
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-xs font-medium mb-1 opacity-80">Final Total</p>
-              <p className="text-2xl font-bold text-primary">
+              <p className="text-[10px] uppercase tracking-widest font-medium text-text-light mb-1">
+                Total
+              </p>
+              <p className="text-2xl font-medium text-primary font-mono">
                 {formatCurrency(total)}
               </p>
             </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-primary-100">
-            <p className="text-xs text-text-light">
-              Created: {dateUtils.formatDate(editableOrder.created_at, DateFormatEnums.DATE_TIME_SHORT)}
-            </p>
-          </div>
-        </div>
 
-        {/* Editable Fields */}
-        <div className="space-y-3">
-          <h3 className="text-md font-semibold text-text border-b border-border pb-1">
-            Order Information
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Input
-                label="Customer Name"
-                value={editableOrder.customer}
-                onChange={(v) => setEditableOrder(prev => ({ ...prev, customer: v as string }))}
-                placeholder="Customer name"
-              />
-            </div>
-            <div>
-              <Input
-                label="Cashier"
-                value={editableOrder.cashier}
-                onChange={(v) => setEditableOrder(prev => ({ ...prev, cashier: v as string }))}
-                placeholder="Cashier name"
-              />
-            </div>
-            <div>
-              <Input
-                type="number"
-                label="Discount (GHS)"
-                value={discountValue.toString()}
-                onChange={(v) => handleDiscountChange(v as string)}
-                onBlur={validateDiscount}
-                min={0}
-                step={0.01}
-                error={formErrors.discount}
-              />
-            </div>
-            <div>
-              <Input
-                type="number"
-                label="Tendered Cash"
-                value={tenderedCashValue.toString()}
-                onChange={(v) => handleTenderedCashChange(v as string)}
-                onBlur={validateTenderedCash}
-                min={0}
-                step={0.01}
-                error={formErrors.tenderedCash}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Input
-              type="select"
-              label="Payment Method"
-              value={editableOrder.payment?.payment_method || "Cash"}
-              selectOptions={[
-                { value: "Cash", label: "Cash" },
-                { value: "Mobile Money", label: "Mobile Money" },
-                { value: "Card", label: "Card" }
-              ]}
-              onChange={(v) => setEditableOrder(prev => ({
-                ...prev,
-                payment: { ...prev.payment, payment_method: v as string, amount_paid: prev.tendered_cash, transaction_id: prev.payment?.transaction_id || "" }
-              }))}
+          <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-4">
+            <StatPill label="Subtotal" value={formatCurrency(subTotal)} />
+            <StatPill
+              label="Discount"
+              value={`- ${formatCurrency(discountValue)}`}
+            />
+            <StatPill
+              label="Tendered"
+              value={formatCurrency(tenderedCashValue)}
+              accent
             />
           </div>
-
-          {editableOrder.payment?.payment_method !== "Cash" && (
-            <div>
-              <Input
-                label="Transaction ID / Reference"
-                value={editableOrder.payment?.transaction_id || ""}
-                onChange={(v) => setEditableOrder(prev => ({
-                  ...prev,
-                  payment: { ...prev.payment, transaction_id: v as string, payment_method: prev.payment?.payment_method || "Cash", amount_paid: prev.tendered_cash }
-                }))}
-              />
-            </div>
-          )}
         </div>
 
-        {/* Balance Display */}
-        <div className={`p-3 rounded-lg ${balanceDue >= 0 ? 'bg-success-10' : 'bg-danger-10'}`}>
-          <div className="flex justify-between items-center">
-            <span className={`font-medium ${balanceDue >= 0 ? 'text-success' : 'text-danger'}`}>
-              {balanceLabel}:
-            </span>
-            <span className={`font-bold text-base ${balanceDue >= 0 ? 'text-success' : 'text-danger'}`}>
-              {formatCurrency(Math.abs(balanceDue))}
-            </span>
+        {/* Order information */}
+        <div>
+          <SectionLabel>Order information</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Customer name"
+              value={editableOrder.customer}
+              onChange={(v) =>
+                setEditableOrder((prev) => ({
+                  ...prev,
+                  customer: v as string,
+                }))
+              }
+            />
+            <Input
+              label="Cashier"
+              value={editableOrder.cashier}
+              onChange={(v) =>
+                setEditableOrder((prev) => ({ ...prev, cashier: v as string }))
+              }
+            />
+            <Input
+              type="number"
+              label="Discount (GHS)"
+              value={editableOrder.discount?.toString()}
+              onChange={(v) => handleDiscountChange(v as string)}
+              onBlur={validateDiscount}
+              error={formErrors.discount}
+            />
+            <Input
+              type="number"
+              label="Tendered cash (GHS)"
+              value={editableOrder.tendered_cash?.toString()}
+              onChange={(v) => handleTenderedCashChange(v as string)}
+              onBlur={validateTenderedCash}
+              error={formErrors.tenderedCash}
+            />
           </div>
         </div>
 
-        {/* Items Section */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center border-b border-border pb-1">
-            <h3 className="text-md font-semibold text-text">Order Items</h3>
-            <Button 
-              size="sm" 
+        {/* Balance pill */}
+        <div
+          className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
+            isBalancePositive
+              ? "bg-success-10 border-success-20"
+              : "bg-danger-10 border-danger-20"
+          }`}
+        >
+          <span
+            className={`text-sm font-medium ${
+              isBalancePositive ? "text-success" : "text-danger"
+            }`}
+          >
+            {balanceLabel}
+          </span>
+          <span
+            className={`text-base font-medium font-mono ${
+              isBalancePositive ? "text-success" : "text-danger"
+            }`}
+          >
+            {formatCurrency(Math.abs(balanceDue))}
+          </span>
+        </div>
+
+        {/* Items section */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <SectionLabel>Order items ({editableItems.length})</SectionLabel>
+            <Button
+              size="sm"
               variant="outline"
-              onClick={() => setShowProductSelector(!showProductSelector)}
+              onClick={() => setShowProductSelector((v) => !v)}
             >
-              <i className="ri-add-line mr-1"></i>
-              Add Product
+              <i
+                className={`${
+                  showProductSelector ? "ri-close-line" : "ri-add-line"
+                } mr-1`}
+              />
+              {showProductSelector ? "Close" : "Add product"}
             </Button>
           </div>
 
-          {/* Product Selector */}
           {showProductSelector && (
-            <div className="bg-background rounded-lg p-3 space-y-2">
+            <div className="mb-4 rounded-xl border border-border bg-background p-4 space-y-3">
               <Input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search products…"
                 value={searchTerm}
                 onChange={setSearchTerm}
                 prefixIcon="search"
               />
-              <div className="max-h-48 overflow-y-auto space-y-1">
-                {filteredProducts.slice(0, 10).map(product => {
-                  const stockLevel = getProductStockLevel(product);
-                  const isOutOfStock = !product.is_available || stockLevel === 0;
-                  
-                  return (
-                    <button
-                      key={product.id}
-                      onClick={() => !isOutOfStock && handleAddProduct(product)}
-                      disabled={isOutOfStock}
-                      className={`w-full text-left p-2 rounded transition-colors ${
-                        isOutOfStock 
-                          ? 'opacity-50 cursor-not-allowed' 
-                          : 'hover:bg-card'
-                      }`}
-                    >
-                      <p className="text-sm font-medium text-text">{product.short_name || product.name}</p>
-                      <p className="text-xs text-text-light">
-                        {formatCurrency(product.price_per_unit)}/{product.selling_unit}
-                        {isOutOfStock && <span className="text-danger ml-2">(Out of stock)</span>}
-                      </p>
-                    </button>
-                  );
-                })}
-                {filteredProducts.length === 0 && (
-                  <p className="text-sm text-text-light text-center py-4">No products found</p>
-                )}
+              <div className="max-h-48 overflow-y-auto">
+                {filteredProducts.slice(0, 10).map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => handleAddProduct(product)}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-card flex items-center justify-between"
+                  >
+                    <span>{product.short_name || product.name}</span>
+                    <span className="font-mono text-xs">
+                      {formatCurrency(product.price_per_unit)}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Items Table */}
-          <div className="overflow-x-auto">
+          <div className="rounded-xl border border-border overflow-hidden">
             <table className="min-w-full">
-              <thead className="bg-background">
-                <tr>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-text-light">Product</th>
-                  <th className="px-2 py-2 text-center text-xs font-medium text-text-light">Quantity</th>
-                  <th className="px-2 py-2 text-center text-xs font-medium text-text-light">Type</th>
-                  <th className="px-2 py-2 text-right text-xs font-medium text-text-light">Unit Price</th>
-                  <th className="px-2 py-2 text-right text-xs font-medium text-text-light">Subtotal</th>
-                  <th className="px-2 py-2 text-center text-xs font-medium text-text-light">Actions</th>
+              <thead>
+                <tr className="bg-background border-b border-border">
+                  <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase text-text-light">
+                    Product
+                  </th>
+                  <th className="px-3 py-2.5 text-center text-[10px] font-medium uppercase text-text-light w-24">
+                    Qty
+                  </th>
+                  <th className="px-3 py-2.5 text-center text-[10px] font-medium uppercase text-text-light w-28">
+                    Type
+                  </th>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-medium uppercase text-text-light">
+                    Subtotal
+                  </th>
+                  <th className="px-3 py-2.5 w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {editableItems.map((item) => (
-                  <tr key={item.product_id} className="hover:bg-background">
-                    <td className="px-2 py-2">
-                      <p className="text-sm font-medium text-text">{item.short_name}</p>
-                      <p className="text-xs text-text-light">{item.category_name}</p>
+                  <tr key={`${item.product_id}-${item.quantity_type}`}>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-medium">{item.short_name}</p>
+                      {/* Inline price breakdown — same info as CustomQuantityModal's price summary */}
+                      <ItemPriceDetail item={item} />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-3 py-3">
                       <Input
                         type="number"
                         value={item.quantity.toString()}
-                        onChange={(v) => handleItemUpdate(item.product_id, 'quantity', parseFloat(v as string) || 0)}
-                        min={0.01}
-                        step={0.01}
+                        onChange={(v) =>
+                          handleItemUpdate(item.product_id, "quantity", v)
+                        }
                         size="sm"
                       />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-3 py-3">
                       <Input
                         type="select"
                         size="sm"
                         value={item.quantity_type}
-                        onChange={(e) => handleItemUpdate(item.product_id, 'quantity_type', e.target.value)}
+                        onChange={(opt) =>
+                          handleItemUpdate(
+                            item.product_id,
+                            "quantity_type",
+                            typeof opt === "object" ? opt.value : opt
+                          )
+                        }
                         selectOptions={[
-                            { value: item.content_unit_type || "pieces", label: item?.content_unit_type ? item.content_unit_type.charAt(0).toUpperCase() + item.content_unit_type.slice(1) : "Pieces" },
-                            { value: item.selling_unit, label: item?.selling_unit ? item.selling_unit.charAt(0).toUpperCase() + item.selling_unit.slice(1) : "Units" },
+                          // Piece option — matches CustomQuantityModal's "By piece" tab
+                          {
+                            value: item.content_unit_type || "piece",
+                            label: capitalizeFirst(
+                              item.content_unit_type || "piece"
+                            ),
+                          },
+                          // Pack option — matches CustomQuantityModal's "By pack" tab.
+                          // Value is the selling_unit name (e.g. "box", "sack") so
+                          // isFullPackType() resolves it correctly, same as the modal.
+                          {
+                            value: item.selling_unit || "unit",
+                            label: capitalizeFirst(
+                              item.selling_unit || "unit"
+                            ),
+                          },
                         ]}
                       />
-                     
                     </td>
-                    <td className="px-2 py-2 text-right text-sm text-text">
-                      {formatCurrency(item.unit_price)}
-                    </td>
-                    <td className="px-2 py-2 text-right text-sm font-semibold text-text">
+                    <td className="px-3 py-3 text-right text-sm font-mono">
                       {formatCurrency(calculateItemSubtotal(item))}
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-3 py-3 text-center">
                       <button
                         onClick={() => handleRemoveItem(item.product_id)}
-                        className="text-danger hover:text-danger-dark transition-colors"
+                        className="text-text-light hover:text-danger"
                       >
-                        <i className="ri-delete-bin-line"></i>
+                        <i className="ri-delete-bin-line" />
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-background border-t border-border">
-                <tr className="border-b border-border">
-                  <td colSpan={4} className="px-2 py-2 text-right font-medium text-text">Subtotal:</td>
-                  <td className="px-2 py-2 text-right font-semibold text-text">
-                    {formatCurrency(subTotal)}
-                  </td>
-                  <td></td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td colSpan={4} className="px-2 py-2 text-right font-medium text-text">Discount:</td>
-                  <td className="px-2 py-2 text-right font-semibold text-danger">
-                    -{formatCurrency(discountValue)}
-                  </td>
-                  <td></td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td colSpan={4} className="px-2 py-2 text-right font-bold text-text">Total:</td>
-                  <td className="px-2 py-2 text-right font-bold text-primary text-base">
-                    {formatCurrency(total)}
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
             </table>
           </div>
         </div>
       </div>
 
-      {/* Footer Actions */}
-      <div className="flex justify-between gap-3 pt-4 border-t border-border mt-4 px-4 pb-4">
-        <Button
-          onClick={() => modalRef?.dismiss()}
-          variant="outline"
-        >
+      {/* Footer */}
+      <div className="flex items-center justify-between px-6 py-3.5 border-t border-border bg-background">
+        <Button onClick={() => modalRef?.dismiss()} variant="outline">
           Cancel
         </Button>
         <Button
@@ -659,8 +670,7 @@ export const EditOrderModal: React.FC = () => {
           loading={loading}
           disabled={loading}
         >
-          <i className="ri-save-line mr-2"></i>
-          Save Changes
+          Save changes ({formatCurrency(total)})
         </Button>
       </div>
     </div>

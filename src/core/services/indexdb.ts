@@ -643,9 +643,7 @@ async saveOrders(orders: any[]): Promise<void> {
  
       // ── Step 3: resolve/reject when the transaction settles ──
       transaction.oncomplete = () => {
-        console.log(
-          `Orders sync: ${saved} saved, ${skipped} skipped, ${errored} errors`
-        );
+
         resolve();
       };
  
@@ -701,7 +699,6 @@ async updateOrderStatus(
 
       const putRequest = store.put(updatedOrder);
       putRequest.onsuccess = () => {
-        console.log(`✅ Order ${localOrderId} status updated to ${status}`);
         resolve();
       };
       putRequest.onerror = () => reject(putRequest.error);

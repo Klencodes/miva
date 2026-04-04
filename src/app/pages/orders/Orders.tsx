@@ -354,7 +354,7 @@ export default function OrdersList() {
   const handleEditOrder = async (order: IOrder) => {
   const result = await openModal(EditOrderModal, {
     side: "right",
-    size: "xl",
+    size: "2xl",
     data: {
       order: order,
       title: "Edit Order",
