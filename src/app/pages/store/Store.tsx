@@ -347,95 +347,99 @@ const ModernStore: React.FC = () => {
     setFormErrors({});
     if (isOnline && fetchProductsRef.current) {
       setTimeout(
-        () => fetchProductsRef.current!(1, debouncedSearchTerm, selectedCategory),
+        () =>
+          fetchProductsRef.current!(1, debouncedSearchTerm, selectedCategory),
         800,
       );
     }
   };
 
- const submitOrder = async () => {
-  if (cartItems.length === 0) {
-    toast.error('Cart is empty');
-    return;
-  }
- 
-  const errors: FormErrors = {};
-  if (discountValue < 0)
-    errors.discount = 'Discount cannot be negative';
-  if (discountValue > subTotal)
-    errors.discount = 'Discount cannot exceed subtotal';
-  if (tenderedCashValue < 0)
-    errors.tenderedCash = 'Amount cannot be negative';
-  if (Object.keys(errors).length > 0) {
-    setFormErrors(errors);
-    toast.error('Please fix form errors');
-    return;
-  }
- 
-  setCreatingOrder(true);
- 
-  try {
-    const orderData = prepareOrder();
- 
-    // ── 1. Save locally first (always) ──────────────────────
-    const localResponse = await indexedDBService.createOrder(orderData);
-    if (!localResponse.success) {
-      throw new Error('Failed to save order locally');
+  const submitOrder = async () => {
+    if (cartItems.length === 0) {
+      toast.error("Cart is empty");
+      return;
     }
- 
-    const localOrderId    = localResponse.results?.id as number;
-    let orderDataForPrint = localResponse.results;
- 
-    // ── 2. Attempt server sync if online ────────────────────
-    if (isOnline) {
-      try {
-        const serverResponse = await appService.createOrder(orderData);
- 
-        if (serverResponse.success) {
-          const serverOrderId = serverResponse?.results?.id as string | undefined;
- 
-          // ── 2a. Persist the server ID BEFORE clearing the cart ──
-          if (localOrderId && serverOrderId) {
-            await indexedDBService.updateOrderStatus(
-              localOrderId,
-              'synced',
-              { serverId: serverOrderId }
-            );
-            // Use the server ID for the receipt so it matches
-            // what the server recorded.
-            orderDataForPrint = { ...orderDataForPrint, id: serverOrderId };
-          } else if (localOrderId) {
-            // Server accepted but returned no ID — still mark synced.
-            await indexedDBService.updateOrderStatus(localOrderId, 'synced');
+
+    const errors: FormErrors = {};
+    if (discountValue < 0) errors.discount = "Discount cannot be negative";
+    if (discountValue > subTotal)
+      errors.discount = "Discount cannot exceed subtotal";
+    if (tenderedCashValue < 0)
+      errors.tenderedCash = "Amount cannot be negative";
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error("Please fix form errors");
+      return;
+    }
+
+    setCreatingOrder(true);
+
+    try {
+      const orderData = prepareOrder();
+
+      // ── 1. Save locally first (always) ──────────────────────
+      const localResponse = await indexedDBService.createOrder(orderData);
+      if (!localResponse.success) {
+        throw new Error("Failed to save order locally");
+      }
+
+      const localOrderId = localResponse.results?.id as number;
+      let orderDataForPrint = localResponse.results;
+
+      // ── 2. Attempt server sync if online ────────────────────
+      if (isOnline) {
+        try {
+          const serverResponse = await appService.createOrder(orderData);
+
+          if (serverResponse.success) {
+            const serverOrderId = serverResponse?.results?.order?.id ?? serverResponse?.results?.id as
+              | string
+              | undefined;
+
+            // ── 2a. Persist the server ID BEFORE clearing the cart ──
+            if (localOrderId && serverOrderId) {
+              await indexedDBService.updateOrderStatus(localOrderId, "synced", {
+                serverId: serverOrderId,
+              });
+              // Use the server ID for the receipt so it matches
+              // what the server recorded.
+              orderDataForPrint = { ...orderDataForPrint, id: serverOrderId };
+            } else if (localOrderId) {
+              // Server accepted but returned no ID — still mark synced.
+              await indexedDBService.updateOrderStatus(localOrderId, "synced");
+            }
+
+            // ── 2b. Now safe to clear the cart ──────────────────
+            await cleanupOrderData("Order submitted successfully!");
+            printReceiptDirectly(orderDataForPrint, entity!);
+          } else {
+            // Server rejected — order stays 'pending' for later retry.
+            console.warn("Server rejected order:", serverResponse.message);
+            await cleanupOrderData("Order saved locally — will retry sync");
+            printReceiptDirectly(orderDataForPrint, entity!);
           }
- 
-          // ── 2b. Now safe to clear the cart ──────────────────
-          await cleanupOrderData('Order submitted successfully!');
-          printReceiptDirectly(orderDataForPrint, entity!);
-        } else {
-          // Server rejected — order stays 'pending' for later retry.
-          console.warn('Server rejected order:', serverResponse.message);
-          await cleanupOrderData('Order saved locally — will retry sync');
+        } catch (networkErr) {
+          // Network failure — order stays 'pending'.
+          console.error("Network error during order submit:", networkErr);
+          await cleanupOrderData(
+            "Order saved offline — sync failed, will retry",
+          );
           printReceiptDirectly(orderDataForPrint, entity!);
         }
-      } catch (networkErr) {
-        // Network failure — order stays 'pending'.
-        console.error('Network error during order submit:', networkErr);
-        await cleanupOrderData('Order saved offline — sync failed, will retry');
+      } else {
+        // Offline path — order is already saved as 'pending'.
+        await cleanupOrderData(
+          "Order saved offline — will sync when back online",
+        );
         printReceiptDirectly(orderDataForPrint, entity!);
       }
-    } else {
-      // Offline path — order is already saved as 'pending'.
-      await cleanupOrderData('Order saved offline — will sync when back online');
-      printReceiptDirectly(orderDataForPrint, entity!);
+    } catch (err) {
+      toast.error("Failed to save order");
+      console.error("Order submission error:", err);
+    } finally {
+      setCreatingOrder(false);
     }
-  } catch (err) {
-    toast.error('Failed to save order');
-    console.error('Order submission error:', err);
-  } finally {
-    setCreatingOrder(false);
-  }
-};
+  };
 
   // ── cart operations ───────────────────────────────────────────────────────
 
@@ -450,7 +454,9 @@ const ModernStore: React.FC = () => {
       return;
     }
 
-    const resolvedQtyType = quantityType || (isPieces ? product.content_unit_type || "piece" : "units");
+    const resolvedQtyType =
+      quantityType ||
+      (isPieces ? product.content_unit_type || "piece" : "units");
 
     const piecesPerUnit = resolvePiecesPerUnit(resolvedQtyType, product);
     const quantityInPieces = quantity * piecesPerUnit;

@@ -20,6 +20,7 @@ import UpdateAvailabilityModal from "./UpdateAvailabilityModal";
 import UpdatePriceModal from "./UpdatePriceModal";
 import { useStore } from "../../../core/hooks/useStore";
 import { ExportProductsModal, ExportFilters } from "./ExportProductsModal";
+import ConfirmationModal from "../../../ui/components/ConfirmationModal";
 
 export default function ProductsList() {
   // 1. STATE ADJUSTMENTS: Use IProduct interface
@@ -582,6 +583,8 @@ export default function ProductsList() {
   };
 
   const handleSyncInventory = async () => {
+    const res = await openModal(ConfirmationModal, {data: {title: "Are you sure you want to sync products", description: "Syncing product will reset all whole stock to crrent available stock \n ", actions: {cancel: "Cancel", confirm: "Yes, Sync"}}, side: "center", size: "lg"})
+    if(res?.action !== "confirmed") return;
     try {
       const res = await appService.syncWholeStock();
       if (res.success) {
