@@ -643,7 +643,7 @@ async saveOrders(orders: any[]): Promise<void> {
  
       // ── Step 3: resolve/reject when the transaction settles ──
       transaction.oncomplete = () => {
-
+        
         resolve();
       };
  
@@ -981,6 +981,83 @@ async getAllOrders(params?: {
       request.onerror = () => reject(request.error);
     });
   }
+
+  async deleteOrder(id: number): Promise<IResponse> {
+  const db = await this.ensureDB();
+  const entityId = this.entityIdString;
+
+  if (!entityId) {
+    return {
+      success: false,
+      message: 'Entity ID not found',
+      results: null,
+      count: 0,
+      next: null,
+      previous: null
+    };
+  }
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['orders'], 'readwrite');
+    const store = transaction.objectStore('orders');
+
+    const getRequest = store.get(id);
+
+    getRequest.onsuccess = () => {
+      const order = getRequest.result as DBOrder | undefined;
+
+      if (!order) {
+        resolve({
+          success: false,
+          message: 'Order not found',
+          results: null,
+          count: 0,
+          next: null,
+          previous: null
+        });
+        return;
+      }
+
+      if (order.entity_id !== entityId) {
+        resolve({
+          success: false,
+          message: 'Order does not belong to current entity',
+          results: null,
+          count: 0,
+          next: null,
+          previous: null
+        });
+        return;
+      }
+
+      const deleteRequest = store.delete(id);
+
+      deleteRequest.onsuccess = () => {
+        resolve({
+          success: true,
+          message: 'Order deleted successfully',
+          results: { id },
+          count: 1,
+          next: null,
+          previous: null
+        });
+      };
+
+      deleteRequest.onerror = () => {
+        resolve({
+          success: false,
+          message: 'Failed to delete order',
+          results: null,
+          count: 0,
+          next: null,
+          previous: null
+        });
+      };
+    };
+
+    getRequest.onerror = () => reject(getRequest.error);
+  });
+}
 
   // ============= PRODUCTS METHODS =============
   async saveProducts(products: DBProduct[]): Promise<void> {

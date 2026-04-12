@@ -8,8 +8,7 @@ export interface SelectOption {
 
 export type InputSize = 'sm' | 'md' | 'lg';
 export type InputVariant = 'default' | 'filled' | 'outline';
-export type InputType =
-  | 'text' | 'password' | 'email' | 'number' | 'range' | 'date'
+export type InputType = 'text' | 'password' | 'email' | 'number' | 'range' | 'date'
   | 'tel' | 'url' | 'search' | 'checkbox' | 'select' | 'time'
   | 'textarea' | 'color' | 'date-range';
 export type InputRadius = 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
