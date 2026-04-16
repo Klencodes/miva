@@ -216,7 +216,6 @@ export default function OrdersList() {
 
         if (isOnline) {
           try {
-            // FIX: pass start_date/end_date as flat fields, not nested under dateRange
             const serverPayload: any = {
               page: pageParam,
               search,
@@ -233,15 +232,15 @@ export default function OrdersList() {
               setTotalOrders(serverResponse.total_orders || count);
               setTotalSales(serverResponse.total_sales || 0);
 
-              await indexedDBService.saveOrders(serverOrders);
+              // Do NOT save server orders to local storage.
+              // Local storage is only for orders pending sync to the server.
 
-              // FIX: Always merge local pending orders (not synced yet) so they
-              // show up in the list even when online — they are real sales.
+              // Merge pending (unsynced) local orders on top of server results.
               const localResponse = await indexedDBService.getPendingOrders();
               const localPending: DBOrder[] = localResponse.results || [];
               const converted = localPending.map(convertDBOrderToIOrder);
 
-              // Deduplicate: server orders win by ID; pending orders have temp IDs
+              // Deduplicate: server orders win by ID; pending orders have temp IDs.
               const orderMap = new Map<string, IOrder>();
               serverOrders.forEach((o) => orderMap.set(o.id, o));
               converted.forEach((o) => {
@@ -348,13 +347,11 @@ export default function OrdersList() {
       subtitle: `Modify order ${order.code}`,
       onOrderUpdated: () => {
             fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange);
-            // toast.success("Order updated successfully");
       }
     }
   });
   
   if (result?.action === "updated") {
-    // Order was updated successfully
     console.log("Order updated:", result.order);
   }
 };
@@ -371,8 +368,6 @@ export default function OrdersList() {
     } catch { toast.error("Sync failed"); }
   };
 
-  // FIX: export uses /all-style call with no page limit so all matching
-  // orders are exported, not just the current page.
   const handleExport = async (): Promise<void> => {
     setExportLoading(true);
     try {
