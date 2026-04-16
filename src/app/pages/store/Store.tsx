@@ -97,7 +97,7 @@ const ModernStore: React.FC = () => {
     isOnlineRef.current = isOnline;
   }, [isOnline]);
 
-  useEffect(() => {
+useEffect(() => {
   if (!isOnline) return;
 
   const syncPendingOrders = async () => {
@@ -107,6 +107,8 @@ const ModernStore: React.FC = () => {
 
       if (pendingOrders.length === 0) return;
 
+      let syncedCount = 0;
+
       for (const dbOrder of pendingOrders) {
         try {
           const orderData = convertDBOrderToIOrder(dbOrder);
@@ -114,10 +116,19 @@ const ModernStore: React.FC = () => {
 
           if (serverResponse.success) {
             await indexedDBService.deleteOrder(dbOrder.id!);
+            syncedCount++;
           }
         } catch (err) {
           console.error(`Failed to sync order ${dbOrder.id}:`, err);
         }
+      }
+
+      if (syncedCount === 0) return;
+
+      const result = await syncService.syncProducts();
+      if (result.success) {
+        toast.success("Products synced successfully");
+        fetchProductsRef.current?.(1, debouncedSearchTerm, selectedCategory);
       }
 
     } catch (err) {
@@ -126,15 +137,8 @@ const ModernStore: React.FC = () => {
   };
 
   syncPendingOrders();
+  // eslint-disable-next-line
 }, [isOnline]);
-const currentYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from(
-  { length: currentYear + 1 },
-  (_, i) => {
-    const y = currentYear - i;
-    return { value: String(y), label: String(y) };
-  },
-);
 
 
   // ── form helpers ──────────────────────────────────────────────────────────

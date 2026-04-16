@@ -141,7 +141,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
   // How many whole packs are selected in fractional mode
   const [fracPackCount, setFracPackCount] = useState<number>(1);
   // Which fraction of a pack is selected (0.25 / 0.5 / 0.75 / 1)
-  const [selectedFraction, setSelectedFraction] = useState<number>(1);
+  const [selectedFraction, setSelectedFraction] = useState<number>(0);
 
   // Derived product values
   const sellingQty  = product.selling_unit_quantity || 1;
@@ -182,7 +182,7 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
 
     // Reset fractional state
     setFracPackCount(1);
-    setSelectedFraction(1);
+    setSelectedFraction(0);
     setSelectedQuick(null);
     setError("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,6 +249,10 @@ const CustomQuantityModal: React.FC<CustomQuantityModalProps> = ({
   };
 
   const validateFractional = (): boolean => {
+  // if (selectedFraction === 0) {         // ← add this check
+  //   setError("Please select a fraction");
+  //   return false;
+  // }
     if (fracTotalPacks <= 0) {
       setError("Please select a quantity");
       return false;
