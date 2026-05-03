@@ -1,7 +1,6 @@
 // EditOrderModal.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { Button, Input } from "../../../ui";
-import { SelectOption } from "../../../ui/components/Input";
 import { useModal } from "../../../core/hooks/useModal";
 import { DateFormatEnums, dateUtils } from "../../../core/utils/date-format";
 import { appService } from "../../../core/services/app";
@@ -9,7 +8,7 @@ import { toast } from "sonner";
 import { IOrder, IOrderItem } from "../../../core/interfaces/IOrder";
 import { IProduct } from "../../../core/interfaces/IProduct";
 import { useOrderCalculations } from "../../../core/hooks/useOrderCalculations";
-import { resolvePiecesPerUnit, resolveUnitPrice } from "../store/CustomQuantityModal";
+import { resolveUnitPrice } from "../store/CustomQuantityModal";
 
 interface EditOrderModalProps {
   order: IOrder;
@@ -107,8 +106,8 @@ export const EditOrderModal: React.FC = () => {
 
   const formatCurrency = (amount: number) => {
     const n = typeof amount === "string" ? parseFloat(amount) : amount;
-    if (isNaN(n)) return "GHS 0.00";
-    return `GHS ${n.toFixed(2)}`;
+    if (isNaN(n)) return "₵ 0.00";
+    return `₵ ${n.toFixed(2)}`;
   };
 
   // Subtotal for one row — unit_price is always the per-unit price for the
@@ -486,7 +485,7 @@ export const EditOrderModal: React.FC = () => {
             />
             <Input
               type="number"
-              label="Discount (GHS)"
+              label="Discount (₵)"
               value={editableOrder.discount?.toString()}
               onChange={(v) => handleDiscountChange(v as string)}
               onBlur={validateDiscount}
@@ -494,7 +493,7 @@ export const EditOrderModal: React.FC = () => {
             />
             <Input
               type="number"
-              label="Tendered cash (GHS)"
+              label="Tendered cash (₵)"
               value={editableOrder.tendered_cash?.toString()}
               onChange={(v) => handleTenderedCashChange(v as string)}
               onBlur={validateTenderedCash}

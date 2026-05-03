@@ -101,17 +101,23 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
     loadNavItems();
   }, [loadNavItems]);
 
-  // Memoize all callback functions
-  const closeAllSubmenus = useCallback(() => {
+  // FIXED: Close sidebar when clicking on overlay or navigating
+  const handleCloseSidebar = useCallback(() => {
     if (isMobile && sidebarState !== SidebarState.HIDDEN) {
       toggleSidebar();
     }
   }, [isMobile, sidebarState, toggleSidebar]);
 
+  // FIXED: Handle nav item click - close sidebar on mobile
   const handleNavItemClick = useCallback(
     (item: NavItem) => {
-      if (isMobile && sidebarState !== SidebarState.HIDDEN) {
-        toggleSidebar();
+      if (isMobile) {
+        // Close sidebar after navigation
+        setTimeout(() => {
+          if (sidebarState !== SidebarState.HIDDEN) {
+            toggleSidebar();
+          }
+        }, 100);
       }
     },
     [isMobile, sidebarState, toggleSidebar]
@@ -123,7 +129,11 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
 
   const handleLogoClick = useCallback(() => {
     navigate("/store");
-  }, [navigate]);
+    // Close sidebar on mobile when logo is clicked
+    if (isMobile && sidebarState !== SidebarState.HIDDEN) {
+      toggleSidebar();
+    }
+  }, [navigate, isMobile, sidebarState, toggleSidebar]);
 
   const handleUserMenuAction = useCallback(
     (action: string) => {
@@ -136,8 +146,12 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
         default:
           break;
       }
+      // Close sidebar on mobile after navigation
+      if (isMobile && sidebarState !== SidebarState.HIDDEN) {
+        toggleSidebar();
+      }
     },
-    [navigate]
+    [navigate, isMobile, sidebarState, toggleSidebar]
   );
 
   // Memoize derived values
@@ -176,15 +190,16 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
 
       {/* Main Content Area */}
       <div className={layoutClasses}>
-        {/* Mobile Overlay for sidebar */}
+        {/* Mobile Overlay for sidebar - FIXED: Proper z-index and click handling */}
         {layoutMode === LayoutMode.VERTICAL && isMobileSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={handleToggleSidebar}
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
+            onClick={handleCloseSidebar}
+            style={{ backdropFilter: 'blur(2px)' }}
           />
         )}
 
-        {/* Vertical Sidebar Navigation - This should not re-render on route changes */}
+        {/* Vertical Sidebar Navigation */}
         {layoutMode === LayoutMode.VERTICAL && (
           <Sidebar
             isVerticalLayout={isVerticalLayout()}
@@ -197,11 +212,11 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
           />
         )}
 
-        {/* Page Content Area - Only this part should update on route changes */}
+        {/* Page Content Area */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <div
             className={contentClasses}
-            onClick={closeAllSubmenus}
+            onClick={handleCloseSidebar}
           >
             {showLoading ? (
               <div className="flex items-center justify-center h-64">
@@ -211,7 +226,6 @@ const CommonLayout: React.FC<CommonLayoutProps> = memo(({ children }) => {
                 </div>
               </div>
             ) : (
-              // Main Content - This is what changes on route navigation
               children
             )}
           </div>

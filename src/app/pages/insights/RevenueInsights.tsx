@@ -72,7 +72,7 @@ const CustomTooltip = (props: any) => {
               Sales:
             </span>
             <span className="text-[11px] font-mono font-bold text-text">
-              GHS{" "}
+              ₵{" "}
               {salesEntry
                 ? Number(salesEntry.value).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
@@ -290,7 +290,7 @@ useEffect(() => {
               </h3>
               <div className="flex items-baseline space-x-2">
                 <span className="text-4xl font-black text-primary tracking-tight">
-                  GHS{" "}
+                  ₵{" "}
                   {totalSales.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -300,7 +300,7 @@ useEffect(() => {
 
               <div className="flex items-center space-x-3 mt-2">
                 <span className="text-sm text-text-light">
-                  Prev: GHS{" "}
+                  Prev: ₵{" "}
                   {prevTotalSales.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,

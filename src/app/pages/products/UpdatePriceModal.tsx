@@ -113,14 +113,14 @@ const UpdatePriceModal: React.FC<UpdatePriceModalProps> = () => {
       if (difference > 0.01) {
         return {
           warning: true,
-          message: `Expected price per piece: GHS ${expectedPiecePrice.toFixed(2)} (${sellingUnitQuantity} pieces × GHS ${piecePrice.toFixed(2)} = GHS ${(piecePrice * sellingUnitQuantity).toFixed(2)})`
+          message: `Expected price per piece: ₵ ${expectedPiecePrice.toFixed(2)} (${sellingUnitQuantity} pieces × ₵ ${piecePrice.toFixed(2)} = ₵ ${(piecePrice * sellingUnitQuantity).toFixed(2)})`
         };
       }
     }
     
     return {
       warning: false,
-      message: `Prices are consistent: ${sellingUnitQuantity} × GHS ${piecePrice.toFixed(2)} = GHS ${unitPrice.toFixed(2)}`
+      message: `Prices are consistent: ${sellingUnitQuantity} × ₵ ${piecePrice.toFixed(2)} = ₵ ${unitPrice.toFixed(2)}`
     };
   };
 
@@ -163,7 +163,7 @@ const UpdatePriceModal: React.FC<UpdatePriceModalProps> = () => {
               onChange={handlePricePerUnitChange}
               error={errors.pricePerUnit}
               min={0}
-              hint={`Current: GHS ${product.price_per_unit?.toFixed(2)} per ${product.selling_unit}`}
+              hint={`Current: ₵ ${product.price_per_unit?.toFixed(2)} per ${product.selling_unit}`}
             />
 
             <Input
@@ -178,7 +178,7 @@ const UpdatePriceModal: React.FC<UpdatePriceModalProps> = () => {
               onChange={handlePricePerPieceChange}
               error={errors.pricePerPiece}
               min={0}
-              hint={`Current: GHS ${(product.price_per_piece || product.price_per_unit / product.selling_unit_quantity).toFixed(2)} per piece`}
+              hint={`Current: ₵ ${(product.price_per_piece || product.price_per_unit / product.selling_unit_quantity).toFixed(2)} per piece`}
             />
 
             {pricePerUnit && pricePerPiece && (

@@ -204,7 +204,7 @@ const actions: IBreadcrumbAction[] = [
     const openRequestPayoutModal = async () => {
  
     const availableAmount = payoutWallet ? parseFloat(payoutWallet.payout_amount_available) : 0;
-    const currency = payoutWallet?.currency || "GHS";
+    const currency = payoutWallet?.currency || "₵";
 
     await openModal(RequestPayoutModal, {
       data: {

@@ -102,7 +102,7 @@ export default function ProductsList() {
         return (
           <div className="text-right">
             <div className="font-semibold text-text">
-              GHS {price.toFixed(2)}
+              ₵ {price.toFixed(2)}
             </div>
             <div className="text-xs text-text-light">
               per {item.selling_unit}
@@ -119,7 +119,7 @@ export default function ProductsList() {
         return (
           <div className="text-right">
             <div className="font-semibold text-text">
-              GHS {pricePerPiece.toFixed(2)}
+              ₵ {pricePerPiece.toFixed(2)}
             </div>
             <div className="text-xs text-text-light">
               per {item.content_unit_type}
@@ -507,8 +507,8 @@ export default function ProductsList() {
         { key: "stock", label: "Stock (Boxes)" },
         { key: "whole_stock", label: "Whole Stock" },
         { key: "stock_in_pieces", label: "Stock in Pieces" },
-        { key: "price_per_unit", label: "Price Per Unit (GHS)" },
-        { key: "price_per_piece", label: "Price Per Piece (GHS)" },
+        { key: "price_per_unit", label: "Price Per Unit (₵)" },
+        { key: "price_per_piece", label: "Price Per Piece (₵)" },
         { key: "allow_pieces_sell", label: "Allow Pieces Sell" },
         { key: "is_available", label: "Availability" },
         { key: "image_url", label: "Image URL" },

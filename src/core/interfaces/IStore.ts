@@ -25,6 +25,7 @@ export interface ICartContentProps {
   holdOrder: () => void;
   openCustomQuantityModal: (product: IProduct, currentQuantity?: number, currentIsPieces?: boolean) => void;
   openHoldOrdersModal: () => void;
+  closeCartModal?: () => void;
   formErrors?: FormErrors;
   handleFormBlur?: (field: keyof OrderFormData) => void;
 }

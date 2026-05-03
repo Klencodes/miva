@@ -29,6 +29,7 @@ import { ENTITY_KEY, getStoredItem, useStore } from "../../../core/hooks/useStor
 import { IEntityItem } from "../../../core/interfaces/IEntity";
 import { EditOrderModal } from "./EditOrder"
 import { convertDBOrderToIOrder } from "../../../core/utils/order-format";
+
 type DisplayOrder = IOrder & {
   status?: string;
   synced_at?: string;
@@ -83,7 +84,9 @@ export default function OrdersList() {
       value: (item: IOrder) => item.code,
       type: "column",
       bold: true,
-      onClick: (item: IOrder) => onViewDetails(item)
+      // Show the pending sync badge when this order hasn't been synced yet
+      showSyncBadge: true,
+      onClick: (item: IOrder) => onViewDetails(item),
     },
     {
       header: "Customer",
@@ -98,7 +101,7 @@ export default function OrdersList() {
     {
       header: "Total Amount",
       value: (item: IOrder) =>
-        `GHS ${item.total.toLocaleString(undefined, {
+        `₵ ${item.total.toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}`,
@@ -110,9 +113,9 @@ export default function OrdersList() {
       type: "status",
       statusClasses: (item: IOrder) => {
         switch (item.payment.payment_method) {
-          case "Cash":        return "bg-success-10 text-success";
+          case "Cash":         return "bg-success-10 text-success";
           case "Mobile Money": return "bg-info-10 text-info";
-          default:            return "bg-gray-10 text-gray";
+          default:             return "bg-gray-10 text-gray";
         }
       },
     },
@@ -196,8 +199,6 @@ export default function OrdersList() {
       toast.error("Failed to generate PDF");
     }
   };
-
-
 
   const fetchOrdersData = useCallback(
     async (
@@ -338,23 +339,23 @@ export default function OrdersList() {
   };
 
   const handleEditOrder = async (order: IOrder) => {
-  const result = await openModal(EditOrderModal, {
-    side: "right",
-    size: "2xl",
-    data: {
-      order: order,
-      title: "Edit Order",
-      subtitle: `Modify order ${order.code}`,
-      onOrderUpdated: () => {
-            fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange);
-      }
+    const result = await openModal(EditOrderModal, {
+      side: "right",
+      size: "2xl",
+      data: {
+        order: order,
+        title: "Edit Order",
+        subtitle: `Modify order ${order.code}`,
+        onOrderUpdated: () => {
+          fetchOrdersData(currentPage, debouncedSearchTerm, selectedPaymentMethod, dateRange);
+        },
+      },
+    });
+
+    if (result?.action === "updated") {
+      console.log("Order updated:", result.order);
     }
-  });
-  
-  if (result?.action === "updated") {
-    console.log("Order updated:", result.order);
-  }
-};
+  };
 
   const handleManualSync = async () => {
     if (!isOnline) { toast.error("No internet connection"); return; }
@@ -384,13 +385,13 @@ export default function OrdersList() {
         const exportData: IOrder[] = res.results;
 
         const csvHeaders = [
-          { key: "code",                    label: "Order Code" },
-          { key: "customer",                label: "Customer Name" },
-          { key: "total",                   label: "Total Amount" },
-          { key: "discount",                label: "Discount" },
-          { key: "payment.payment_method",  label: "Payment Method" },
-          { key: "created_at",              label: "Order Date" },
-          { key: "cashier",                 label: "Cashier" },
+          { key: "code",                   label: "Order Code" },
+          { key: "customer",               label: "Customer Name" },
+          { key: "total",                  label: "Total Amount" },
+          { key: "discount",               label: "Discount" },
+          { key: "payment.payment_method", label: "Payment Method" },
+          { key: "created_at",             label: "Order Date" },
+          { key: "cashier",                label: "Cashier" },
         ];
 
         const getNestedValue = (obj: any, path: string) =>
@@ -441,7 +442,7 @@ export default function OrdersList() {
           <div className="bg-card rounded-sm p-4">
             <div className="text-sm text-text-light font-medium mb-1">Total Sales</div>
             <div className="text-2xl font-bold text-text">
-              GHS {totalSales.toFixed(2)}
+              ₵ {totalSales.toFixed(2)}
             </div>
             <div className="text-xs text-text-light mt-1">Ready for review</div>
           </div>

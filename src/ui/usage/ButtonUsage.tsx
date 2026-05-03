@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Button, { ButtonVariant, ButtonSize, ButtonRadius } from '../components/Button';
+import Button, { ButtonVariant } from '../components/Button';
 
 const ButtonUsage: React.FC = () => {
   const [loadingState, setLoadingState] = useState(false);

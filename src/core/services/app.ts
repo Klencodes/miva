@@ -2,7 +2,6 @@ import { IResponse, UploadResult } from "../interfaces/IResponse";
 import { apiService } from "./api";
 import { apiValues } from "./api-values";
 import { handleError } from "./error-handler";
-import { ExportFilters } from "../../app/pages/products/ExportProductsModal"
 export interface IOrderResponse extends IResponse {
   total_orders?: number;
   total_sales?: number;

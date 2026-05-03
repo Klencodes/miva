@@ -860,7 +860,7 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                       onChange={handleChange("price_per_piece")}
                       onBlur={() => handleBlur("price_per_piece")}
                       min={parseFloat("0")}
-                      hint={`Calculated: GHS ${calculatePricePerPiece().toFixed(2)} per piece`}
+                      hint={`Calculated: ₵ ${calculatePricePerPiece().toFixed(2)} per piece`}
                     />
                   </div>
 
@@ -874,11 +874,11 @@ const AddProductModal: React.FC<ProductFormModalProps> = () => {
                           </p>
                           <p className="text-sm text-success">
                             1 {form.selling_unit || "unit"} (
-                            {form.selling_unit_quantity || "1"} pieces) = GHS{" "}
+                            {form.selling_unit_quantity || "1"} pieces) = ₵{" "}
                             {form.price_per_unit}
                           </p>
                           <p className="text-sm text-success">
-                            1 piece = GHS {calculatePricePerPiece().toFixed(2)}
+                            1 piece = ₵ {calculatePricePerPiece().toFixed(2)}
                           </p>
                         </div>
                       </div>

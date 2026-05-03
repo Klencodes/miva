@@ -31,7 +31,7 @@ import CustomQuantityModal, {
   resolveUnitPrice,
 } from "./CustomQuantityModal";
 import { CATEGORIES } from "./categories";
-import { useDebounce } from "../../../core/hooks/useDebounce"; // Import the debounce hook
+import { useDebounce } from "../../../core/hooks/useDebounce";
 import { DBOrder } from "../../../core/interfaces/IDBTypes";
 import { convertDBOrderToIOrder } from "../../../core/utils/order-format";
 
@@ -62,7 +62,6 @@ const ModernStore: React.FC = () => {
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  // Use the debounce hook - 500ms delay for search
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const paymentOptions = [
@@ -97,51 +96,47 @@ const ModernStore: React.FC = () => {
     isOnlineRef.current = isOnline;
   }, [isOnline]);
 
-useEffect(() => {
-  if (!isOnline) return;
+  useEffect(() => {
+    if (!isOnline) return;
 
-  const syncPendingOrders = async () => {
-    try {
-      const localResponse = await indexedDBService.getPendingOrders();
-      const pendingOrders: DBOrder[] = localResponse.results || [];
+    const syncPendingOrders = async () => {
+      try {
+        const localResponse = await indexedDBService.getPendingOrders();
+        const pendingOrders: DBOrder[] = localResponse.results || [];
 
-      if (pendingOrders.length === 0) return;
+        if (pendingOrders.length === 0) return;
 
-      let syncedCount = 0;
+        let syncedCount = 0;
 
-      for (const dbOrder of pendingOrders) {
-        try {
-          const orderData = convertDBOrderToIOrder(dbOrder);
-          const serverResponse = await appService.createOrder(orderData);
+        for (const dbOrder of pendingOrders) {
+          try {
+            const orderData = convertDBOrderToIOrder(dbOrder);
+            const serverResponse = await appService.createOrder(orderData);
 
-          if (serverResponse.success) {
-            await indexedDBService.deleteOrder(dbOrder.id!);
-            syncedCount++;
+            if (serverResponse.success) {
+              await indexedDBService.deleteOrder(dbOrder.id!);
+              syncedCount++;
+            }
+          } catch (err) {
+            console.error(`Failed to sync order ${dbOrder.id}:`, err);
           }
-        } catch (err) {
-          console.error(`Failed to sync order ${dbOrder.id}:`, err);
         }
+
+        if (syncedCount === 0) return;
+
+        const result = await syncService.syncProducts();
+        if (result.success) {
+          toast.success("Products synced successfully");
+          fetchProductsRef.current?.(1, debouncedSearchTerm, selectedCategory);
+        }
+      } catch (err) {
+        console.error("Background sync error:", err);
       }
+    };
 
-      if (syncedCount === 0) return;
-
-      const result = await syncService.syncProducts();
-      if (result.success) {
-        toast.success("Products synced successfully");
-        fetchProductsRef.current?.(1, debouncedSearchTerm, selectedCategory);
-      }
-
-    } catch (err) {
-      console.error("Background sync error:", err);
-    }
-  };
-
-  syncPendingOrders();
-  // eslint-disable-next-line
-}, [isOnline]);
-
-
-  // ── form helpers ──────────────────────────────────────────────────────────
+    syncPendingOrders();
+    // eslint-disable-next-line 
+  }, [isOnline]);
 
   const handleFormChange = (name: keyof OrderFormData) => (value: any) => {
     if (name === "tenderedCash" || name === "discount") {
@@ -181,8 +176,6 @@ useEffect(() => {
     }
     setFormErrors((prev) => ({ ...prev, ...errors }));
   };
-
-  // ── product fetching ──────────────────────────────────────────────────────
 
   const fetchProducts = useCallback(
     async (pageParam = 1, search = "", category = "All") => {
@@ -252,19 +245,16 @@ useEffect(() => {
     setCategories(CATEGORIES);
   }, []);
 
-  // Initial load
   useEffect(() => {
     fetchProductsRef.current?.();
   }, []);
 
-  // Handle search with debounced value
   useEffect(() => {
     if (initialLoadComplete && fetchProductsRef.current) {
       fetchProductsRef.current(1, debouncedSearchTerm, selectedCategory);
     }
   }, [debouncedSearchTerm, selectedCategory, initialLoadComplete]);
 
-  // Handle online status changes
   useEffect(() => {
     if (initialLoadComplete && isOnline) {
       fetchProductsRef.current?.(1, debouncedSearchTerm, selectedCategory);
@@ -278,8 +268,6 @@ useEffect(() => {
     return () => eventService.offRefresh(handleRefresh);
   }, [debouncedSearchTerm, selectedCategory]);
 
-  // ── order calculations ────────────────────────────────────────────────────
-
   const {
     subTotal,
     discountValue,
@@ -289,8 +277,6 @@ useEffect(() => {
     balanceLabel,
     getPricePerPiece,
   } = useOrderCalculations(cartItems, orderFormData);
-
-  // ── stock helpers ─────────────────────────────────────────────────────────
 
   const getStockLevel = (product: IProduct): number => {
     if (product.stock !== undefined && product.stock !== null)
@@ -325,8 +311,6 @@ useEffect(() => {
       }),
     );
   };
-
-  // ── order lifecycle ───────────────────────────────────────────────────────
 
   const generateOrderCode = () => {
     const now = new Date();
@@ -400,79 +384,73 @@ useEffect(() => {
     }
   };
 
- const submitOrder = async () => {
-  if (cartItems.length === 0) {
-    toast.error("Cart is empty");
-    return;
-  }
+  const submitOrder = async () => {
+    if (cartItems.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
 
-  const errors: FormErrors = {};
-  if (discountValue < 0) errors.discount = "Discount cannot be negative";
-  if (discountValue > subTotal)
-    errors.discount = "Discount cannot exceed subtotal";
-  if (tenderedCashValue < 0)
-    errors.tenderedCash = "Amount cannot be negative";
-  if (Object.keys(errors).length > 0) {
-    setFormErrors(errors);
-    toast.error("Please fix form errors");
-    return;
-  }
+    const errors: FormErrors = {};
+    if (discountValue < 0) errors.discount = "Discount cannot be negative";
+    if (discountValue > subTotal)
+      errors.discount = "Discount cannot exceed subtotal";
+    if (tenderedCashValue < 0)
+      errors.tenderedCash = "Amount cannot be negative";
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error("Please fix form errors");
+      return;
+    }
 
-  setCreatingOrder(true);
+    setCreatingOrder(true);
 
-  try {
-    const orderData = prepareOrder();
+    try {
+      const orderData = prepareOrder();
 
-    if (isOnline) {
-      // ── ONLINE: attempt server directly, no local save ──────
-      try {
-        const serverResponse = await appService.createOrder(orderData);
+      if (isOnline) {
+        try {
+          const serverResponse = await appService.createOrder(orderData);
 
-        if (serverResponse.success) {
-          const serverOrderId = serverResponse?.results?.order?.id ?? (serverResponse?.results?.id as string | undefined);
+          if (serverResponse.success) {
+            const serverOrderId = serverResponse?.results?.order?.id ?? (serverResponse?.results?.id as string | undefined);
 
-          const orderDataForPrint = {
-            ...orderData,
-            id: serverOrderId,
-          };
+            const orderDataForPrint = {
+              ...orderData,
+              id: serverOrderId,
+            };
 
-          await cleanupOrderData("Order submitted successfully!");
-          printReceiptDirectly(orderDataForPrint, entity!);
-        } else {
-          // Server rejected — save locally as pending for later retry
-          console.warn("Server rejected order:", serverResponse.message);
+            await cleanupOrderData("Order submitted successfully!");
+            printReceiptDirectly(orderDataForPrint, entity!);
+          } else {
+            console.warn("Server rejected order:", serverResponse.message);
+            const localResponse = await indexedDBService.createOrder(orderData);
+            if (!localResponse.success) throw new Error("Failed to save order locally");
+
+            await cleanupOrderData("Order saved locally — will retry sync");
+            printReceiptDirectly(localResponse.results, entity!);
+          }
+        } catch (networkErr) {
+          console.error("Network error during order submit:", networkErr);
           const localResponse = await indexedDBService.createOrder(orderData);
           if (!localResponse.success) throw new Error("Failed to save order locally");
 
-          await cleanupOrderData("Order saved locally — will retry sync");
+          await cleanupOrderData("Order saved offline — sync failed, will retry");
           printReceiptDirectly(localResponse.results, entity!);
         }
-      } catch (networkErr) {
-        // Network failure — save locally as pending for later retry
-        console.error("Network error during order submit:", networkErr);
+      } else {
         const localResponse = await indexedDBService.createOrder(orderData);
         if (!localResponse.success) throw new Error("Failed to save order locally");
 
-        await cleanupOrderData("Order saved offline — sync failed, will retry");
+        await cleanupOrderData("Order saved offline — will sync when back online");
         printReceiptDirectly(localResponse.results, entity!);
       }
-    } else {
-      // ── OFFLINE: save locally as pending ────────────────────
-      const localResponse = await indexedDBService.createOrder(orderData);
-      if (!localResponse.success) throw new Error("Failed to save order locally");
-
-      await cleanupOrderData("Order saved offline — will sync when back online");
-      printReceiptDirectly(localResponse.results, entity!);
+    } catch (err) {
+      toast.error("Failed to save order");
+      console.error("Order submission error:", err);
+    } finally {
+      setCreatingOrder(false);
     }
-  } catch (err) {
-    toast.error("Failed to save order");
-    console.error("Order submission error:", err);
-  } finally {
-    setCreatingOrder(false);
-  }
-};
-
-  // ── cart operations ───────────────────────────────────────────────────────
+  };
 
   const addToCart = (
     product: IProduct,
@@ -639,7 +617,6 @@ useEffect(() => {
 
   const handleSearchChange = (term: string) => {
     setSearchTerm(term);
-    // Don't fetch here - the debounced value will trigger the fetch
   };
 
   const loadMoreProducts = useCallback(() => {
@@ -766,7 +743,7 @@ useEffect(() => {
         console.error(error);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line 
   }, []);
 
   const holdOrder = async () => {
@@ -800,26 +777,55 @@ useEffect(() => {
     }
   };
 
-  // ── render ────────────────────────────────────────────────────────────────
-
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex flex-row gap-6 w-full h-full">
+    <div className="h-full flex flex-col bg-gray-50">
+      {/* Mobile Header Bar */}
+      <div className="lg:hidden sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Products</h1>
+            <p className="text-xs text-gray-500">Browse and add items</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {isOnline && (
+              <button
+                onClick={handleManualSync}
+                className="p-2 text-gray-600 hover:text-primary rounded-full active:bg-gray-100"
+                aria-label="Sync"
+              >
+                <i className="ri-refresh-line text-xl"></i>
+              </button>
+            )}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative p-2 text-gray-600 hover:text-primary rounded-full active:bg-gray-100"
+              aria-label="Cart"
+            >
+              <i className="ri-shopping-cart-2-line text-xl"></i>
+              {cartItems.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center px-1">
+                  {cartItems.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
         {/* Products Section */}
-        <div className="flex-1 bg-background min-w-0 h-[calc(100%-120px)]">
-          {/* Header */}
-          <div className="rounded-sm shadow-sm mb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="min-w-0 hidden sm:block">
-                <h1 className="text-2xl font-bold text-text truncate">
-                  Products
-                </h1>
-                <p className="text-text-light mt-1 truncate">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Desktop Header */}
+          <div className="hidden lg:block bg-white border-b border-gray-200 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+                <p className="text-sm text-gray-500 mt-0.5">
                   Browse and add items to your cart
                 </p>
               </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto sm:gap-y-5">
-                <div className="relative flex-1 sm:flex-none sm:w-64 -mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-72">
                   <Input
                     type="text"
                     label="Search products..."
@@ -828,34 +834,19 @@ useEffect(() => {
                     prefixIcon="search"
                   />
                 </div>
-                <div className="lg:hidden relative flex-shrink-0">
-                  <Button
-                    onClick={() => setIsCartOpen(true)}
-                    aria-label="View Cart"
-                  >
-                    <i className="ri-shopping-cart-2-line text-xl"></i>
-                    {cartItems.length > 0 && (
-                      <span className="absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 w-5 h-5 bg-danger text-xs text-white rounded-full flex items-center justify-center">
-                        {cartItems.length}
-                      </span>
-                    )}
-                  </Button>
-                </div>
                 {isOnline && (
-                  <Button onClick={handleManualSync} className="flex-shrink-0">
-                    <span className="hidden sm:block">Sync Products</span>
-                    <span className="block sm:hidden">
-                      <i className="ri-refresh-line text-xl"></i>
-                    </span>
+                  <Button onClick={handleManualSync} variant="outline">
+                    <i className="ri-refresh-line mr-2"></i>
+                    Sync Products
                   </Button>
                 )}
               </div>
             </div>
 
-            <div className="mt-4 w-full hidden sm:block">
+            <div className="mt-4">
               <div className="relative">
-                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-2">
-                  <div className="flex items-center space-x-2 py-1 min-w-max">
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-2">
+                  <div className="flex items-center space-x-2 min-w-max">
                     {categories.map((category) => (
                       <Button
                         key={category.value}
@@ -872,21 +863,58 @@ useEffect(() => {
                             ? "primary"
                             : "ghost"
                         }
-                        className="whitespace-nowrap flex-shrink-0"
+                        size="sm"
+                        className="whitespace-nowrap"
                       >
                         {category.label || category.value}
                       </Button>
                     ))}
                   </div>
                 </div>
-                <div className="absolute top-0 right-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Search & Categories */}
+          <div className="lg:hidden px-4 pt-3 pb-2 space-y-3">
+            <Input
+              type="text"
+              label="Search products..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              prefixIcon="search"
+            />
+            <div className="relative">
+              <div className="overflow-x-auto scrollbar-thin pb-2 -mx-1 px-1">
+                <div className="flex items-center space-x-2 min-w-max">
+                  {categories.map((category) => (
+                    <button
+                      key={category.value}
+                      onClick={() => {
+                        setSelectedCategory(category.value);
+                        fetchProductsRef.current?.(
+                          1,
+                          debouncedSearchTerm,
+                          category.value,
+                        );
+                      }}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
+                        selectedCategory === category.value
+                          ? "bg-primary text-white shadow-sm"
+                          : "bg-gray-100 text-gray-700 active:bg-gray-200"
+                      }`}
+                    >
+                      {category.label || category.value}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Products Grid */}
-          <div className="flex-1 overflow-y-auto h-full px-2">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:p-4 bg-background">
+          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               {products.map((product, index) => {
                 const stockLevel = getStockLevel(product);
                 const stockInPieces =
@@ -907,78 +935,79 @@ useEffect(() => {
                     className="group"
                   >
                     <div
-                      className={`relative bg-background rounded-sm shadow-sm hover:shadow-sm border border-border transition-all duration-400 overflow-hidden ${!product.is_available || stockLevel === 0 ? "opacity-60" : ""}`}
+                      className={`relative bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 ${
+                        !product.is_available || stockLevel === 0 ? "opacity-60" : ""
+                      }`}
                     >
-                      <div className="relative h-40 bg-card overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+                      <div className="relative aspect-square bg-gray-100 overflow-hidden">
                         <img
                           src={product.image_url}
                           alt={product.image_alt}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-
                         <div
-                          className={`absolute top-1 right-1 text-xs px-2 py-1 rounded-full z-10 max-w-[90%] text-right leading-tight ${
+                          className={`absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full z-10 ${
                             stockLevel > 10
-                              ? "bg-success text-white"
+                              ? "bg-green-100 text-green-800"
                               : stockLevel > 0
-                                ? "bg-info text-white"
-                                : "bg-danger text-white"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
                           }`}
                         >
                           {stockBadge}
                         </div>
-
                         {stockLevel === 0 && (
-                          <div className="absolute inset-0 bg-background backdrop-blur-[2px] flex items-center justify-center">
-                            <div className="bg-card text-text px-3 py-1.5 rounded-full text-xs font-medium">
-                              Sold Out
-                            </div>
+                          <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] flex items-center justify-center">
+                            <span className="bg-white/90 text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
+                              Out of Stock
+                            </span>
                           </div>
                         )}
                       </div>
 
-                      <div className="p-3">
-                        <div className="mb-2">
-                          <h3 className="font-medium text-text text-sm line-clamp-1 mb-1">
+                      <div className="p-2.5 sm:p-3">
+                        <div className="mb-1.5">
+                          <h3 className="font-semibold text-gray-800 text-sm line-clamp-1">
                             {product.short_name}
                           </h3>
-                          <p className="text-xs text-text-light">
+                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
                             {product.selling_unit_quantity > 1 &&
                               `${product.selling_unit_quantity}×`}
                             {product.content_measurement}
                             {product.content_unit} / {product.selling_unit}
                           </p>
                         </div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="text-left">
-                            <div className="font-bold text-text">
-                              GHC {product.price_per_unit?.toFixed(2)}/
-                              {product.selling_unit}
-                            </div>
-                            {product.selling_unit_quantity > 1 && (
-                              <div className="text-xs text-text-light">
-                                GHC{" "}
-                                {(
-                                  product.price_per_piece ||
-                                  product.price_per_unit /
-                                    product.selling_unit_quantity
-                                ).toFixed(2)}
-                                /{product.content_unit_type}
-                              </div>
-                            )}
+                        <div className="mb-2.5">
+                          <div className="font-bold text-primary text-base">
+                            ₵{product.price_per_unit?.toFixed(2)}
+                            <span className="text-xs font-normal text-gray-400">
+                              /{product.selling_unit}
+                            </span>
                           </div>
+                          {product.selling_unit_quantity > 1 && (
+                            <div className="text-xs text-gray-400">
+                              ₵{" "}
+                              {(
+                                product.price_per_piece ||
+                                product.price_per_unit /
+                                  product.selling_unit_quantity
+                              ).toFixed(2)}
+                              /{product.content_unit_type}
+                            </div>
+                          )}
                         </div>
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          fullWidth
+                        <button
                           onClick={() => openCustomQuantityModal(product)}
                           disabled={!product.is_available || stockLevel === 0}
+                          className={`w-full py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                            !product.is_available || stockLevel === 0
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-primary text-white active:bg-primary-dark shadow-sm"
+                          }`}
                         >
-                          <i className="ri-add-line mr-1"></i>
-                          Add to Cart
-                        </Button>
+                          <i className="ri-add-line text-base"></i>
+                          <span>Add</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -988,19 +1017,19 @@ useEffect(() => {
 
             {loading && (
               <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
               </div>
             )}
             {!hasMore && products.length > 0 && (
-              <div className="text-center py-8 text-text-light">
+              <div className="text-center py-8 text-gray-400 text-sm">
                 No more products to load
               </div>
             )}
           </div>
         </div>
 
-        {/* Cart — Desktop */}
-        <div className="hidden lg:block lg:w-96 h-full border border-border">
+        {/* Cart Desktop Sidebar */}
+        <div className="hidden lg:block lg:w-96 xl:w-[400px] bg-white border-l border-gray-200 flex flex-col">
           <CartContent
             cartItems={cartItems}
             subTotal={subTotal}
@@ -1033,38 +1062,15 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Custom Quantity Modal */}
-      {showCustomQuantityModal && selectedProductForCustomQty && (
-        <CustomQuantityModal
-          product={selectedProductForCustomQty}
-          currentQuantity={currentQuantity}
-          currentIsPieces={currentIsPieces}
-          isOpen={showCustomQuantityModal}
-          onClose={() => {
-            setShowCustomQuantityModal(false);
-            setSelectedProductForCustomQty(null);
-          }}
-          onSubmit={handleCustomQuantitySubmit}
-        />
-      )}
-
-      {/* Cart — Mobile */}
+      {/* Mobile Cart Drawer */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-black bg-opacity-50"
+            className="absolute inset-0 bg-black/50 transition-opacity mt-6"
             onClick={() => setIsCartOpen(false)}
-            aria-hidden="true"
           />
-          <div className="absolute right-0 top-0 w-full h-full sm:w-3/4 md:w-1/2 lg:w-96 bg-card shadow-xl flex flex-col">
-            <div className="flex justify-end items-center p-4 border-b border-border bg-card mt-12">
-              <button
-                onClick={() => setIsCartOpen(false)}
-                className="text-text-light hover:text-text"
-              >
-                <i className="ri-close-line text-2xl"></i>
-              </button>
-            </div>
+          <div className="absolute right-0 top-16 bottom-0 w-full max-w-md bg-white shadow-xl flex flex-col animate-slide-up sm:animate-scale-in">
+            
             <div className="flex-1 overflow-y-auto">
               <CartContent
                 cartItems={cartItems}
@@ -1094,10 +1100,26 @@ useEffect(() => {
                 openHoldOrdersModal={openHoldOrdersModal}
                 formErrors={formErrors}
                 handleFormBlur={handleFormBlur}
+                closeCartModal={() => setIsCartOpen(false)}
               />
             </div>
           </div>
         </div>
+      )}
+
+      {/* Custom Quantity Modal */}
+      {showCustomQuantityModal && selectedProductForCustomQty && (
+        <CustomQuantityModal
+          product={selectedProductForCustomQty}
+          currentQuantity={currentQuantity}
+          currentIsPieces={currentIsPieces}
+          isOpen={showCustomQuantityModal}
+          onClose={() => {
+            setShowCustomQuantityModal(false);
+            setSelectedProductForCustomQty(null);
+          }}
+          onSubmit={handleCustomQuantitySubmit}
+        />
       )}
     </div>
   );

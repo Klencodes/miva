@@ -23,8 +23,8 @@ export const OrderDetailsModal: React.FC = () => {
   // like pending/successful/failed, but we can display the payment method status.
   const paymentMethod = order.payment.payment_method;
   
-  // UPDATED: Accepts an amount number and uses a fixed currency (GHS based on your data)
-  const formatCurrency = (amount: number, currency: string = "GHS") => {
+  // UPDATED: Accepts an amount number and uses a fixed currency (₵ based on your data)
+  const formatCurrency = (amount: number, currency: string = "₵") => {
     if (amount === undefined || amount === null) return "N/A";
     
     let numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;

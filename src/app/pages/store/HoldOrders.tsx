@@ -142,7 +142,7 @@ const HoldOrdersModal: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-lg text-primary mb-2">
-                        GHC {order.total?.toFixed(2)}
+                        ₵{order.total?.toFixed(2)}
                       </div>
                       <div className="flex flex-col gap-2">
                         <Button
@@ -205,12 +205,11 @@ const HoldOrdersModal: React.FC = () => {
   item.quantity_type === "units" ? item.selling_unit : (item.content_unit_type || "piece"),
   item.selling_unit_quantity,
   item.content_unit_type || "piece"
-)} × GHC{" "}
-                                {item.unit_price?.toFixed(2)}
+)} × ₵{item.unit_price?.toFixed(2)}
                               </p>
                             </div>
                             <div className="text-sm font-semibold text-text">
-                              GHC {(item.unit_price * item.quantity).toFixed(2)}
+                              ₵{(item.unit_price * item.quantity).toFixed(2)}
                             </div>
                           </div>
                         ))}

@@ -15,7 +15,7 @@ const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
 }) => {
   const totalPages = Math.ceil(count / limit);
-  const totalLimit = limit || 10; // Ensure limit is defined for calculation
+  const totalLimit = limit || 10;
 
   const getPages = (): number[] => {
     const current = page;
@@ -97,8 +97,6 @@ const Pagination: React.FC<PaginationProps> = ({
   );
 };
 
-// --- Interfaces (omitted for brevity, assume imported correctly) ---
-
 interface DataTableProps {
   columns: TableColumn[];
   sortOptions?: SelectOption[];
@@ -135,8 +133,6 @@ const TableSkeletonLoader: React.FC<{ columnsCount: number; rows: number; showAc
 }) => {
   const skeletonRows = Array(rows).fill(0);
   const totalColumns = columnsCount + (showActions ? 1 : 0);
-  
-  // Calculate the index of the last column (the actions column, if present)
   const actionsColIndex = totalColumns - 1;
 
   return (
@@ -149,17 +145,15 @@ const TableSkeletonLoader: React.FC<{ columnsCount: number; rows: number; showAc
             return (
               <td key={colIndex} className="px-4 py-3 align-middle">
                 <div className={`flex items-center ${isActionsCol ? 'justify-end' : ''}`}>
-                  {/* Simulated Image/Icon for first column (optional) */}
                   {!isActionsCol && colIndex === 0 && (
                     <div className="w-8 h-8 rounded-full bg-background mr-3 hidden sm:block"></div>
                   )}
-                  {/* Simulated Text Line */}
                   <div
                     className={`h-4 bg-background rounded ${
                       isActionsCol
-                        ? "w-4 h-4 rounded-full" // Actions button dot
+                        ? "w-4 h-4 rounded-full"
                         : colIndex === 0
-                        ? "w-2/3 max-w-[75%]" // Wider line for main column
+                        ? "w-2/3 max-w-[75%]"
                         : "w-full max-w-full"
                     }`}
                   ></div>
@@ -172,6 +166,17 @@ const TableSkeletonLoader: React.FC<{ columnsCount: number; rows: number; showAc
     </>
   );
 };
+
+// --- Pending Sync Badge ---
+const PendingSyncBadge: React.FC = () => (
+  <span
+    title="Not yet synced to server"
+    className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap align-middle"
+  >
+    <i className="ri-refresh-line text-[10px] animate-spin" style={{ animationDuration: "2s" }}></i>
+    Pending
+  </span>
+);
 
 // --- DataTable Component ---
 const DataTable: React.FC<DataTableProps> = ({
@@ -186,7 +191,7 @@ const DataTable: React.FC<DataTableProps> = ({
   addButtonText = "Add New",
   userRole = Roles.SALES,
   page = 1,
-  limit = 10, // Use limit here to define skeleton rows
+  limit = 10,
   count = 0,
 
   customActions = [],
@@ -201,23 +206,11 @@ const DataTable: React.FC<DataTableProps> = ({
   const [openedActionMenu, setOpenedActionMenu] = useState<string | null>(null);
   const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const handleSearch = (term: string) => {
-    onSearch?.(term);
-  };
-
-  const handleFilter = (filter: string) => {
-    onFilter?.(filter);
-  };
-
-  const handleSort = (sort: string) => {
-    onSort?.(sort);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    onPageChange?.(newPage);
-  };
-
-  const handleDateRangeChange = ( dateRange: { start_date: string; end_date: string } | null) => {
+  const handleSearch = (term: string) => onSearch?.(term);
+  const handleFilter = (filter: string) => onFilter?.(filter);
+  const handleSort = (sort: string) => onSort?.(sort);
+  const handlePageChange = (newPage: number) => onPageChange?.(newPage);
+  const handleDateRangeChange = (dateRange: { start_date: string; end_date: string } | null) => {
     onDateRangeChange?.(dateRange);
   };
 
@@ -225,35 +218,22 @@ const DataTable: React.FC<DataTableProps> = ({
     setOpenedActionMenu(openedActionMenu === itemId ? null : itemId);
   };
 
-  const closeMenu = () => {
-    setOpenedActionMenu(null);
-  };
+  const closeMenu = () => setOpenedActionMenu(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openedActionMenu === null) return;
-
       const currentMenuRef = actionMenuRefs.current[openedActionMenu];
-      const target = event.target as Node;
-
-      if (currentMenuRef && !currentMenuRef.contains(target)) {
+      if (currentMenuRef && !currentMenuRef.contains(event.target as Node)) {
         closeMenu();
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openedActionMenu]);
 
   const showActionsColumn = useMemo(() => {
-    // If customActions is a function, we must render the column header, even if data is empty.
-    if (typeof customActions === "function") {
-      return true;
-    }
-    // If it's an array, only render if actions exist.
+    if (typeof customActions === "function") return true;
     return customActions.length > 0;
   }, [customActions]);
 
@@ -262,20 +242,15 @@ const DataTable: React.FC<DataTableProps> = ({
   const showSortFeature = !!onSort && (sortOptions?.length || 0) > 0;
   const showPaginationFeature = !!onPageChange && count > limit;
   const showAddButtonFeature = !!onAdd;
-
   const useActionDropdowns = showActionsColumn;
 
   const getImageSizeClasses = (size?: ImageConfig["size"]) => {
     switch (size) {
-      case "xs":
-        return "w-6 h-6";
-      case "sm":
-        return "w-8 h-8";
-      case "lg":
-        return "w-16 h-16";
+      case "xs": return "w-6 h-6";
+      case "sm": return "w-8 h-8";
+      case "lg": return "w-16 h-16";
       case "md":
-      default:
-        return "w-10 h-10";
+      default:   return "w-10 h-10";
     }
   };
 
@@ -286,15 +261,21 @@ const DataTable: React.FC<DataTableProps> = ({
     const shouldBeBold = !!column.bold || hasLink || hasClick;
     const boldClass = shouldBeBold ? "font-bold" : "";
 
+    // Pending sync indicator — shown when item has status="pending"
+    const isPending = item.status === "pending";
+    const showPendingBadge = isPending && column.showSyncBadge;
+
     const renderArrayStructure = (val: any, isBold: boolean) => {
       const primary = Array.isArray(val) ? val[0] : val;
       const secondary = Array.isArray(val) && val[1] ? val[1] : null;
-
       const primaryClass = isBold ? "font-bold" : "font-medium";
 
       return (
         <div className="flex flex-col">
-          <div className={`${primaryClass} text-text leading-tight`}>{primary}</div>
+          <div className={`${primaryClass} text-text leading-tight flex items-center flex-wrap gap-x-1`}>
+            <span>{primary}</span>
+            {showPendingBadge && <PendingSyncBadge />}
+          </div>
           {secondary && (
             <div className="text-text-light text-xs mt-0.5">{secondary}</div>
           )}
@@ -330,13 +311,10 @@ const DataTable: React.FC<DataTableProps> = ({
 
     switch (column.type) {
       case "column":
-        const content = renderArrayStructure(value, shouldBeBold);
-        return clickableWrapper(content);
+        return clickableWrapper(renderArrayStructure(value, shouldBeBold));
 
       case "status":
-        const statusClasses = column.statusClasses
-          ? column.statusClasses(item)
-          : "";
+        const statusClasses = column.statusClasses ? column.statusClasses(item) : "";
         return (
           <span
             className={`inline-flex items-center px-2.5 py-1 text-xs rounded-full whitespace-nowrap ${statusClasses} ${boldClass}`}
@@ -357,18 +335,13 @@ const DataTable: React.FC<DataTableProps> = ({
       case "image":
         const imgConfig = column.imageConfig || {};
         const sizeClasses = getImageSizeClasses(imgConfig.size);
-        const altText = imgConfig.altText
-          ? imgConfig.altText(item)
-          : "Table image";
-
+        const altText = imgConfig.altText ? imgConfig.altText(item) : "Table image";
         const imageElement = (
           <div className="flex items-center justify-start py-0.5">
             <img
               src={value}
               alt={altText}
-              className={`rounded-full object-cover ${sizeClasses} ${
-                imgConfig.className || ""
-              }`}
+              className={`rounded-full object-cover ${sizeClasses} ${imgConfig.className || ""}`}
             />
           </div>
         );
@@ -429,7 +402,7 @@ const DataTable: React.FC<DataTableProps> = ({
             {loading && (
               <TableSkeletonLoader
                 columnsCount={columns.length}
-                rows={limit} // Use the limit prop for the number of skeleton rows
+                rows={limit}
                 showActions={showActionsColumn}
               />
             )}
@@ -461,14 +434,7 @@ const DataTable: React.FC<DataTableProps> = ({
                   ? customActions(item)
                   : customActions;
 
-              // Only show actions for this row if the customActions function/array returned something
-              const showActionsForThisRow = rowCustomActions.length > 0; 
-              
-              // Only render the actions cell if the actions column is generally enabled
-              if (showActionsColumn && !showActionsForThisRow) {
-                // We ensure showActionsForThisRow is used to check if actions are available for this specific item, 
-                // but the cell still renders if showActionsColumn is true.
-              }
+              const showActionsForThisRow = rowCustomActions.length > 0;
 
               return (
                 <tr
@@ -490,81 +456,74 @@ const DataTable: React.FC<DataTableProps> = ({
                     </td>
                   ))}
 
-                  {/* Render the Actions cell if the column header was rendered */}
                   {showActionsColumn && (
                     <td className="px-4 py-3 align-middle">
                       {showActionsForThisRow && (
-                      <div className="flex justify-end items-center space-x-1">
-                        {!useActionDropdowns && (
-                          <div className="flex items-center space-x-1 ">
-                            {rowCustomActions.map((action) => (
+                        <div className="flex justify-end items-center space-x-1">
+                          {!useActionDropdowns && (
+                            <div className="flex items-center space-x-1">
+                              {rowCustomActions.map((action) => (
+                                <Button
+                                  key={action.title}
+                                  onClick={() => action.handler(item)}
+                                  className={action.classes}
+                                  variant="transparent"
+                                  size="sm"
+                                  title={action.title}
+                                >
+                                  <i className={`ri-${action.icon} text-sm`}></i>
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+
+                          {useActionDropdowns && (
+                            <div
+                              className="relative inline-block text-left"
+                              ref={(el: HTMLDivElement | null) => {
+                                actionMenuRefs.current[item.id] = el;
+                              }}
+                            >
                               <Button
-                                key={action.title}
-                                onClick={() => {
-                                  action.handler(item);
+                                onClick={(e: { stopPropagation: () => void }) => {
+                                  e.stopPropagation();
+                                  toggleActionMenu(item.id);
                                 }}
-                                className={action.classes}
                                 variant="transparent"
                                 size="sm"
-                                title={action.title}
                               >
-                                <i className={`ri-${action.icon} text-sm`}></i>
+                                <i className="ri-more-2-fill text-lg text-text-light"></i>
                               </Button>
-                            ))}
-                          </div>
-                        )}
 
-                        {useActionDropdowns && (
-                          <div
-                            className="relative inline-block text-left"
-                            ref={(el: HTMLDivElement | null) => {
-                              actionMenuRefs.current[item.id] = el;
-                            }}
-                          >
-                            <Button
-                              onClick={(e: { stopPropagation: () => void; }) => {
-                                e.stopPropagation();
-                                toggleActionMenu(item.id);
-                              }}
-                              variant="transparent"
-                              size="sm"
-                            >
-                              <i className="ri-more-2-fill text-lg text-text-light"></i>
-                            </Button>
-
-                            {openedActionMenu === item.id && (
-                              <div
-                                className="origin-top-right absolute right-0 mt-1 w-fit bg-card p-2 rounded-sm shadow-card border border-border z-50"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="py-1 flex flex-col space-y-1">
-                                  {rowCustomActions.map((action) => (
-                                    <Button
-                                      key={action.title}
-                                      onClick={() => {
-                                        action.handler(item);
-                                        closeMenu();
-                                      }}
-                                      variant="transparent"
-                                      size="sm"
-                                      className={`justify-start ${
-                                        action.classes || ""
-                                      }`}
-                                    >
-                                      <i
-                                        className={`ri-${action.icon} mr-3 text-base`}
-                                      ></i>
-                                      <span className="text-sm whitespace-nowrap">
-                                        {action.title}
-                                      </span>
-                                    </Button>
-                                  ))}
+                              {openedActionMenu === item.id && (
+                                <div
+                                  className="origin-top-right absolute right-0 mt-1 w-fit bg-card p-2 rounded-sm shadow-card border border-border z-50"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="py-1 flex flex-col space-y-1">
+                                    {rowCustomActions.map((action) => (
+                                      <Button
+                                        key={action.title}
+                                        onClick={() => {
+                                          action.handler(item);
+                                          closeMenu();
+                                        }}
+                                        variant="transparent"
+                                        size="sm"
+                                        className={`justify-start ${action.classes || ""}`}
+                                      >
+                                        <i className={`ri-${action.icon} mr-3 text-base`}></i>
+                                        <span className="text-sm whitespace-nowrap">
+                                          {action.title}
+                                        </span>
+                                      </Button>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                   )}
@@ -588,4 +547,5 @@ const DataTable: React.FC<DataTableProps> = ({
     </div>
   );
 };
+
 export default DataTable;

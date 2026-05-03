@@ -599,7 +599,6 @@ async saveOrders(orders: any[]): Promise<void> {
       }
  
       let saved   = 0;
-      let skipped = 0;
       let errored = 0;
  
       // ── Step 2: write every incoming order synchronously ──
@@ -622,10 +621,13 @@ async saveOrders(orders: any[]): Promise<void> {
  
           // Capture loop variable for the closure.
           const capturedCode = order.code;
+          // eslint-disable-next-line 
           putReq.onsuccess = () => {
+            // eslint-disable-next-line no-unused-vars
             saved++;
             console.log(`✅ Saved order ${capturedCode}`);
           };
+          // eslint-disable-next-line 
           putReq.onerror = (ev) => {
             errored++;
             console.error(
@@ -643,7 +645,7 @@ async saveOrders(orders: any[]): Promise<void> {
  
       // ── Step 3: resolve/reject when the transaction settles ──
       transaction.oncomplete = () => {
-        
+        console.log(`✅ Saved ${saved} orders, errored ${errored}`);
         resolve();
       };
  

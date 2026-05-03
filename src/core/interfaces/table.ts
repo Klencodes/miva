@@ -18,6 +18,7 @@ export interface TableColumn {
   statusClasses?: (item: any) => string;
   format?: string;
   imageConfig?: ImageConfig;
+  showSyncBadge?: boolean;
 }
 
 export interface CustomAction {

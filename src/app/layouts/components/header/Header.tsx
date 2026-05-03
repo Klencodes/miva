@@ -325,14 +325,17 @@ useEffect(() => {
           />
         </Link>
         <div className="flex gap-2 ml-4">
-          {isVerticalLayout && (
-            <Button
-             variant="transparent"
-              onClick={isMobile ? toggleMobileSidebar : handleToggleSidebar}
-            >
-              <i className="ri-menu-line"></i>
-            </Button>
-          )}
+{isVerticalLayout && (
+  <Button
+    variant="transparent"
+    onClick={isMobile ? () => {
+      onToggleSidebar();
+    } : handleToggleSidebar}
+    className="relative z-50" // Ensure button is clickable
+  >
+    <i className="ri-menu-line text-xl"></i>
+  </Button>
+)}
         </div>
       </div>
 
