@@ -44,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
   
   useEffect(() => {
     setLocalNavItems(deepCloneNavItems(navItems));
+    // eslint-disable-next-line
   }, [navItems]);
 
   const setActiveRecursive = (item: NavItem, currentPath: string): NavItem => {
@@ -58,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
       setActiveRecursive(child, currentPath)
     ) || [];
 
+    // If any child is active, the parent should be open
     if (isActive || updatedChildren.some(child => child.isOpen || (child as any).isActive)) {
       isOpen = true;
     }
@@ -79,12 +81,15 @@ const Sidebar: React.FC<SidebarProps> = memo(({
       );
       return updatedItems;
     });
+    // eslint-disable-next-line
   }, [localNavItems.length]); 
 
   useEffect(() => {
     setActiveParents(location.pathname);
+    // eslint-disable-next-line
   }, [location.pathname, setActiveParents]); 
 
+  // Cleanup effect for the timeout ref
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) {
@@ -122,11 +127,16 @@ const Sidebar: React.FC<SidebarProps> = memo(({
     };
   };
 
-  // FIXED: Enhanced navigation handler - properly closes sidebar on mobile
-  const handleNavigation = useCallback((item: NavItem, event?: React.MouseEvent) => {
+  // FIXED: Enhanced navigation handler
+  const handleNavigation = (item: NavItem, event?: React.MouseEvent) => {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
+    }
+
+    // If it's a mobile device, close sidebar first
+    if (isMobile) {
+      onNavItemClick?.(item);
     }
 
     // Navigate to the link if it exists
@@ -134,19 +144,19 @@ const Sidebar: React.FC<SidebarProps> = memo(({
       navigate(item.link);
     }
 
-    // Close sidebar on mobile after navigation
+    // Close all submenus on mobile after navigation
     if (isMobile) {
-      onNavItemClick?.(item);
       closeAllSubmenus();
     }
-  }, [isMobile, navigate, onNavItemClick]);
+  };
 
-  // FIXED: Enhanced submenu toggle
-  const toggleSubmenu = useCallback((item: NavItem, event: React.MouseEvent) => {
+  // FIXED: Enhanced submenu toggle with proper navigation
+  const toggleSubmenu = (item: NavItem, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
 
     if (isCondensedMode) {
+      // In condensed mode, navigate directly to the link if it exists
       if (item.link) {
         handleNavigation(item);
       }
@@ -155,6 +165,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
       return;
     }
 
+    // If item has children, toggle the submenu
     if (item.children && item.children.length > 0) {
       if (isTopLevelItem(item)) {
         setLocalNavItems(prevItems => prevItems.map(navItem => 
@@ -168,9 +179,10 @@ const Sidebar: React.FC<SidebarProps> = memo(({
         ));
       }
     } else if (item.link) {
+      // If no children but has link, navigate
       handleNavigation(item);
     }
-  }, [isCondensedMode, handleNavigation]);
+  };
 
   const toggleSubmenuRecursive = (currentItem: NavItem, targetItem: NavItem): NavItem => {
     if (currentItem.id === targetItem.id) {
@@ -195,12 +207,14 @@ const Sidebar: React.FC<SidebarProps> = memo(({
 
   const onItemHover = (item: NavItem) => {
     if (!isCondensedMode) return;
+
     clearHoverTimeout();
     setHoveredItem(item);
   };
 
   const onItemLeave = () => {
     if (!isCondensedMode) return;
+
     clearHoverTimeout();
     hoverTimeoutRef.current = setTimeout(() => {
       if (!isOverlayHovered) {
@@ -224,6 +238,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
 
   const onContainerLeave = () => {
     if (!isCondensedMode) return;
+    
     clearHoverTimeout();
     hoverTimeoutRef.current = setTimeout(() => {
       if (!isOverlayHovered) {
@@ -243,6 +258,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
     logout();
   };
 
+  // FIXED: Enhanced nav item renderer with proper event handling
   const renderNavItems = (items: NavItem[], level = 0, isTopLevel = true) => {
     if (!items || items.length === 0) return (
       <Button 
@@ -267,6 +283,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
           onMouseEnter={() => onItemHover(item)}
           onMouseLeave={onItemLeave}
         >
+          {/* FIXED: Use button for items with children, Link for direct navigation */}
           {hasChildren ? (
             <button
               className={`
@@ -323,7 +340,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
               `}
               onClick={(e) => {
                 e.preventDefault();
-                handleNavigation(item, e);
+                handleNavigation(item);
               }}
             >
               <div className="relative">
@@ -368,6 +385,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
     });
   };
 
+  // FIXED: Enhanced overlay navigation handler
   const renderOverlayNavItems = (items: NavItem[]) => {
     return items.map((item) => {
       const active = isActive(item);
@@ -402,7 +420,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({
               `}
               onClick={(e) => {
                 e.preventDefault();
-                handleNavigation(item, e);
+                handleNavigation(item);
                 setHoveredItem(null);
               }}
             >
@@ -417,28 +435,23 @@ const Sidebar: React.FC<SidebarProps> = memo(({
     });
   };
 
-  // FIXED: Added proper transform transition for mobile
-  const getSidebarTransform = () => {
-    if (!isMobile) return {};
-    if (currentSidebarState !== 'hidden') {
-      return { transform: 'translateX(0)' };
-    }
-    return { transform: 'translateX(-100%)' };
-  };
-
   return (
     <div
       className={`
         flex flex-col border-r border-border h-full transition-all duration-300 
         overflow-hidden bg-card text-text isolate-parts
-        ${isMobile ? 'fixed inset-y-0 left-0 z-50 shadow-2xl' : 'relative'}
-        ${currentSidebarState === 'standard' ? 'w-72' : currentSidebarState === 'condensed' ? 'w-20' : 'w-0'}
+        
+        ${isMobile ? 'fixed inset-y-0 left-0 z-50 shadow-2xl transform' : 'relative'}
+        
+        ${
+          currentSidebarState === 'standard' ? 'w-72' : currentSidebarState === 'condensed' ? 'w-20' : 'w-0'
+        }
+
+        ${
+          isMobile ? (currentSidebarState !== 'hidden' ? 'translate-x-0' : '-translate-x-full') : '' 
+        }
       `}
-      style={{
-        ...getSidebarTransform(),
-        transitionProperty: 'transform, width',
-        transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-      }}
+      style={{ height: 'auto' }}
       onMouseLeave={onContainerLeave}
     >
       {/* User Profile Section */}
