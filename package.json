@@ -1,62 +1,14 @@
 {
-  "name": "hms",
+  "name": "HMS",
   "version": "0.5.1",
   "private": true,
-  "main": "build/electron.js",
   "homepage": "/",
-  "build": {
-    "appId": "com.hms.app",
-    "productName": "HMS",
-    "directories": {
-      "output": "output"
-    },
-    "files": [
-      "build/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "icon": "public/logo512.png",
-      "target": "dmg"
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "ia32"
-          ]
-        }
-      ],
-      "executableName": "HMS",
-      "icon": "public/logo512.png"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "public/logo512.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
-  },
   "scripts": {
     "start": "serve -s build",
     "dev": "react-scripts start",
     "build": "CI=false react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "build:electron": "PUBLIC_URL=. react-scripts build",
-    "clean": "rm -rf build dist output",
-    "electron:start": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
-    "electron:dev": "electron build/electron.js",
-    "electron:prod": "NODE_ENV=production electron build/electron.js",
-    "dist": "npm run clean && npm run build:electron && electron-builder --mac --win --linux",
-    "dist:mac": "npm run clean && npm run build:electron && electron-builder --mac",
-    "dist:win": "npm run clean && npm run build:electron && electron-builder --win",
-    "dist:win32": "npm run clean && npm run build:electron && electron-builder --win --ia32",
-    "dist:linux": "npm run clean && npm run build:electron && electron-builder --linux"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -98,8 +50,7 @@
     "react-scripts": "5.0.1",
     "sonner": "^2.0.7",
     "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4",
-    "xlsx": "^0.18.5"
+    "web-vitals": "^2.1.4"
   },
   "devDependencies": {
     "@types/papaparse": "^5.5.1",
