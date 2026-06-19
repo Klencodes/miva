@@ -1,12 +1,12 @@
 {
-  "name": "GodDidMart",
+  "name": "hms",
   "version": "0.5.1",
   "private": true,
   "main": "build/electron.js",
   "homepage": "/",
   "build": {
-    "appId": "com.goddidmart.app",
-    "productName": "GodDid Mart",
+    "appId": "com.hms.app",
+    "productName": "HMS",
     "directories": {
       "output": "output"
     },
@@ -24,11 +24,12 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["ia32"]
+          "arch": [
+            "ia32"
+          ]
         }
       ],
-      "executableName": "GodDid Mart",
-    
+      "executableName": "HMS",
       "icon": "public/logo512.png"
     },
     "linux": {
@@ -51,7 +52,6 @@
     "electron:start": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
     "electron:dev": "electron build/electron.js",
     "electron:prod": "NODE_ENV=production electron build/electron.js",
-    
     "dist": "npm run clean && npm run build:electron && electron-builder --mac --win --linux",
     "dist:mac": "npm run clean && npm run build:electron && electron-builder --mac",
     "dist:win": "npm run clean && npm run build:electron && electron-builder --win",
@@ -91,16 +91,11 @@
     "@types/react-dom": "^19.2.1",
     "axios": "^1.12.2",
     "crypto-js": "^4.2.0",
-    "electron-updater": "^6.7.3",
-    "html2canvas": "^1.4.1",
-    "import": "^0.0.6",
-    "jspdf": "^3.0.4",
+    "lucide-react": "^1.20.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.4",
     "react-scripts": "5.0.1",
-    "recharts": "^3.7.0",
-    "remixicon": "^4.6.0",
     "sonner": "^2.0.7",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4",
@@ -111,9 +106,6 @@
     "@types/react": "^19.2.2",
     "autoprefixer": "^10.4.22",
     "concurrently": "^9.2.1",
-    "electron": "^40.2.1",
-    "electron-builder": "^26.7.0",
-    "env-cmd": "^11.0.0",
     "postcss": "^8.5.6",
     "serve": "^14.2.5",
     "tailwindcss": "^3.4.17",

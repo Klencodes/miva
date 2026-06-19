@@ -6,6 +6,11 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // colors: {
+      //     primary: {
+      //     5: '#ff6b5731',
+      // },
+    // },
       keyframes: {
         'slide-up': {
           'from': {

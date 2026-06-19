@@ -1,8 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { getStoredItem, setStoredItem } from '../hooks/useStore';
-import { appService } from '../services/app';
-import { useLayout } from "../hooks/useLayout"
-import { LayoutMode } from "../../app/layouts/types/layout"
 export const THEME_MODE_KEY = 'theme-mode';
 export type Theme = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
@@ -12,6 +9,7 @@ export interface ThemeColors {
   secondary: string;
   background: string;
   card: string;
+  sidebar: string;
   text: string;
   textLight: string;
   border: string;
@@ -53,7 +51,8 @@ const defaultThemes: AppThemes = {
   light: {
     primary: "#ff6b57",
     secondary: "#6c757d",
-    background: "#f8f9fa",
+    background: "#fafbfd",
+    sidebar: "#ffffff",
     card: "#ffffff",
     text: "#212529",
     textLight: "#495057",
@@ -68,6 +67,7 @@ const defaultThemes: AppThemes = {
     secondary: "#6c757d",
     background: "#0a0a0a",
     card: "#171717",
+    sidebar: "#171717",
     text: "#EAEAEA",
     textLight: "#A7A9AB",
     border: "#404040",
@@ -91,7 +91,6 @@ export function ThemeProvider({
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
   const [themes, setThemes] = useState<AppThemes>(defaultThemes);
   const [isThemeReady, setIsThemeReady] = useState<boolean>(false);
-  const { setLayoutMode } = useLayout();
   // Use refs to prevent infinite loops
   const themesRef = useRef(themes);
   const themeRef = useRef(theme);
@@ -187,14 +186,13 @@ export function ThemeProvider({
       
       // Then fetch API theme
       try {
-        const res = await appService.getTheme();
-        if (res.success && res.results && res.results.themes.theme) {
-          updateThemes(res.results.themes.theme);
-          setTheme(res.results.themes.theme_mode)
-          setLayoutMode(res.results.themes.app_layout as LayoutMode)
-        }
-      } catch (error) {
-        console.error("Failed to fetch API theme:", error);
+      //   const res = await appService.getTheme();
+      //   if (res.success && res.results && res.results.themes.theme) {
+      //     updateThemes(res.results.themes.theme);
+      //     setTheme(res.results.themes.theme_mode)
+      //   }
+      // } catch (error) {
+      //   console.error("Failed to fetch API theme:", error);
       } finally {
         setIsThemeReady(true);
       }

@@ -1,6 +1,6 @@
 {
-  "name": "GodDid Mart",
-  "short_name": "GodDidMart",
+  "name": "Hydraulic Management System",
+  "short_name": "hms",
   "description": "Point of Sale System with Offline Support",
   "start_url": ".",
   "display": "standalone",

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, ReactNode, Dispatch, SetStateAction } from 'react';
 import { useStore } from '../hooks/useStore';
-import { IUser } from '../interfaces/IUser';
+import { IUser } from '../types';
 
 interface UseStoreReturnType {
   user: IUser | null;

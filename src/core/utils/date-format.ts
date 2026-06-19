@@ -32,7 +32,7 @@ const getRelativeTime = (date: Date, short: boolean = false): string => {
   return `${diffYears} year${diffYears === 1 ? "" : "s"} ago`;
 };
 
-const formatDate = (date: string | Date | null | undefined, format: string = "mediumDate"): string => {
+export const formatDate = (date: string | Date | null | undefined, format: string = "mediumDate"): string => {
   // 🛑 FIX: Check for null, undefined, or empty string input
   if (date === null || date === undefined || date === "") {
     return "--";
@@ -283,70 +283,6 @@ const formatDate = (date: string | Date | null | undefined, format: string = "me
   return dateObj.toLocaleDateString(undefined, options);
 };
 
-export const dateUtils = {
-  formatDate,
-  getRelativeTime,
-
-  isToday: (date: string | Date): boolean => {
-    const inputDate = new Date(date);
-    const today = new Date();
-    return inputDate.toDateString() === today.toDateString();
-  }, // Returns: true/false
-
-  isYesterday: (date: string | Date): boolean => {
-    const inputDate = new Date(date);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return inputDate.toDateString() === yesterday.toDateString();
-  }, // Returns: true/false
-
-  isThisWeek: (date: string | Date): boolean => {
-    const inputDate = new Date(date);
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    return inputDate >= startOfWeek;
-  }, // Returns: true/false
-
-  getAge: (birthDate: string | Date): number => {
-    const birth = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birth.getDate())
-    ) {
-      age--;
-    }
-
-    return age;
-  }, // Returns: 25 (for someone born in 2000)
-
-  addDays: (date: string | Date, days: number): string => {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    return result.toISOString();
-  }, // Returns: "2025-10-08T19:00:46.994Z" (for +5 days, assuming input date is "2025-10-03...")
-
-  formatDuration: (
-    startDate: string | Date,
-    endDate: string | Date
-  ): string => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffMs = end.getTime() - start.getTime();
-
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`; // Example: "2h 30m"
-    }
-    return `${minutes}m`; // Example: "45m"
-  },
-};
 
 export enum DateFormatEnums {
     // New Custom Formats (From User Request)

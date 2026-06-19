@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { IEntityItem } from "../interfaces/IEntity";
-import { IUser } from "../interfaces/IUser";
+
 import * as CryptoJS from "crypto-js";
-import { urlConfig } from "../services/url-config";
-import { syncService } from "../../core/services/sync";
+import { IEntityItem, IUser } from "../types";
+
 export const USER_KEY = "USER";
 export const ENTITY_KEY = "ENTITY";
 export const NO_ENTITY_KEY = "PENDING_ENTITY";
 
-const SECRET_KEY = urlConfig.SECRET;
+const SECRET_KEY = "djhskbfniushbrubwqinrunwuyr8w9u5938u529852";
 
 export const getStoredItem = <T>(key: string, defaultValue: T): T => {
   try {
@@ -148,7 +147,6 @@ export const useStore = () => {
   }, []);
 
   const logout = useCallback(async() => {
-    await syncService.syncOrders();
     setUserState(null);
     setEntityState(null);
     setStoreEntitiesState(null);

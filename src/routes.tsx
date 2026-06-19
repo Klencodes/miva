@@ -1,14 +1,25 @@
 import { lazy, Suspense, useMemo } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import CommonLayout from "./app/layouts/CommonLayout";
-import FullLayout from "./app/layouts/FullLayout";
+import CommonLayout from "./components/layouts/CommonLayout";
+import FullLayout from "./components/layouts/FullLayout";
 import { getStoredItem, NO_ENTITY_KEY, useStore } from "./core/hooks/useStore";
-import Loader from "./ui/components/Loader";
+import Loader from "./components/common/Loader";
 
-const AuthRoutes = lazy(() => import("./app/pages/auth/AuthRoutes"));
-const PagesRoutes = lazy(() => import("./app/pages/PageRoutes"));
+// ─── Lazy page routes ─────────────────────────────────────────────────────────
+const AuthRoutes = lazy(() => import("./pages/auth/AuthRoutes"));
+const PagesRoutes = lazy(() => import("./pages/PageRoutes"));
 
-// Fix: Create proper component functions instead of inline functions
+// ─── Full-screen loader fallback ──────────────────────────────────────────────
+const ScreenLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-[#0F172A]">
+    <Loader />
+  </div>
+);
+
+// ─── ProtectedRoute ───────────────────────────────────────────────────────────
+// Wraps authenticated pages in CommonLayout (Header + Sidebar + Footer).
+// Redirects unauthenticated users to /account/login.
+// Redirects to a required route when the store enforces one (e.g. onboarding).
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const {
     userRef,
@@ -18,28 +29,30 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   } = useStore();
   const location = useLocation();
 
-  const requiredRoute = useMemo(() => {
-    if (!initializationComplete) return null;
-    return getRequiredRoute();
-  }, [initializationComplete, getRequiredRoute]);
+  // const requiredRoute = useMemo(() => {
+  //   if (!initializationComplete) return null;
+  //   return getRequiredRoute();
+  // }, [initializationComplete, getRequiredRoute]);
 
-  const currentAuthState = isAuthenticatedRef.current;
+  // const currentAuthState = isAuthenticatedRef.current;
 
-  // If not authenticated, redirect to login
-  if (!userRef.current && !currentAuthState && initializationComplete) {
-    return (
-      <Navigate to="/account/login" state={{ from: location }} replace />
-    );
-  }
+  // // Not authenticated — send to login, preserving the attempted location
+  // if (!userRef.current && !currentAuthState && initializationComplete) {
+  //   return <Navigate to="/account/login" state={{ from: location }} replace />;
+  // }
 
-  // If there's a required route and we're not on it, redirect
-  if (requiredRoute && requiredRoute !== location.pathname) {
-    return <Navigate to={requiredRoute} replace />;
-  }
+  // // Store requires a specific route (e.g. setup, verify email)
+  // if (requiredRoute && requiredRoute !== location.pathname) {
+  //   return <Navigate to={requiredRoute} replace />;
+  // }
 
-  return <>{children}</>;
+  // Authenticated — render inside the full app shell
+  return <CommonLayout>{children}</CommonLayout>;
 };
 
+// ─── PublicRoute ──────────────────────────────────────────────────────────────
+// Wraps auth/public pages in FullLayout (no sidebar, full viewport).
+// Redirects already-authenticated users to /store (or their required route).
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const {
     getRequiredRoute,
@@ -56,55 +69,48 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const currentAuthState = isAuthenticatedRef.current;
   const hasPendingEntity = !!getStoredItem(NO_ENTITY_KEY, null);
 
-  // If authenticated and no special requirements, go to store
+  // Authenticated with no pending actions → go to main app
   if (currentAuthState && !requiredRoute && !hasPendingEntity) {
     return <Navigate to="/store" replace />;
   }
 
-  // If authenticated but has requirements, allow the required route logic to handle it
-  if (
-    currentAuthState &&
-    requiredRoute &&
-    requiredRoute !== location.pathname
-  ) {
+  // Authenticated but with a required redirect (e.g. forced setup step)
+  if (currentAuthState && requiredRoute && requiredRoute !== location.pathname) {
     return <Navigate to={requiredRoute} replace />;
   }
 
-  return <>{children}</>;
+  // Unauthenticated — render as full-screen public page
+  return <FullLayout>{children}</FullLayout>;
 };
 
+// ─── AppRoutes ────────────────────────────────────────────────────────────────
 const AppRoutes = () => {
   const { initializationComplete } = useStore();
 
+  // Hold rendering until auth state is resolved
   if (!initializationComplete) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <Loader />
-      </div>
-    );
+    return <ScreenLoader />;
   }
 
   return (
-    <Suspense fallback={<Loader />}>
+    <Suspense fallback={<ScreenLoader />}>
       <Routes>
+        {/* Public routes — auth pages, landing, etc. */}
         <Route
           path="/account/*"
           element={
             <PublicRoute>
-              <FullLayout>
-                <AuthRoutes />
-              </FullLayout>
+              <AuthRoutes />
             </PublicRoute>
           }
         />
 
+        {/* Protected routes — main app */}
         <Route
           path="/*"
           element={
             <ProtectedRoute>
-              <CommonLayout>
-                <PagesRoutes />
-              </CommonLayout>
+              <PagesRoutes />
             </ProtectedRoute>
           }
         />

@@ -8,7 +8,7 @@ const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 console.log(`
 ╔════════════════════════════════════════╗
 ║                                           ║
-║ 🚀 GodDid Mart Electron App                ║
+║ 🚀 HMS Electron App                ║
 ║ ${isDev ? '🔧 DEV MODE' : '📦 PRODUCTION'} ║
 ║                                            ║
 ╠════════════════════════════════════════╣
@@ -37,7 +37,7 @@ function showErrorPage(message) {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Error - GodDid Mart</title>
+      <title>Error - Hydraulic Management System</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {

@@ -3,11 +3,11 @@ import { useLocation } from "react-router-dom";
 import { useTheme } from "./core/contexts/ThemeProvider";
 import { useStore } from "./core/hooks/useStore";
 import AppRoutes from "./routes";
-import { Loader } from "./ui";
+import { Loader } from "./components/common";
 import { toast, Toaster } from "sonner";
 
 function App() {
-  const appTitle = "GodDid Mart";
+  const appTitle = "Hydraulic Management System";
   const location = useLocation();
   const { initializeTheme, isThemeReady } = useTheme();
   const { checkAuthStatus, initializationComplete } = useStore();

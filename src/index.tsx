@@ -6,8 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 import { ThemeProvider } from "./core/contexts/ThemeProvider";
-import { ErrorBoundary } from "./app/pages/error/ErrorBoundary";
-import { LayoutProvider } from "./core/contexts/LayoutProvider";
+import { ErrorBoundary } from "./pages/error/ErrorBoundary";
 import { StoreProvider } from "./core/contexts/StoreProvider";
 import { ModalProvider } from "./core/hooks/useModal";
 
@@ -56,11 +55,9 @@ ReactDOM.createRoot(rootElement).render(
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
               <StoreProvider>
-                <LayoutProvider>
                   <ModalProvider>
                     <App />
                   </ModalProvider>
-                </LayoutProvider>
               </StoreProvider>
             </ThemeProvider>
         </QueryClientProvider>
