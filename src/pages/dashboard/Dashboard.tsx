@@ -180,7 +180,7 @@ const Dashboard: React.FC = () => {
     <div className="">
       <div className="flex flex-wrap justify-between items-center mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-text flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-text flex items-center gap-3">
             Dashboard Overview
           </h2>
           <p className="text-text-light text-sm mt-1">Real-time business insights at a glance</p>
@@ -219,14 +219,14 @@ const Dashboard: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-        <div className="bg-card  shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
+        <div className="bg-card  p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-text-light text-sm font-medium">Inventory Value</p>
               <p className="text-2xl font-bold text-text">GHS {totalInventoryValue.toFixed(2)}</p>
-              <p className="text-xs text-slate-400 mt-1">{inventory.length} total items</p>
+              <p className="text-xs text-text-light mt-1">{inventory.length} total items</p>
             </div>
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3  shadow-lg shadow-blue-200">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3  shadow-blue-200">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
@@ -237,14 +237,14 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-card  shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
+        <div className="bg-card  p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-text-light text-sm font-medium">Total Sales</p>
               <p className="text-2xl font-bold text-text">GHS {totalSales.toFixed(2)}</p>
-              <p className="text-xs text-slate-400 mt-1">{invoices.length} invoices</p>
+              <p className="text-xs text-text-light mt-1">{invoices.length} invoices</p>
             </div>
-            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-3  shadow-lg shadow-emerald-200">
+            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-3  shadow-emerald-200">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.11 0-2 .895-2 2s.89 2 2 2 2 .895 2 2-.89 2-2 2m0-8c1.11 0 2 .895 2 2s-.89 2-2 2-2 .895-2 2 .89 2 2 2" />
               </svg>
@@ -255,14 +255,14 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-card  shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
+        <div className="bg-card p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-text-light text-sm font-medium">Today's Revenue</p>
               <p className="text-2xl font-bold text-text">GHS {dailyReport.totalRevenue.toFixed(2)}</p>
-              <p className="text-xs text-slate-400 mt-1">{dailyReport.invoiceCount} invoices today</p>
+              <p className="text-xs text-text-light mt-1">{dailyReport.invoiceCount} invoices today</p>
             </div>
-            <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-3  shadow-lg shadow-amber-200">
+            <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-3  shadow-amber-200">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-6 3v-3m-6 3V7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
               </svg>
@@ -273,14 +273,14 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-card  shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
+        <div className="bg-card  p-6 hover:shadow-xl transition-all duration-300 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-text-light text-sm font-medium">Gross Profit</p>
               <p className="text-2xl font-bold text-emerald-600">GHS {profitLoss.grossProfit.toFixed(2)}</p>
-              <p className="text-xs text-slate-400 mt-1">Margin: {profitLoss.margin.toFixed(1)}%</p>
+              <p className="text-xs text-text-light mt-1">Margin: {profitLoss.margin.toFixed(1)}%</p>
             </div>
-            <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-3  shadow-lg shadow-rose-200">
+            <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-3  shadow-rose-200">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
@@ -295,7 +295,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-card  shadow-lg p-6 lg:col-span-2 border border-slate-100">
+        <div className="bg-card  p-6 lg:col-span-2 border border-slate-100">
           <SimpleBarChart 
             data={{
               labels: monthlyData.labels,
@@ -305,7 +305,7 @@ const Dashboard: React.FC = () => {
             height={220}
           />
         </div>
-        <div className="bg-card  shadow-lg p-6 border border-slate-100">
+        <div className="bg-card  p-6 border border-slate-100">
           <SimplePieChart 
             data={{
               labels: paymentData.labels,
@@ -317,7 +317,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-card  shadow-lg p-6 border border-slate-100">
+        <div className="bg-card  p-6 border border-slate-100">
           <h3 className="font-semibold text-text mb-4 flex items-center gap-2">
             <span className="text-lg">🏆</span> Top Selling Items
           </h3>
@@ -333,17 +333,17 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-semibold text-text">GHS {item.revenue.toFixed(2)}</span>
-                    <span className="text-xs text-slate-400 block">Qty: {item.quantity}</span>
+                    <span className="text-xs text-text-light block">Qty: {item.quantity}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-slate-400 text-sm">No sales data available</p>
+            <p className="text-text-light text-sm">No sales data available</p>
           )}
         </div>
 
-        <div className="bg-card  shadow-lg p-6 border border-slate-100">
+        <div className="bg-card  p-6 border border-slate-100">
           <h3 className="font-semibold text-text mb-4 flex items-center gap-2">
             <span className="text-lg">📦</span> Stock Status
           </h3>
@@ -368,13 +368,13 @@ const Dashboard: React.FC = () => {
                      style={{ width: `${(stockStatus.low / stockStatus.total) * 100}%` }} />
               </div>
             </div>
-            <div className="pt-2 text-xs text-slate-400">
+            <div className="pt-2 text-xs text-text-light">
               Total: {stockStatus.total} unique items
             </div>
           </div>
         </div>
 
-        <div className="bg-card  shadow-lg p-6 border border-slate-100">
+        <div className="bg-card  p-6 border border-slate-100">
           <h3 className="font-semibold text-text mb-4 flex items-center gap-2">
             <span className="text-lg">🕐</span> Recent Activity
           </h3>
@@ -384,7 +384,7 @@ const Dashboard: React.FC = () => {
                 <div key={inv.id} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0">
                   <div>
                     <span className="text-sm text-text">{inv.number}</span>
-                    <span className="text-xs text-slate-400 block">{inv.customer}</span>
+                    <span className="text-xs text-text-light block">{inv.customer}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-semibold text-text">GHS {inv.total.toFixed(2)}</span>
@@ -395,41 +395,10 @@ const Dashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <p className="text-slate-400 text-sm">No recent activity</p>
+              <p className="text-text-light text-sm">No recent activity</p>
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button 
-          onClick={() => setActiveTab('builder')}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-4  shadow-lg shadow-blue-200 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
-        >
-          <span className="text-xl">🔧</span>
-          <span className="font-medium">New Assembly</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('invoicing')}
-          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white p-4  shadow-lg shadow-emerald-200 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
-        >
-          <span className="text-xl">📄</span>
-          <span className="font-medium">Create Invoice</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('inventory')}
-          className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white p-4  shadow-lg shadow-amber-200 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
-        >
-          <span className="text-xl">📦</span>
-          <span className="font-medium">Update Stock</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('reports')}
-          className="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white p-4  shadow-lg shadow-rose-200 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
-        >
-          <span className="text-xl">📈</span>
-          <span className="font-medium">View Reports</span>
-        </button>
       </div>
     </div>
   );

@@ -1093,15 +1093,10 @@ const SettingsPage: React.FC = () => {
     <div className="">
       <div className="">
         {/* Page Header */}
-        <div className="bg-card  border border-border shadow-sm mb-6 p-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-card  border border-border shadow-sm">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4  mb-6">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate("/")}
-                className="p-2 hover:bg-background  transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-text-light" />
-              </button>
+              
               <div>
                 <h1 className="text-2xl font-bold text-text flex items-center gap-2">
                   Settings

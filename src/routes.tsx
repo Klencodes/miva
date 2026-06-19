@@ -18,8 +18,6 @@ const ScreenLoader = () => (
 
 // ─── ProtectedRoute ───────────────────────────────────────────────────────────
 // Wraps authenticated pages in CommonLayout (Header + Sidebar + Footer).
-// Redirects unauthenticated users to /account/login.
-// Redirects to a required route when the store enforces one (e.g. onboarding).
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const {
     userRef,
@@ -29,36 +27,31 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   } = useStore();
   const location = useLocation();
 
-  // const requiredRoute = useMemo(() => {
-  //   if (!initializationComplete) return null;
-  //   return getRequiredRoute();
-  // }, [initializationComplete, getRequiredRoute]);
+  const requiredRoute = useMemo(() => {
+    if (!initializationComplete) return null;
+    return getRequiredRoute();
+  }, [initializationComplete, getRequiredRoute]);
 
-  // const currentAuthState = isAuthenticatedRef.current;
+  const currentAuthState = isAuthenticatedRef.current;
 
-  // // Not authenticated — send to login, preserving the attempted location
-  // if (!userRef.current && !currentAuthState && initializationComplete) {
-  //   return <Navigate to="/account/login" state={{ from: location }} replace />;
-  // }
+  // Not authenticated — send to login, preserving the attempted location
+  if (!userRef.current && !currentAuthState && initializationComplete) {
+    return <Navigate to="/account/login" state={{ from: location }} replace />;
+  }
 
-  // // Store requires a specific route (e.g. setup, verify email)
-  // if (requiredRoute && requiredRoute !== location.pathname) {
-  //   return <Navigate to={requiredRoute} replace />;
-  // }
+  // Store requires a specific route (e.g. setup, verify email)
+  if (requiredRoute && requiredRoute !== location.pathname) {
+    return <Navigate to={requiredRoute} replace />;
+  }
 
   // Authenticated — render inside the full app shell
   return <CommonLayout>{children}</CommonLayout>;
 };
 
 // ─── PublicRoute ──────────────────────────────────────────────────────────────
-// Wraps auth/public pages in FullLayout (no sidebar, full viewport).
-// Redirects already-authenticated users to /store (or their required route).
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const {
-    getRequiredRoute,
-    isAuthenticatedRef,
-    initializationComplete,
-  } = useStore();
+  const { getRequiredRoute, isAuthenticatedRef, initializationComplete } =
+    useStore();
   const location = useLocation();
 
   const requiredRoute = useMemo(() => {
@@ -75,7 +68,11 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Authenticated but with a required redirect (e.g. forced setup step)
-  if (currentAuthState && requiredRoute && requiredRoute !== location.pathname) {
+  if (
+    currentAuthState &&
+    requiredRoute &&
+    requiredRoute !== location.pathname
+  ) {
     return <Navigate to={requiredRoute} replace />;
   }
 

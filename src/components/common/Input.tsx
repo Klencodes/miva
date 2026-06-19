@@ -57,7 +57,7 @@ export interface CustomInputProps {
   disabled?: boolean;
   readonly?: boolean;
   required?: boolean;
-    checked?: boolean;
+  checked?: boolean;
   prefixIcon?: React.ReactNode;
   suffixIcon?: React.ReactNode;
   suffixIconClickable?: boolean;
@@ -1031,8 +1031,8 @@ const Input: React.FC<CustomInputProps> = ({
       variant === "filled"
         ? "bg-card border-border"
         : "bg-background border-border";
-    const focusState = isFocused ? "border-primary ring-2 ring-primary/20" : "";
-    const errorState = error ? "border-danger ring-2 ring-danger/20" : "";
+    const focusState = isFocused ? "border-primary" : "";
+    const errorState = error ? "border-danger ring-2" : "";
     const disabledState = disabled
       ? "bg-gray-100 cursor-not-allowed opacity-70"
       : "";
@@ -1382,38 +1382,38 @@ const Input: React.FC<CustomInputProps> = ({
     }
 
     // Checkbox
-   if (isCheckbox) {
-    return (
-      <div className="flex items-center gap-2.5">
-        <input
-          ref={inputRef}
-          id={inputId}
-          type="checkbox"
-          checked={checked !== undefined ? checked : !!value}
-          onChange={(e) => onChange?.(e.target.checked)}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          disabled={disabled}
-          className={`w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-2 ${
-            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-          }`}
-        />
-        {label && (
-          <label 
-            htmlFor={inputId} 
-            className={`text-text ${spacing.text} ${
-              disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+    if (isCheckbox) {
+      return (
+        <div className="flex items-center gap-2.5">
+          <input
+            ref={inputRef}
+            id={inputId}
+            type="checkbox"
+            checked={checked !== undefined ? checked : !!value}
+            onChange={(e) => onChange?.(e.target.checked)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            disabled={disabled}
+            className={`w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-2 ${
+              disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             }`}
-          >
-            {label}{required && <span className="text-danger ml-0.5">*</span>}
-          </label>
-        )}
-        {error && <span className="text-xs text-danger ml-1">{error}</span>}
-      </div>
-    );
-  }
+          />
+          {label && (
+            <label
+              htmlFor={inputId}
+              className={`text-text ${spacing.text} ${
+                disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              }`}
+            >
+              {label}
+              {required && <span className="text-danger ml-0.5">*</span>}
+            </label>
+          )}
+          {error && <span className="text-xs text-danger ml-1">{error}</span>}
+        </div>
+      );
+    }
 
-  
     // Color picker
     if (isColor) {
       return renderTriggerInput(

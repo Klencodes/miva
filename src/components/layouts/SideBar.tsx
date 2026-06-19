@@ -175,8 +175,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
 
             {/* User info */}
             <div className="flex-1 min-w-0">
-              <p className="text-[13.5px] font-semibold text-slate-100 truncate">James Donkor</p>
-              <p className="text-[11.5px] text-text-light truncate">Admin · Pro Plan</p>
+              <p className="text-[13.5px] font-semibold text-text-light truncate">James Donkor</p>
+              <p className="text-[11.5px] text-text truncate">Admin · Pro Plan</p>
             </div>
 
             {/* Chevron */}

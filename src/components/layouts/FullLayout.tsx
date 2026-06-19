@@ -52,19 +52,7 @@ const FullLayout: React.FC<FullLayoutProps> = ({ children }) => {
           className="flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 rounded-lg"
           aria-label="NexusOS home"
         >
-          <div
-            className={[
-              "w-[32px] h-[32px] rounded-[8px] flex items-center justify-center flex-shrink-0",
-              "bg-gradient-to-br from-sky-400 to-indigo-400",
-              "text-text font-extrabold text-[13px]",
-              "shadow-[0_0_16px_rgba(56,189,248,0.25)]",
-            ].join(" ")}
-          >
-            Nx
-          </div>
-          <span className="text-[16px] font-bold tracking-[-0.4px] text-white">
-            Nexus<span className="text-sky-400">OS</span>
-          </span>
+          <img src="/logo192.png" width={50} alt="" />
         </a>
       </header>
 
@@ -78,10 +66,10 @@ const FullLayout: React.FC<FullLayoutProps> = ({ children }) => {
 
       {/* Minimal public footer */}
       <footer className="relative z-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 px-6 py-4 text-[12px] text-text-light">
-        <span>© {new Date().getFullYear()} NexusOS Inc.</span>
-        <a href="/privacy" className="hover:text-slate-400 transition-colors duration-150">Privacy</a>
-        <a href="/terms" className="hover:text-slate-400 transition-colors duration-150">Terms</a>
-        <a href="/help" className="hover:text-slate-400 transition-colors duration-150">Help</a>
+        <span>© {new Date().getFullYear()} MIVA Prestige Ent.</span>
+        <a href="/privacy" className="hover:text-text-light transition-colors duration-150">Privacy</a>
+        <a href="/terms" className="hover:text-text-light transition-colors duration-150">Terms</a>
+        <a href="/help" className="hover:text-text-light transition-colors duration-150">Help</a>
       </footer>
     </div>
   );
