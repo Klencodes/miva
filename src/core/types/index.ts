@@ -26,20 +26,22 @@ export interface InventoryItem {
   image?: string;
 }
 
-export interface InvoiceItem {
+// core/types/index.ts
+export interface Payment {
   id: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-  discount?: number;
+  invoiceId: string;
+  amount: number;
+  method: 'Cash' | 'MoMo' | 'Bank' | 'Credit';
+  reference?: string; // Transaction ID, bank reference, etc.
+  date: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Invoice {
   id: string;
   number: string;
-  created_at?: Date;
-  updated_at?: Date;
   date: Date;
   dueDate?: Date;
   customer: string;
@@ -57,10 +59,23 @@ export interface Invoice {
   paymentMethod: 'Cash' | 'MoMo' | 'Bank' | 'Credit';
   momoTransactionId?: string;
   paymentStatus: 'Paid' | 'Partial' | 'Unpaid';
-  amountPaid?: number;
-  status: 'draft' | 'quoted' | 'invoiced' | 'cancelled';
+  amountPaid: number;
+  remainingBalance: number;
+  status: 'invoiced' | 'quoted' | 'draft' | 'cancelled';
   notes?: string;
   terms?: string;
+  payments?: Payment[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  discount?: number;
 }
 export interface IUser {
   id: string;
@@ -78,10 +93,24 @@ export interface IUser {
   created_at?: Date;
   updated_at?: Date;
   verified?: boolean;
+  isActive?: boolean;
   auth_token?: string;
 }
 
-export interface IEntityItem {
+export interface Supplier {
+  id: string;
+  name: string;
+  address: string;
+  email: string;
+  phone_number: string;
+  secondary_number: string;
+  phone_code: string;
+  secondary_code: string;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+  total_orders?: number;
+  total_spent?: number;
+  status?: 'active' | 'inactive';
 }
 
 export interface UserPermissions {
@@ -97,6 +126,8 @@ export interface UserPermissions {
   canViewActivityLogs: boolean;
 }
 
+export interface IEntityItem {
+}
 export interface ActivityLog {
   id: string;
   userId: string;
@@ -126,6 +157,10 @@ export interface Customer {
   taxId?: string;
   creditLimit?: number;
   balance?: number;
+  createdAt: Date;
+  updatedAt: Date;
+  notes?: string;
+  isActive?: boolean;
 }
 
 export interface SystemSettings {

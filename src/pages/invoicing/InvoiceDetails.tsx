@@ -10,7 +10,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Download,
   Mail,
   Phone,
   MapPin,
@@ -20,10 +19,15 @@ import {
   Wallet,
   FileText,
   AlertCircle,
+  Plus,
 } from 'lucide-react';
-import { Invoice } from '../../core/types';
+import { Invoice, Payment } from '../../core/types';
 import { Button } from '../../components/common';
 import { DateFormatEnums, formatDate } from '../../core/utils/date-format';
+import PaymentHistory from './PaymentHistory';
+import PaymentModal from './PaymentModal';
+import { useModal } from '../../core/hooks/useModal';
+
 
 const InvoiceDetails = () => {
   const navigate = useNavigate();
@@ -31,17 +35,15 @@ const InvoiceDetails = () => {
   const { id } = useParams<{ id: string }>();
   const printRef = useRef<HTMLDivElement>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Get invoice operations from store
-
+  const { openModal } = useModal()
   // Load invoice from navigation state or fetch by ID
   useEffect(() => {
     const loadInvoice = async () => {
       setLoading(true);
       
-      // First, try to get invoice from navigation state
       const stateInvoice = location.state?.invoice as Invoice;
       
       if (stateInvoice) {
@@ -51,16 +53,27 @@ const InvoiceDetails = () => {
         return;
       }
 
-      // If not in state, fetch by ID from store
+      // If not in state, fetch by ID from localStorage
       if (id) {
-        // const fetchedInvoice = getInvoiceById(id);
-        // if (fetchedInvoice) {
-        //   console.log('Invoice fetched by ID:', fetchedInvoice);
-        //   setInvoice(fetchedInvoice);
-        // } else {
-        //   // Invoice not found
-        //   setInvoice(null);
-        // }
+        try {
+          const storedInvoices = localStorage.getItem('INVOICES');
+          if (storedInvoices) {
+            const invoices = JSON.parse(storedInvoices);
+            const foundInvoice = invoices.find((inv: any) => inv.id === id);
+            if (foundInvoice) {
+              // Ensure payments array exists
+              if (!foundInvoice.payments) {
+                foundInvoice.payments = [];
+              }
+              setInvoice(foundInvoice);
+            } else {
+              setInvoice(null);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading invoice:', error);
+          setInvoice(null);
+        }
       }
       
       setLoading(false);
@@ -69,30 +82,10 @@ const InvoiceDetails = () => {
     loadInvoice();
   }, [id, location.state]);
 
-  // Handle print action from navigation state
-  useEffect(() => {
-    if (location.state?.print && invoice) {
-      // Delay print to ensure DOM is ready
-      setTimeout(() => {
-        handlePrint();
-      }, 500);
-    }
-  }, [location.state?.print, invoice]);
-
   // Handle mark as paid action from navigation state
   useEffect(() => {
     if (location.state?.action === 'mark-paid' && invoice) {
-      handleMarkAsPaid();
-    }
-  }, [location.state?.action, invoice]);
-
-  // Handle cancel action from navigation state
-  useEffect(() => {
-    if (location.state?.action === 'cancel' && invoice) {
-      // Show confirmation before cancelling
-      if (window.confirm(`Are you sure you want to cancel invoice ${invoice.number}?`)) {
-        handleCancelInvoice();
-      }
+      handleOpenPaymentModal();
     }
   }, [location.state?.action, invoice]);
 
@@ -114,7 +107,6 @@ const InvoiceDetails = () => {
       return;
     }
 
-    // Get all styles from the document
     const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
       .map(el => el.outerHTML)
       .join('');
@@ -164,64 +156,84 @@ const InvoiceDetails = () => {
     }
   }, [invoice, navigate]);
 
-  const handleDuplicate = useCallback(() => {
-    if (!invoice) return;
+  // const handleDuplicate = useCallback(() => {
+  //   if (!invoice) return;
     
-    // const duplicated = duplicateInvoice(invoice.id);
-    if (invoice) {
-      console.log('Duplicated invoice:', invoice    );
-      navigate(`/invoices/edit/${invoice.id}`, { 
-        state: { invoice: invoice, isDuplicate: true } 
-      });
-    }
-  }, [invoice, navigate]);
+  //   if (invoice) {
+  //     navigate(`/invoices/edit/${invoice.id}`, { 
+  //       state: { invoice: invoice, isDuplicate: true } 
+  //     });
+  //   }
+  // }, [invoice, navigate]);
 
   const handleDelete = useCallback(() => {
     if (!invoice) return;
     
-    // deleteInvoice(invoice.id);
+    try {
+      const storedInvoices = localStorage.getItem('INVOICES');
+      if (storedInvoices) {
+        const invoices = JSON.parse(storedInvoices);
+        const updatedInvoices = invoices.filter((inv: any) => inv.id !== invoice.id);
+        localStorage.setItem('INVOICES', JSON.stringify(updatedInvoices));
+      }
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+    }
+    
     setShowDeleteModal(false);
     navigate('/invoices', { 
       state: { message: `Invoice ${invoice.number} has been deleted successfully` } 
     });
   }, [invoice, navigate]);
 
-  const handleMarkAsPaid = useCallback(() => {
-    if (!invoice) return;
-    
-    // markAsPaid(invoice.id);
-    // Update local state
-    setInvoice({
-      ...invoice,
-      paymentStatus: 'Paid',
-      amountPaid: invoice.total,
-    });
-    
-    console.log('Marking invoice as paid:', invoice.id);
-    // Show success message
-    alert(`Invoice ${invoice.number} has been marked as paid`);
-  }, [invoice]);
+  const handleOpenPaymentModal = async() => {
+    const result =  await openModal(PaymentModal, {
+      data: { invoice },
+      side: 'right',
+      size: "xl"
+    })
+    if(result?.success){
+      setInvoice(result.data);
+    }
+    console.log(result, "result>>>");
+    // Make API call to update the data
+  };
 
-  const handleCancelInvoice = useCallback(() => {
-    if (!invoice) return;
-    
-    // cancelInvoice(invoice.id);
-    // Update local state
-    setInvoice({
-      ...invoice,
-      status: 'cancelled',
-    });
-    
-    console.log('Cancelling invoice:', invoice.id);
-    alert(`Invoice ${invoice.number} has been cancelled`);
-  }, [invoice]);
 
-  const handleSendEmail = useCallback(() => {
+
+  const handleDeletePayment = useCallback((paymentId: string) => {
     if (!invoice) return;
-    
-    console.log('Sending invoice to:', invoice.customerEmail);
-    // In a real app, you would call an API endpoint
-    alert(`Invoice ${invoice.number} has been sent to ${invoice.customerEmail || 'the customer'}`);
+
+    const updatedPayments = invoice.payments?.filter(p => p.id !== paymentId) || [];
+    const newAmountPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+    const newRemainingBalance = invoice.total - newAmountPaid;
+    const newPaymentStatus = newRemainingBalance <= 0 ? 'Paid' : (newAmountPaid > 0 ? 'Partial' : 'Unpaid');
+
+    const updatedInvoice: Invoice = {
+      ...invoice,
+      amountPaid: newAmountPaid,
+      remainingBalance: newRemainingBalance,
+      paymentStatus: newPaymentStatus,
+      payments: updatedPayments,
+      updatedAt: new Date(),
+    };
+
+    // Update in localStorage
+    try {
+      const storedInvoices = localStorage.getItem('INVOICES');
+      if (storedInvoices) {
+        const invoices = JSON.parse(storedInvoices);
+        const index = invoices.findIndex((inv: any) => inv.id === invoice.id);
+        if (index !== -1) {
+          invoices[index] = updatedInvoice;
+          localStorage.setItem('INVOICES', JSON.stringify(invoices));
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+    }
+
+    setInvoice(updatedInvoice);
   }, [invoice]);
 
   const getStatusBadge = (status: string) => {
@@ -229,7 +241,7 @@ const InvoiceDetails = () => {
       invoiced: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle, label: 'Invoiced' },
       quoted: { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Quoted' },
       draft: { color: 'bg-slate-100 text-slate-700', icon: FileText, label: 'Draft' },
-      cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
+      cancelled: { color: 'bg-danger-10 text-red-700', icon: XCircle, label: 'Cancelled' },
     };
     const configItem = config[status as keyof typeof config] || config.draft;
     const Icon = configItem.icon;
@@ -245,7 +257,7 @@ const InvoiceDetails = () => {
     const config = {
       Paid: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle, label: 'Paid' },
       Partial: { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Partial' },
-      Unpaid: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Unpaid' },
+      Unpaid: { color: 'bg-danger-10 text-red-700', icon: XCircle, label: 'Unpaid' },
     };
     const configItem = config[status as keyof typeof config] || config.Unpaid;
     const Icon = configItem.icon;
@@ -302,14 +314,14 @@ const InvoiceDetails = () => {
 
   const canEdit = invoice.status === 'draft' || invoice.status === 'quoted';
   const canDelete = invoice.status === 'draft' || invoice.status === 'quoted';
-  const canMarkPaid = invoice.status === 'invoiced' && invoice.paymentStatus !== 'Paid';
+  const canMakePayment = invoice.status === 'invoiced' && invoice.paymentStatus !== 'Paid' && invoice.remainingBalance > 0;
   const isCancelled = invoice.status === 'cancelled';
 
   return (
     <div className="">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="">
         {/* Header with actions */}
-        <div className="max-w-7xl overflow-y-auto  shadow-sm p-6 mb-6">
+        <div className="max-w-7xl overflow-y-auto shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               <button
@@ -332,6 +344,17 @@ const InvoiceDetails = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {/* Make Payment Button */}
+              {canMakePayment && (
+                <Button
+                  onClick={handleOpenPaymentModal}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Make Payment
+                </Button>
+              )}
+
               {/* Print Button */}
               <Button
                 onClick={handlePrint}
@@ -341,11 +364,12 @@ const InvoiceDetails = () => {
                 Print
               </Button>
 
-           
-
               {/* Email Button */}
               <Button
-                onClick={handleSendEmail}
+                onClick={() => {
+                  console.log('Sending invoice to:', invoice.customerEmail);
+                  alert(`Invoice ${invoice.number} has been sent to ${invoice.customerEmail || 'the customer'}`);
+                }}
                 variant="ghost"
               >
                 <Mail className="w-4 h-4" />
@@ -353,32 +377,22 @@ const InvoiceDetails = () => {
               </Button>
 
               {/* Duplicate Button */}
-              <Button
-              variant="ghost"
+              {/* <Button
+                variant="ghost"
                 onClick={handleDuplicate}
               >
                 <Copy className="w-4 h-4" />
                 Duplicate
-              </Button>
+              </Button> */}
 
               {/* Edit Button - only for draft and quoted */}
               {canEdit && (
                 <Button
-                variant="info"
+                  variant="info"
                   onClick={handleEdit}
                 >
                   <Edit className="w-4 h-4" />
                   Edit
-                </Button>
-              )}
-
-              {/* Mark as Paid Button */}
-              {canMarkPaid && (
-                <Button
-                  onClick={handleMarkAsPaid}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Mark as Paid
                 </Button>
               )}
 
@@ -396,7 +410,7 @@ const InvoiceDetails = () => {
         </div>
 
         {/* Invoice Content - Print Area */}
-        <div ref={printRef} className="bg-card  shadow-sm p-8 print:shadow-none">
+        <div ref={printRef} className="bg-card shadow-sm p-8 print:shadow-none">
           <div className="max-w-4xl mx-auto">
             {/* Invoice Header */}
             <div className="border-b border-border pb-6 mb-6">
@@ -461,12 +475,16 @@ const InvoiceDetails = () => {
                       <span className="text-text-light">Transaction ID:</span> {invoice.momoTransactionId}
                     </div>
                   )}
-                  {invoice.amountPaid && invoice.amountPaid > 0 && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-text-light">Amount Paid</span>
-                      <span className="font-medium">GHS {invoice.amountPaid.toFixed(2)}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-text-light">Amount Paid</span>
+                    <span className="font-medium text-emerald-600">GHS {invoice.amountPaid.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-text-light">Remaining Balance</span>
+                    <span className={`font-medium ${invoice.remainingBalance <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      GHS {invoice.remainingBalance.toFixed(2)}
+                    </span>
+                  </div>
                   {invoice.paymentStatus === 'Unpaid' && (
                     <div className="flex items-center gap-2 text-red-600 text-sm mt-2">
                       <AlertCircle className="w-4 h-4" />
@@ -504,6 +522,16 @@ const InvoiceDetails = () => {
               </div>
             </div>
 
+            {/* Payment History - Only show if there are payments */}
+            {(invoice.payments && invoice.payments.length > 0) && (
+              <div className="mb-8">
+                <PaymentHistory 
+                  invoice={invoice} 
+                  onDeletePayment={handleDeletePayment}
+                />
+              </div>
+            )}
+
             {/* Totals */}
             <div className="pt-3">
               <div className="max-w-xs ml-auto">
@@ -532,6 +560,18 @@ const InvoiceDetails = () => {
                     <span>Total</span>
                     <span className="text-emerald-600">GHS {invoice.total.toFixed(2)}</span>
                   </div>
+                  {invoice.amountPaid > 0 && (
+                    <div className="flex justify-between text-sm pt-1">
+                      <span className="text-text-light">Amount Paid</span>
+                      <span className="text-emerald-600">-GHS {invoice.amountPaid.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {invoice.remainingBalance > 0 && (
+                    <div className="flex justify-between text-sm pt-1 border-t border-border">
+                      <span className="text-text-light font-medium">Remaining Balance</span>
+                      <span className="font-bold text-amber-600">GHS {invoice.remainingBalance.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -567,9 +607,9 @@ const InvoiceDetails = () => {
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card  max-w-md w-full p-6 shadow-2xl">
+            <div className="bg-card max-w-md w-full p-6 shadow-2xl">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-red-100 rounded-full">
+                <div className="p-2 bg-danger-10 rounded-full">
                   <Trash2 className="w-6 h-6 text-red-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-text">Delete Invoice</h3>
@@ -587,7 +627,7 @@ const InvoiceDetails = () => {
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-danger-60 hover:bg-danger-70 text-white transition-colors flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete Invoice
@@ -606,7 +646,7 @@ const InvoiceDetails = () => {
         )}
 
         {invoice.status === 'invoiced' && invoice.paymentStatus === 'Paid' && (
-          <div className="mt-6 p-4 bg-success-5 border border-success-200 flex items-center gap-3">
+          <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-emerald-600" />
             <p className="text-emerald-700">This invoice has been fully paid. Thank you!</p>
           </div>

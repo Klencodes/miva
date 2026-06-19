@@ -49,7 +49,7 @@ interface ThemeProviderProps {
 
 const defaultThemes: AppThemes = {
   light: {
-    primary: "#ff6b57",
+    primary: "#ed9329",
     secondary: "#6c757d",
     background: "#fafbfd",
     sidebar: "#ffffff",
@@ -63,7 +63,7 @@ const defaultThemes: AppThemes = {
     success: "#34C759",
   },
   dark: {
-    primary: "#ff6b57",
+    primary: "#ed9329",
     secondary: "#6c757d",
     background: "#0a0a0a",
     card: "#171717",

@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Plus, Trash2, Search, User, FileText, CreditCard, Phone, Mail, Check, ArrowLeft } from 'lucide-react';
 import Input, { SelectOption } from '../../components/common/Input';
-import { InvoiceItem } from '../../core/types';
-import { defaultSystemSettings, generateInitialInventory, initialUsers } from '../../data/sampleData';
+import { Customer, Invoice, InvoiceItem } from '../../core/types';
+import { defaultSystemSettings, generateInitialInventory, generateSampleCustomers } from '../../data/sampleData';
 import { Button } from '../../components/common';
 import { useTheme } from '../../core/contexts/ThemeProvider';
 
@@ -36,9 +36,23 @@ const CreateInvoice = () => {
   
   const inventoryItems = generateInitialInventory();
   const systemSettings = defaultSystemSettings;
-  const customers = initialUsers;
   const { isDark } = useTheme();
-
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      const stored = localStorage.getItem("CUSTOMERS");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.map((c: any) => ({
+          ...c,
+          createdAt: new Date(c.createdAt),
+          updatedAt: new Date(c.updatedAt),
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading customers:", error);
+    }
+    return generateSampleCustomers();
+  });
   // Get invoice from navigation state or fetch by ID
   useEffect(() => {
     const loadInvoice = () => {
@@ -251,9 +265,11 @@ const CreateInvoice = () => {
         momoTransactionId: paymentMethod === 'MoMo' ? momoTransactionId : undefined,
         paymentStatus: paymentMethod === 'Credit' ? 'Unpaid' : 'Paid',
         amountPaid: paymentMethod === 'Credit' ? 0 : total,
+        remainingBalance: paymentMethod === 'Credit' ? total : 0,
         status: 'invoiced' as const,
         notes: notes || undefined,
         terms: paymentMethod === 'Credit' ? creditTerms : 'Due on Receipt',
+        payments: [], // Initialize empty payments array for partial payments
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -272,6 +288,14 @@ const CreateInvoice = () => {
           // Update existing invoice
           const index = invoices.findIndex((inv: any) => inv.id === newInvoice.id);
           if (index !== -1) {
+            // Preserve existing payments if any
+            const existingPayments = invoices[index].payments || [];
+            newInvoice.payments = existingPayments;
+            // Recalculate amount paid and remaining balance from existing payments
+            const totalPaid = existingPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+            newInvoice.amountPaid = totalPaid;
+            newInvoice.remainingBalance = newInvoice.total - totalPaid;
+            newInvoice.paymentStatus = newInvoice.remainingBalance <= 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Unpaid');
             invoices[index] = newInvoice;
           } else {
             invoices.push(newInvoice);
@@ -314,7 +338,7 @@ const CreateInvoice = () => {
 
     const customer = customers.find(c => c.id === selectedCustomer);
     
-    const draftInvoice = {
+    const draftInvoice: Invoice = {
       id: isEditing ? id || `inv-${Date.now()}` : `inv-${Date.now()}`,
       number: isEditing ? invoiceNumber : generateInvoiceNumber(),
       date: new Date(),
@@ -338,9 +362,11 @@ const CreateInvoice = () => {
       momoTransactionId: paymentMethod === 'MoMo' ? momoTransactionId : undefined,
       paymentStatus: 'Unpaid' as const,
       amountPaid: 0,
+      remainingBalance: total,
       status: 'draft' as const,
       notes: notes || undefined,
       terms: paymentMethod === 'Credit' ? creditTerms : 'Due on Receipt',
+      payments: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -357,6 +383,13 @@ const CreateInvoice = () => {
       if (isEditing) {
         const index = invoices.findIndex((inv: any) => inv.id === draftInvoice.id);
         if (index !== -1) {
+          // Preserve existing payments if any
+          const existingPayments = invoices[index].payments || [];
+          draftInvoice.payments = existingPayments;
+          const totalPaid = existingPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+          draftInvoice.amountPaid = totalPaid;
+          draftInvoice.remainingBalance = draftInvoice.total - totalPaid;
+          draftInvoice.paymentStatus = draftInvoice.remainingBalance <= 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Unpaid');
           invoices[index] = draftInvoice;
         } else {
           invoices.push(draftInvoice);
@@ -658,6 +691,15 @@ const CreateInvoice = () => {
                   </div>
                 )}
               </div>
+              {/* Note about partial payments */}
+              {paymentMethod === 'Credit' && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-700">
+                    <span className="font-semibold">💡 Note:</span> This invoice will be created with credit terms. 
+                    You can record partial payments later from the invoice details page.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Notes */}
@@ -694,7 +736,7 @@ const CreateInvoice = () => {
                 disabled={loading || invoiceItems.length === 0 || !selectedCustomer}
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-card border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-border border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     <Check className="w-5 h-5" />

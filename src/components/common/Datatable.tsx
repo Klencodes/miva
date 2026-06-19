@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useEffect, JSX } from "react";
 import { Link } from "react-router-dom";
 import { SearchFilter } from "./SearchFilter";
 import { SelectOption } from "./Input";
-// import { dateUtils } from "../../core/utils/date-format";
 import Button from "./Button";
 import { Roles } from "../../core/enums/roles";
 import { useTheme } from "../../core/contexts/ThemeProvider";
@@ -223,7 +222,7 @@ const TableSkeletonLoader: React.FC<{
 const PendingSyncBadge: React.FC = () => (
   <span
     title="Not yet synced to server"
-    className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap align-middle"
+    className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-border whitespace-nowrap align-middle"
   >
     <svg
       className="w-3 h-3 animate-spin"

@@ -1,4 +1,4 @@
-import { AlignVerticalJustifyCenterIcon, ChevronRight, LayoutDashboard, ListTodoIcon, LogOut, Mail, SendToBack, Settings2Icon, UserRoundCogIcon } from "lucide-react";
+import { ChevronRight, LayoutDashboard, ListTodoIcon, LogOut, Mail, SendToBack, Settings2Icon, UserRoundCogIcon } from "lucide-react";
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -23,39 +23,22 @@ interface SidebarProps {
   isMobile: boolean;
 }
 
-// ─── Inline SVG Icon Helper ───────────────────────────────────────────────────
-const SvgIcon = ({
-  d,
-  size = 18,
-}: {
-  d: string | string[];
-  size?: number;
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.8}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    {Array.isArray(d)
-      ? d.map((path, i) => <path key={i} d={path} />)
-      : <path d={d} />}
-  </svg>
-);
 
 // ─── Nav Groups Config ────────────────────────────────────────────────────────
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Main",
     items: [
-      { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, href: "/", badge: null },
+      { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, href: "/dashboard", badge: null },
       { id: "invoice", label: "Invoicing", icon: <ListTodoIcon size={20} />, href: "/invoices", badge: "New", badgeVariant: "warning" },
       { id: "inventory", label: "Inventory", icon: <SendToBack size={20} />, href: "/inventory", badge: "New", badgeVariant: "success" },
+    ],
+  },
+   {
+    label: "Business",
+    items: [
+      { id: "customers", label: "Customers", icon: <UserRoundCogIcon size={20} />, href: "/customers", badge: null },
+      { id: "suppliers", label: "Suppliers", icon: <UserRoundCogIcon size={20} />, href: "/suppliers", badge: null },
     ],
   },
   {
@@ -140,11 +123,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
                         to={item.href}
                         onClick={() => isMobile && onClose()}
                         className={[
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg",
+                          "flex items-center gap-3 p-3 rounded-lg",
                           "text-sm font-medium w-full",
                           "transition-all duration-200",
                           active
-                            ? "bg-primary-30 text-sky-400 shadow-[inset_3px_0_0_#38BDF8]"
+                            ? "bg-primary-30 text-primary shadow-[inset_3px_0_0_var(--primary-color)]"
                             : "text-text hover:bg-white/[0.05] hover:text-primary",
                         ].join(" ")}
                         aria-current={active ? "page" : undefined}

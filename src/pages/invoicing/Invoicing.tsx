@@ -23,6 +23,9 @@ const Invoicing = () => {
           dueDate: inv.dueDate ? new Date(inv.dueDate) : undefined,
           createdAt: new Date(inv.createdAt),
           updatedAt: new Date(inv.updatedAt),
+          // Ensure payments array exists
+          payments: inv.payments || [],
+          remainingBalance: inv.remainingBalance !== undefined ? inv.remainingBalance : inv.total - (inv.amountPaid || 0),
         }));
       }
     } catch (error) {
@@ -72,6 +75,10 @@ const Invoicing = () => {
     { value: 'total_asc', label: 'Lowest Total' },
     { value: 'customer_asc', label: 'Customer A-Z' },
     { value: 'customer_desc', label: 'Customer Z-A' },
+    { value: 'status_asc', label: 'Status A-Z' },
+    { value: 'status_desc', label: 'Status Z-A' },
+    { value: 'paymentStatus_asc', label: 'Payment Status A-Z' },
+    { value: 'paymentStatus_desc', label: 'Payment Status Z-A' },
   ];
 
   // Helper functions
@@ -104,26 +111,12 @@ const Invoicing = () => {
     return icons[method] || '💰';
   };
 
-  // Sort function
-  const sortInvoices = useCallback((invoicesToSort: Invoice[], sortKey: string): Invoice[] => {
-    const sorted = [...invoicesToSort];
-    
-    switch (sortKey) {
-      case 'date_desc':
-        return sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      case 'date_asc':
-        return sorted.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      case 'total_desc':
-        return sorted.sort((a, b) => b.total - a.total);
-      case 'total_asc':
-        return sorted.sort((a, b) => a.total - b.total);
-      case 'customer_asc':
-        return sorted.sort((a, b) => a.customer.localeCompare(b.customer));
-      case 'customer_desc':
-        return sorted.sort((a, b) => b.customer.localeCompare(a.customer));
-      default:
-        return sorted;
-    }
+  // Sort function - similar to Inventory component's approach
+  const handleSort = useCallback((sortValue: string) => {
+    if (!sortValue) return;
+    setSelectedSort(sortValue);
+    setPage(1);
+    console.log('Sorting by:', sortValue);
   }, []);
 
   // Filter and search invoices
@@ -159,10 +152,47 @@ const Invoicing = () => {
     return result;
   }, [invoices, selectedFilter, searchTerm, dateRange]);
 
-  // Sort the filtered invoices
+  // Sort the filtered invoices - similar to Inventory component's approach
   const sortedInvoices = useMemo(() => {
-    return sortInvoices(filteredInvoices, selectedSort);
-  }, [filteredInvoices, selectedSort, sortInvoices]);
+    const result = [...filteredInvoices];
+    
+    if (!selectedSort) return result;
+
+    const [field, direction] = selectedSort.split('_');
+    const dir = direction as 'asc' | 'desc';
+
+    return result.sort((a, b) => {
+      let cmp = 0;
+      
+      switch (field) {
+        case 'number':
+          cmp = a.number.localeCompare(b.number);
+          break;
+        case 'customer':
+          cmp = a.customer.localeCompare(b.customer);
+          break;
+        case 'date':
+          cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'total':
+          cmp = a.total - b.total;
+          break;
+        case 'status':
+          cmp = a.status.localeCompare(b.status);
+          break;
+        case 'paymentStatus':
+          cmp = a.paymentStatus.localeCompare(b.paymentStatus);
+          break;
+        case 'paymentMethod':
+          cmp = a.paymentMethod.localeCompare(b.paymentMethod);
+          break;
+        default:
+          cmp = 0;
+      }
+      
+      return dir === 'asc' ? cmp : -cmp;
+    });
+  }, [filteredInvoices, selectedSort]);
 
   // Update count when filtered results change
   useEffect(() => {
@@ -190,16 +220,14 @@ const Invoicing = () => {
   }, [navigate]);
 
   const onEditInvoice = useCallback((invoice: Invoice) => {
-    // Navigate to edit page with invoice data
     navigate(`/invoices/edit/${invoice.id}`, { 
       state: { 
         invoice: {
           ...invoice,
-          // Ensure dates are properly formatted
           date: invoice.date,
           dueDate: invoice.dueDate,
-          createdAt: invoice.created_at,
-          updatedAt: invoice.updated_at,
+          createdAt: invoice.createdAt,
+          updatedAt: invoice.updatedAt,
         }
       } 
     });
@@ -215,9 +243,11 @@ const Invoicing = () => {
       status: 'draft',
       paymentStatus: 'Unpaid',
       amountPaid: 0,
+      remainingBalance: invoice.total,
+      payments: [],
       notes: `Duplicate of ${invoice.number} - ${invoice.notes || ''}`,
-      created_at: new Date(),
-      updated_at: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
     setInvoices(prev => [...prev, newInvoice]);
   }, []);
@@ -226,7 +256,13 @@ const Invoicing = () => {
     console.log('Mark as paid:', invoiceId);
     setInvoices(prev => prev.map(inv => 
       inv.id === invoiceId 
-        ? { ...inv, paymentStatus: 'Paid' as const, amountPaid: inv.total, updated_at: new Date() }
+        ? { 
+            ...inv, 
+            paymentStatus: 'Paid' as const, 
+            amountPaid: inv.total,
+            remainingBalance: 0,
+            updated_at: new Date() 
+          }
         : inv
     ));
   }, []);
@@ -257,12 +293,6 @@ const Invoicing = () => {
   const onFilter = useCallback((filter: string) => {
     setSelectedFilter(filter);
     setPage(1);
-  }, []);
-
-  const onSort = useCallback((sort: string) => {
-    setSelectedSort(sort);
-    setPage(1);
-    console.log('Sorting by:', sort);
   }, []);
 
   const onPageChange = useCallback((newPage: number) => {
@@ -308,8 +338,38 @@ const Invoicing = () => {
       type: 'column' as const,
       sortable: true,
       sortField: "total",
-      align: 'right' as const,
+      // align: 'right' as const,
       bold: true,
+    },
+    {
+      header: 'Payment Progress',
+      value: (item: Invoice) => {
+        const percent = item.total > 0 ? (item.amountPaid / item.total) * 100 : 0;
+        return (
+          <div className="w-32">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-text-light">Paid</span>
+              <span className="font-medium">{percent.toFixed(0)}%</span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-2">
+              <div 
+                className={`h-2 rounded-full transition-all ${
+                  percent >= 100 ? 'bg-emerald-500' : 
+                  percent > 0 ? 'bg-amber-500' : 
+                  'bg-red-500'
+                }`}
+                style={{ width: `${Math.min(percent, 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-emerald-600">GHS {item.amountPaid.toFixed(2)}</span>
+              <span className="text-text-light">GHS {item.total.toFixed(2)}</span>
+            </div>
+          </div>
+        );
+      },
+      type: 'column' as const,
+      // align: 'center' as const,
     },
     {
       header: 'Payment',
@@ -409,7 +469,7 @@ const Invoicing = () => {
         <div>
           <h2 className="text-2xl font-bold text-text">Invoices</h2>
           <p className="text-text-light text-sm">Manage and track all your invoices</p>
-          <div className="flex gap-4 mt-2 text-sm">
+          <div className="flex gap-4 mt-2 text-sm flex-wrap">
             <span>Total: {sortedInvoices.length}</span>
             <span className="text-emerald-600">
               Paid: {sortedInvoices.filter(inv => inv.paymentStatus === 'Paid').length}
@@ -450,7 +510,7 @@ const Invoicing = () => {
         customActions={getCustomActions}
         onSearch={onSearch}
         onFilter={onFilter}
-        onSort={onSort}
+        onSort={handleSort}
         onPageChange={onPageChange}
         onDateRangeChange={onDateRangeChange}
         onAdd={onNewInvoice}

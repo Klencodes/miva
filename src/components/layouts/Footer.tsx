@@ -24,7 +24,7 @@ const Footer: React.FC = () => {
   return (
     <footer
       className={[
-        "border-t border-white/[0.06]",
+        "border-t border-border",
         "px-6 py-5",
       ].join(" ")}
     >

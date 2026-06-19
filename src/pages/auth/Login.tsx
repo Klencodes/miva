@@ -61,7 +61,7 @@ const LoginPage: React.FC = () => {
       <div
         className={[
           "relative  overflow-hidden",
-          "bg-white/[0.04] border border-white/[0.07]",
+          "bg-card border border-border",
           "shadow-[0_8px_40px_rgba(0,0,0,0.35)]",
           "px-9 py-9",
         ].join(" ")}

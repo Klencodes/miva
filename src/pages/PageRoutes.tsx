@@ -10,6 +10,8 @@ const Invoicing = React.lazy(() => import('./invoicing/Invoicing'));
 const CreateInvoice = React.lazy(() => import('./invoicing/CreateInvoice'));
 const SettingsPage = React.lazy(() => import('./settings/Settings'));
 const InvoiceDetails = React.lazy(() => import('./invoicing/InvoiceDetails'));
+const Customers = React.lazy(() => import('./customers/Customers'));
+const Users = React.lazy(() => import('./team/Users'));
 
 export const PagesRoutes: React.FC = () => {
   return (
@@ -18,14 +20,19 @@ export const PagesRoutes: React.FC = () => {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       
       <Route path="/dashboard" element={<Dashboard />} />
+      
       <Route path="/suppliers" element={<Suppliers/>} />
+      <Route path="/customers" element={<Customers />} />
+
       <Route path="/inventory" element={<Inventory/>} />
+
       <Route path="/invoices" element={<Invoicing/>} />
       <Route path="/invoices/create" element={<CreateInvoice />} />
       <Route path="/invoices/:id" element={<InvoiceDetails />} />
       <Route path="/invoices/edit/:id" element={<CreateInvoice />} /> 
 
-
+      <Route path="/team" element={<Users />} />
+        
       <Route path="/settings" element={<SettingsPage />} />
       {/* Catch all route for protected pages */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

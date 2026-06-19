@@ -1,5 +1,5 @@
 import { Bell, InfoIcon, Menu, Moon, SunDimIcon, X } from "lucide-react";
-import React, { useState } from "react";
+import React from "react";
 import { useTheme } from "../../../core/contexts/ThemeProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -7,36 +7,6 @@ interface HeaderProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
 }
-
-// ─── Inline SVG Icon ──────────────────────────────────────────────────────────
-const SvgIcon = ({
-  d,
-  size = 18,
-  className = "",
-}: {
-  d: string | string[];
-  size?: number;
-  className?: string;
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.8}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    aria-hidden="true"
-  >
-    {Array.isArray(d)
-      ? d.map((path, i) => <path key={i} d={path} />)
-      : <path d={d} />}
-  </svg>
-);
-
-
 
 // ─── Header Component ─────────────────────────────────────────────────────────
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
@@ -53,30 +23,19 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
         "border-b border-border",
         // Layout
         "flex items-center pr-4 gap-3",
-        "bg-card"
+        "bg-card",
       ].join(" ")}
     >
-
-
       {/* ── Logo ── */}
       <div className="flex items-center flex-shrink-0 w-[260px]">
         {/* Logo mark */}
-        <div
-          className={[
-            "w-[34px] h-[34px] rounded-[9px] flex items-center justify-center ml-4",
-            "bg-gradient-to-br from-sky-400 to-indigo-400",
-            "text-text font-extrabold text-[14px] tracking-tight",
-            "shadow-[0_0_20px_rgba(56,189,248,0.3)]",
-          ].join(" ")}
-          aria-hidden="true"
-        >
-          Nx
+        <div className="w-full h-[50px] flex items-center pl-4">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="h-full w-auto object-contain"
+          />
         </div>
-
-        {/* Wordmark — hide on very small screens */}
-        <span className="hidden sm:block text-[17px] font-bold tracking-[-0.4px] text-primary">
-          Nexus<span className="text-sky-400">OS</span>
-        </span>
       </div>
       {/* ── Toggle button ── */}
       <button
@@ -84,17 +43,15 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
         aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
         aria-expanded={sidebarOpen}
       >
-        { sidebarOpen ? <X size={18}/> : < Menu size={18}/> }
+        {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
       {/* ── Right actions ── */}
       <div className="flex items-center gap-1.5 ml-auto">
         {/* Help */}
-          <button
-          aria-label="Knowledge base">
+        <button aria-label="Knowledge base">
           <InfoIcon size={19} />
-
-          </button>
+        </button>
 
         {/* Theme toggle */}
         <button
@@ -102,14 +59,11 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
           aria-label="Toggle theme"
           className="mx-3"
         >
-          { isDark ? <SunDimIcon size={20}/> : <Moon size={20}/>}
+          {isDark ? <SunDimIcon size={20} /> : <Moon size={20} />}
         </button>
 
         {/* Notifications */}
-        <button
-          aria-label="Notifications"
-          className="relative"
-        >
+        <button aria-label="Notifications" className="relative">
           <Bell size={20} />
           {/* Notification dot */}
           <span
