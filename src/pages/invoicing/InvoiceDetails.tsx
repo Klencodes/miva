@@ -20,14 +20,17 @@ import {
   FileText,
   AlertCircle,
   Plus,
+  Download,
+  Send,
 } from 'lucide-react';
-import { Invoice, Payment } from '../../core/types';
+import { Invoice, InvStatus } from '../../core/types';
 import { Button } from '../../components/common';
 import { DateFormatEnums, formatDate } from '../../core/utils/date-format';
 import PaymentHistory from './PaymentHistory';
 import PaymentModal from './PaymentModal';
 import { useModal } from '../../core/hooks/useModal';
-
+import InvoiceService from '../../core/services/invoice';
+import { toast } from 'sonner';
 
 const InvoiceDetails = () => {
   const navigate = useNavigate();
@@ -35,10 +38,11 @@ const InvoiceDetails = () => {
   const { id } = useParams<{ id: string }>();
   const printRef = useRef<HTMLDivElement>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
-  const { openModal } = useModal()
+  const [sending, setSending] = useState(false);
+  const { openModal } = useModal();
+
   // Load invoice from navigation state or fetch by ID
   useEffect(() => {
     const loadInvoice = async () => {
@@ -53,26 +57,21 @@ const InvoiceDetails = () => {
         return;
       }
 
-      // If not in state, fetch by ID from localStorage
+      // If not in state, fetch from API
       if (id) {
         try {
-          const storedInvoices = localStorage.getItem('INVOICES');
-          if (storedInvoices) {
-            const invoices = JSON.parse(storedInvoices);
-            const foundInvoice = invoices.find((inv: any) => inv.id === id);
-            if (foundInvoice) {
-              // Ensure payments array exists
-              if (!foundInvoice.payments) {
-                foundInvoice.payments = [];
-              }
-              setInvoice(foundInvoice);
-            } else {
-              setInvoice(null);
-            }
+          const response = await InvoiceService.getInvoiceByUuid(id);
+          
+          if (response.success && response.results?.invoice) {
+            const invoiceData = response.results.invoice;
+            setInvoice(invoiceData);
+          } else {
+            setInvoice(null);
           }
         } catch (error) {
           console.error('Error loading invoice:', error);
           setInvoice(null);
+          toast.error('Error', { description: 'Failed to load invoice' });
         }
       }
       
@@ -96,14 +95,14 @@ const InvoiceDetails = () => {
   const handlePrint = useCallback(() => {
     const printContent = printRef.current;
     if (!printContent) {
-      alert('Print content not found');
+      toast.error('Error', { description: 'Print content not found' });
       return;
     }
 
     const printWindow = window.open('', '_blank', 'width=800,height=600');
 
     if (!printWindow) {
-      alert('Please allow popups to print the invoice');
+      toast.error('Error', { description: 'Please allow popups to print the invoice' });
       return;
     }
 
@@ -148,100 +147,158 @@ const InvoiceDetails = () => {
     };
   }, [invoice]);
 
+  const handleDownloadPDF = useCallback(async () => {
+    if (!invoice) return;
+    
+    try {
+      await InvoiceService.downloadInvoice(invoice.uuid, `invoice-${invoice.number}.pdf`);
+      toast.success('Success', { description: 'Invoice downloaded successfully' });
+    } catch (error: any) {
+      toast.error('Error', { description: error.message || 'Failed to download invoice' });
+    }
+  }, [invoice]);
+
   const handleEdit = useCallback(() => {
     if (invoice) {
-      navigate(`/invoices/edit/${invoice.id}`, { 
+      navigate(`/invoices/edit/${invoice.uuid}`, { 
         state: { invoice } 
       });
     }
   }, [invoice, navigate]);
 
-  // const handleDuplicate = useCallback(() => {
-  //   if (!invoice) return;
-    
-  //   if (invoice) {
-  //     navigate(`/invoices/edit/${invoice.id}`, { 
-  //       state: { invoice: invoice, isDuplicate: true } 
-  //     });
-  //   }
-  // }, [invoice, navigate]);
-
-  const handleDelete = useCallback(() => {
+  const handleDuplicate = useCallback(async () => {
     if (!invoice) return;
     
     try {
-      const storedInvoices = localStorage.getItem('INVOICES');
-      if (storedInvoices) {
-        const invoices = JSON.parse(storedInvoices);
-        const updatedInvoices = invoices.filter((inv: any) => inv.id !== invoice.id);
-        localStorage.setItem('INVOICES', JSON.stringify(updatedInvoices));
+      const copyData = {
+        customer: {
+          name: invoice.customer.name,
+          email: invoice.customer.email || '',
+          phone: invoice.customer.phone || '',
+          address: invoice.customer.address || '',
+          tax_id: invoice.customer.tax_id || '',
+        },
+        items: invoice.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          unit: item.unit,
+          quantity: item.quantity,
+          price: item.price,
+          cost: item.cost || 0,
+          specs: item.specs || {},
+        })),
+        date: new Date().toISOString(),
+        discount_type: invoice.discount_type || 'percentage',
+        discount_rate: invoice.discount_rate || 0,
+        vat_rate: invoice.vat_rate || 12.5,
+        notes: `Duplicate of ${invoice.number}${invoice.notes ? ` - ${invoice.notes}` : ''}`,
+        terms: invoice.terms || 'Due on Receipt',
+        currency: 'GHS',
+        status: 'draft' as InvStatus,
+        payments: [],
+        amount_paid: 0,
+      };
+
+      const response = await InvoiceService.createInvoice(copyData);
+      
+      if (response.success) {
+        toast.success('Success', { description: `Invoice ${invoice.number} duplicated successfully` });
+        navigate(`/invoices/${response.results.invoice.uuid}`);
       }
-    } catch (error) {
-      console.error('Error deleting invoice:', error);
+    } catch (error: any) {
+      console.error('Error duplicating invoice:', error);
+      toast.error('Error', { description: error.message || 'Failed to duplicate invoice' });
     }
-    
-    setShowDeleteModal(false);
-    navigate('/invoices', { 
-      state: { message: `Invoice ${invoice.number} has been deleted successfully` } 
-    });
   }, [invoice, navigate]);
 
-  const handleOpenPaymentModal = async() => {
-    const result =  await openModal(PaymentModal, {
+  const handleDelete = useCallback(async () => {
+    if (!invoice) return;
+    
+    try {
+      const response = await InvoiceService.deleteInvoice(invoice.uuid);
+      
+      if (response.success) {
+        toast.success('Success', { description: `Invoice ${invoice.number} deleted successfully` });
+        setShowDeleteModal(false);
+        navigate('/invoices');
+      }
+    } catch (error: any) {
+      console.error('Error deleting invoice:', error);
+      toast.error('Error', { description: error.message || 'Failed to delete invoice' });
+    }
+  }, [invoice, navigate]);
+
+  const handleSendEmail = useCallback(async () => {
+    if (!invoice) return;
+    
+    setSending(true);
+    try {
+      const response = await InvoiceService.sendInvoice(
+        invoice.uuid,
+        invoice.customer.email,
+        `Please find attached invoice ${invoice.number}`
+      );
+      
+      if (response.success) {
+        toast.success('Success', { description: `Invoice sent to ${invoice.customer.email || 'customer'}` });
+      }
+    } catch (error: any) {
+      console.error('Error sending invoice:', error);
+      toast.error('Error', { description: error.message || 'Failed to send invoice' });
+    } finally {
+      setSending(false);
+    }
+  }, [invoice]);
+
+  const handleOpenPaymentModal = async () => {
+    if (!invoice) return;
+    
+    const result = await openModal(PaymentModal, {
       data: { invoice },
       side: 'right',
       size: "xl"
-    })
-    if(result?.success){
-      setInvoice(result.data);
+    });
+    
+    if (result?.success) {
+      // Refresh invoice data
+      try {
+        const response = await InvoiceService.getInvoiceByUuid(invoice.uuid);
+        if (response.success && response.results?.invoice) {
+          setInvoice(response.results.invoice);
+        }
+      } catch (error) {
+        console.error('Error refreshing invoice:', error);
+      }
     }
-    console.log(result, "result>>>");
-    // Make API call to update the data
   };
 
-
-
-  const handleDeletePayment = useCallback((paymentId: string) => {
+  const handleDeletePayment = useCallback(async (paymentId: string) => {
     if (!invoice) return;
-
-    const updatedPayments = invoice.payments?.filter(p => p.id !== paymentId) || [];
-    const newAmountPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
-    const newRemainingBalance = invoice.total - newAmountPaid;
-    const newPaymentStatus = newRemainingBalance <= 0 ? 'Paid' : (newAmountPaid > 0 ? 'Partial' : 'Unpaid');
-
-    const updatedInvoice: Invoice = {
-      ...invoice,
-      amountPaid: newAmountPaid,
-      remainingBalance: newRemainingBalance,
-      paymentStatus: newPaymentStatus,
-      payments: updatedPayments,
-      updatedAt: new Date(),
-    };
-
-    // Update in localStorage
+    
+    // Note: This would require a delete payment endpoint
+    // For now, we'll refresh the invoice data
     try {
-      const storedInvoices = localStorage.getItem('INVOICES');
-      if (storedInvoices) {
-        const invoices = JSON.parse(storedInvoices);
-        const index = invoices.findIndex((inv: any) => inv.id === invoice.id);
-        if (index !== -1) {
-          invoices[index] = updatedInvoice;
-          localStorage.setItem('INVOICES', JSON.stringify(invoices));
-        }
+      const response = await InvoiceService.getInvoiceByUuid(invoice.uuid);
+      if (response.success && response.results?.invoice) {
+        setInvoice(response.results.invoice);
+        toast.success('Success', { description: 'Payment removed successfully' });
       }
     } catch (error) {
-      console.error('Error deleting payment:', error);
+      console.error('Error refreshing invoice:', error);
+      toast.error('Error', { description: 'Failed to refresh invoice data' });
     }
-
-    setInvoice(updatedInvoice);
   }, [invoice]);
 
   const getStatusBadge = (status: string) => {
     const config = {
-      invoiced: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle, label: 'Invoiced' },
-      quoted: { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Quoted' },
       draft: { color: 'bg-slate-100 text-slate-700', icon: FileText, label: 'Draft' },
-      cancelled: { color: 'bg-danger-10 text-red-700', icon: XCircle, label: 'Cancelled' },
+      quoted: { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Quoted' },
+      invoiced: { color: 'bg-blue-100 text-blue-700', icon: FileText, label: 'Invoiced' },
+      partially_paid: { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Partially Paid' },
+      paid: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle, label: 'Paid' },
+      cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
+      overdue: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Overdue' },
     };
     const configItem = config[status as keyof typeof config] || config.draft;
     const Icon = configItem.icon;
@@ -257,7 +314,7 @@ const InvoiceDetails = () => {
     const config = {
       Paid: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle, label: 'Paid' },
       Partial: { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Partial' },
-      Unpaid: { color: 'bg-danger-10 text-red-700', icon: XCircle, label: 'Unpaid' },
+      Unpaid: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Unpaid' },
     };
     const configItem = config[status as keyof typeof config] || config.Unpaid;
     const Icon = configItem.icon;
@@ -286,7 +343,7 @@ const InvoiceDetails = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="text-text-light mt-4">Loading invoice...</p>
         </div>
       </div>
@@ -303,7 +360,7 @@ const InvoiceDetails = () => {
           <p className="text-text-light mt-2">The invoice you're looking for doesn't exist.</p>
           <button
             onClick={handleBack}
-            className="mt-4 px-6 py-2 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+            className="mt-4 px-6 py-2 bg-primary text-white hover:opacity-90 transition-colors rounded-lg"
           >
             Back to Invoices
           </button>
@@ -313,20 +370,22 @@ const InvoiceDetails = () => {
   }
 
   const canEdit = invoice.status === 'draft' || invoice.status === 'quoted';
-  const canDelete = invoice.status === 'draft' || invoice.status === 'quoted';
-  const canMakePayment = invoice.status === 'invoiced' && invoice.paymentStatus !== 'Paid' && invoice.remainingBalance > 0;
+  const canDelete = invoice.status === 'draft' || invoice.status === 'quoted' || invoice.status === 'cancelled';
+  const canMakePayment = (invoice.status === 'invoiced' || invoice.payment_status === 'partially' || invoice.payment_status === 'overdue') 
+    && invoice.remaining_balance > 0;
   const isCancelled = invoice.status === 'cancelled';
+  const isPaid = invoice.payment_status === 'paid';
 
   return (
-    <div className="">
-      <div className="">
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header with actions */}
-        <div className="max-w-7xl overflow-y-auto shadow-sm p-6 mb-6">
+        <div className="bg-card shadow-sm border border-border p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={handleBack}
-                className="p-2 transition-colors"
+                className="p-2 hover:bg-background transition-colors rounded-lg"
                 title="Back to invoices"
               >
                 <ArrowLeft className="w-5 h-5 text-text-light" />
@@ -335,10 +394,12 @@ const InvoiceDetails = () => {
                 <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="text-2xl font-bold text-text">{invoice.number}</h1>
                   {getStatusBadge(invoice.status)}
-                  {getPaymentStatusBadge(invoice.paymentStatus)}
+                  {getPaymentStatusBadge(invoice.payments[0].method || 
+                    (invoice.remaining_balance <= 0 ? 'Paid' : 
+                     invoice.amount_paid > 0 ? 'Partial' : 'Unpaid'))}
                 </div>
                 <p className="text-sm text-text-light mt-1">
-                  Created on {formatDate(new Date(invoice.date), DateFormatEnums.DATE_TIME_SHORT)}
+                  Created on {formatDate(new Date(invoice.created_at), DateFormatEnums.DATE_TIME_SHORT)}
                 </p>
               </div>
             </div>
@@ -348,59 +409,54 @@ const InvoiceDetails = () => {
               {canMakePayment && (
                 <Button
                   onClick={handleOpenPaymentModal}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <Plus className="w-4 h-4" />
                   Make Payment
                 </Button>
               )}
 
+              {/* Send Email */}
+              {invoice.customer.email && (
+                <Button
+                  onClick={handleSendEmail}
+                  variant="ghost"
+                  disabled={sending}
+                >
+                  <Send className="w-4 h-4" />
+                  {sending ? 'Sending...' : 'Email'}
+                </Button>
+              )}
+
               {/* Print Button */}
-              <Button
-                onClick={handlePrint}
-                variant='ghost'
-              >
+              <Button onClick={handlePrint} variant="ghost">
                 <Printer className="w-4 h-4" />
                 Print
               </Button>
 
-              {/* Email Button */}
-              <Button
-                onClick={() => {
-                  console.log('Sending invoice to:', invoice.customerEmail);
-                  alert(`Invoice ${invoice.number} has been sent to ${invoice.customerEmail || 'the customer'}`);
-                }}
-                variant="ghost"
-              >
-                <Mail className="w-4 h-4" />
-                Email
+              {/* Download PDF */}
+              <Button onClick={handleDownloadPDF} variant="ghost">
+                <Download className="w-4 h-4" />
+                PDF
               </Button>
 
               {/* Duplicate Button */}
-              {/* <Button
-                variant="ghost"
-                onClick={handleDuplicate}
-              >
+              <Button variant="ghost" onClick={handleDuplicate}>
                 <Copy className="w-4 h-4" />
                 Duplicate
-              </Button> */}
+              </Button>
 
               {/* Edit Button - only for draft and quoted */}
               {canEdit && (
-                <Button
-                  variant="info"
-                  onClick={handleEdit}
-                >
+                <Button variant="info" onClick={handleEdit}>
                   <Edit className="w-4 h-4" />
                   Edit
                 </Button>
               )}
 
-              {/* Delete Button - only for draft and quoted */}
+              {/* Delete Button - only for draft, quoted, and cancelled */}
               {canDelete && (
-                <Button
-                  onClick={() => setShowDeleteModal(true)}
-                  variant="danger">
+                <Button onClick={() => setShowDeleteModal(true)} variant="danger">
                   <Trash2 className="w-4 h-4" />
                   Delete
                 </Button>
@@ -410,22 +466,22 @@ const InvoiceDetails = () => {
         </div>
 
         {/* Invoice Content - Print Area */}
-        <div ref={printRef} className="bg-card shadow-sm p-8 print:shadow-none">
+        <div ref={printRef} className="bg-card border border-border shadow-sm p-8 print:shadow-none print:border-none">
           <div className="max-w-4xl mx-auto">
             {/* Invoice Header */}
             <div className="border-b border-border pb-6 mb-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-xl font-bold text-text">INVOICE</h2>
+                  <h2 className="text-2xl font-bold text-text">INVOICE</h2>
                   <p className="text-text-light mt-1"># {invoice.number}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-text-light">Date</p>
                   <p className="font-medium">{formatDate(new Date(invoice.date), DateFormatEnums.MEDIUM_DATE)}</p>
-                  {invoice.dueDate && (
+                  {invoice.due_date && (
                     <>
                       <p className="text-sm text-text-light mt-2">Due Date</p>
-                      <p className="font-medium">{formatDate(new Date(invoice.dueDate), DateFormatEnums.MEDIUM_DATE)}</p>
+                      <p className="font-medium">{formatDate(new Date(invoice.due_date), DateFormatEnums.MEDIUM_DATE)}</p>
                     </>
                   )}
                 </div>
@@ -436,24 +492,30 @@ const InvoiceDetails = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3">Bill To</h3>
-                <div className="bg-background p-4">
-                  <p className="font-semibold text-text">{invoice.customer}</p>
-                  {invoice.customerAddress && (
+                <div className="bg-background p-4 rounded-lg">
+                  <p className="font-semibold text-text">{invoice.customer.name}</p>
+                  {invoice.customer.address && (
                     <div className="flex items-start gap-2 mt-2 text-text-light">
                       <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm">{invoice.customerAddress}</p>
+                      <p className="text-sm">{invoice.customer.address}</p>
                     </div>
                   )}
-                  {invoice.customerEmail && (
+                  {invoice.customer.email && (
                     <div className="flex items-center gap-2 mt-2 text-text-light">
                       <Mail className="w-4 h-4" />
-                      <p className="text-sm">{invoice.customerEmail}</p>
+                      <p className="text-sm">{invoice.customer.email}</p>
                     </div>
                   )}
-                  {invoice.customerPhone && (
+                  {invoice.customer.phone && (
                     <div className="flex items-center gap-2 mt-2 text-text-light">
                       <Phone className="w-4 h-4" />
-                      <p className="text-sm">{invoice.customerPhone}</p>
+                      <p className="text-sm">{invoice.customer.phone}</p>
+                    </div>
+                  )}
+                  {invoice.customer.tax_id && (
+                    <div className="flex items-center gap-2 mt-2 text-text-light">
+                      <FileText className="w-4 h-4" />
+                      <p className="text-sm">Tax ID: {invoice.customer.tax_id}</p>
                     </div>
                   )}
                 </div>
@@ -461,31 +523,29 @@ const InvoiceDetails = () => {
 
               <div>
                 <div className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3">Payment Details</div>
-                <div className="bg-background p-4 space-y-2">
+                <div className="bg-background p-4 rounded-lg space-y-2">
                   <div className="flex items-center gap-2">
-                    {getPaymentMethodIcon(invoice.paymentMethod)}
-                    <span className="text-sm font-medium">{invoice.paymentMethod}</span>
+                    {getPaymentMethodIcon(invoice.payments[0].method || 'Cash')}
+                    <span className="text-sm font-medium">{invoice.payments[0].method|| 'Cash'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-text-light">Status</span>
-                    {getPaymentStatusBadge(invoice.paymentStatus)}
+                    {getPaymentStatusBadge(
+                      invoice.remaining_balance <= 0 ? 'Paid' : 
+                      invoice.amount_paid > 0 ? 'Partial' : 'Unpaid'
+                    )}
                   </div>
-                  {invoice.momoTransactionId && (
-                    <div className="text-sm text-text-light">
-                      <span className="text-text-light">Transaction ID:</span> {invoice.momoTransactionId}
-                    </div>
-                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-text-light">Amount Paid</span>
-                    <span className="font-medium text-emerald-600">GHS {invoice.amountPaid.toFixed(2)}</span>
+                    <span className="font-medium text-emerald-600">GHS {invoice.amount_paid.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-text-light">Remaining Balance</span>
-                    <span className={`font-medium ${invoice.remainingBalance <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      GHS {invoice.remainingBalance.toFixed(2)}
+                    <span className={`font-medium ${invoice.remaining_balance <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      GHS {invoice.remaining_balance.toFixed(2)}
                     </span>
                   </div>
-                  {invoice.paymentStatus === 'Unpaid' && (
+                  {invoice.remaining_balance > 0 && invoice.status !== 'cancelled' && (
                     <div className="flex items-center gap-2 text-red-600 text-sm mt-2">
                       <AlertCircle className="w-4 h-4" />
                       <span>Payment pending</span>
@@ -498,10 +558,10 @@ const InvoiceDetails = () => {
             {/* Invoice Items */}
             <div className="mb-8">
               <h3 className="text-sm font-semibold text-text-light uppercase tracking-wider mb-3">Items</h3>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto border border-border rounded-lg">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b-2 border-border">
+                    <tr className="bg-background border-b border-border">
                       <th className="text-left py-3 px-4 text-sm font-semibold text-text-light">Description</th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-text-light">Qty</th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-text-light">Unit Price</th>
@@ -509,12 +569,12 @@ const InvoiceDetails = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {invoice.items.map((item) => (
-                      <tr key={item.id} className="border-b border-border">
-                        <td className="py-3 px-4 text-text">{item.description}</td>
+                    {invoice.items.map((item, index) => (
+                      <tr key={item.id || index} className="border-b border-border last:border-0">
+                        <td className="py-3 px-4 text-text">{item.name}</td>
                         <td className="py-3 px-4 text-right text-text-light">{item.quantity}</td>
-                        <td className="py-3 px-4 text-right text-text-light">GHS {item.unitPrice.toFixed(2)}</td>
-                        <td className="py-3 px-4 text-right font-medium text-text">GHS {item.total.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-right text-text-light">GHS {item.price.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-right font-medium text-text">GHS {(item.price * item.quantity).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -522,8 +582,8 @@ const InvoiceDetails = () => {
               </div>
             </div>
 
-            {/* Payment History - Only show if there are payments */}
-            {(invoice.payments && invoice.payments.length > 0) && (
+            {/* Payment History */}
+            {invoice.payments && invoice.payments.length > 0 && (
               <div className="mb-8">
                 <PaymentHistory 
                   invoice={invoice} 
@@ -540,8 +600,14 @@ const InvoiceDetails = () => {
                     <span className="text-text-light">Subtotal</span>
                     <span>GHS {invoice.subtotal.toFixed(2)}</span>
                   </div>
+                  {invoice.discount_total > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-light">Discount</span>
+                      <span className="text-red-600">-GHS {invoice.discount_total.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
-                    <span className="text-text-light">VAT (12.5%)</span>
+                    <span className="text-text-light">VAT ({invoice.vat_rate || 12.5}%)</span>
                     <span>GHS {invoice.vat.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -554,22 +620,22 @@ const InvoiceDetails = () => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-text-light">COVID Levy (1%)</span>
-                    <span>GHS {invoice.covidLevy.toFixed(2)}</span>
+                    <span>GHS {invoice.covid_levy.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t border-border pt-2">
                     <span>Total</span>
                     <span className="text-emerald-600">GHS {invoice.total.toFixed(2)}</span>
                   </div>
-                  {invoice.amountPaid > 0 && (
+                  {invoice.amount_paid > 0 && (
                     <div className="flex justify-between text-sm pt-1">
                       <span className="text-text-light">Amount Paid</span>
-                      <span className="text-emerald-600">-GHS {invoice.amountPaid.toFixed(2)}</span>
+                      <span className="text-emerald-600">-GHS {invoice.amount_paid.toFixed(2)}</span>
                     </div>
                   )}
-                  {invoice.remainingBalance > 0 && (
+                  {invoice.remaining_balance > 0 && (
                     <div className="flex justify-between text-sm pt-1 border-t border-border">
                       <span className="text-text-light font-medium">Remaining Balance</span>
-                      <span className="font-bold text-amber-600">GHS {invoice.remainingBalance.toFixed(2)}</span>
+                      <span className="font-bold text-amber-600">GHS {invoice.remaining_balance.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
@@ -580,7 +646,7 @@ const InvoiceDetails = () => {
             {invoice.notes && (
               <div className="mt-8 pt-6 border-t border-border">
                 <h4 className="text-sm font-semibold text-text-light uppercase tracking-wider mb-2">Notes</h4>
-                <p className="text-text bg-card p-4">{invoice.notes}</p>
+                <p className="text-text bg-background p-4 rounded-lg">{invoice.notes}</p>
               </div>
             )}
 
@@ -597,7 +663,7 @@ const InvoiceDetails = () => {
               <div className="flex justify-between items-center text-sm text-text-light">
                 <p>Thank you for your business!</p>
                 <div className="flex items-center gap-4">
-                  <span>Powered by GHS Hydraulic Solutions</span>
+                  <span>Powered by Shine Tech Solutions</span>
                 </div>
               </div>
             </div>
@@ -607,9 +673,9 @@ const InvoiceDetails = () => {
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card max-w-md w-full p-6 shadow-2xl">
+            <div className="bg-card max-w-md w-full p-6 shadow-2xl rounded-lg">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-danger-10 rounded-full">
+                <div className="p-2 bg-red-100 rounded-full">
                   <Trash2 className="w-6 h-6 text-red-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-text">Delete Invoice</h3>
@@ -621,13 +687,13 @@ const InvoiceDetails = () => {
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 text-text bg-gray-100 hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-text bg-gray-100 hover:bg-gray-200 transition-colors rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 bg-danger-60 hover:bg-danger-70 text-white transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white transition-colors rounded-lg flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete Invoice
@@ -637,18 +703,25 @@ const InvoiceDetails = () => {
           </div>
         )}
 
-        {/* Additional Status Messages */}
+        {/* Status Messages */}
         {isCancelled && (
-          <div className="mt-6 p-4 bg-red-50 border border-red-200 flex items-center gap-3">
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
             <XCircle className="w-5 h-5 text-red-600" />
             <p className="text-red-700">This invoice has been cancelled. No further actions can be taken.</p>
           </div>
         )}
 
-        {invoice.status === 'invoiced' && invoice.paymentStatus === 'Paid' && (
-          <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+        {isPaid && (
+          <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-emerald-600" />
             <p className="text-emerald-700">This invoice has been fully paid. Thank you!</p>
+          </div>
+        )}
+
+        {invoice.payment_status === 'overdue' && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <p className="text-red-700">This invoice is overdue. Please remind the customer to make payment.</p>
           </div>
         )}
       </div>

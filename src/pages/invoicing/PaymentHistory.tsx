@@ -1,20 +1,26 @@
 // components/invoices/PaymentHistory.tsx
 import React, { useState } from 'react';
-import { Payment, Invoice } from '../../core/types';
+import { Invoice } from '../../core/types';
 import { formatDate, DateFormatEnums } from '../../core/utils/date-format';
-import { Wallet, Smartphone, Building2, CreditCard, ChevronDown, ChevronUp, Receipt, X, Check } from 'lucide-react';
+import { Wallet, Smartphone, Building2, CreditCard, ChevronDown, ChevronUp, Receipt, X, Check, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PaymentHistoryProps {
   invoice: Invoice;
   onDeletePayment?: (paymentId: string) => void;
+  onRefresh?: () => void;
 }
 
-const PaymentHistory: React.FC<PaymentHistoryProps> = ({ invoice, onDeletePayment }) => {
+const PaymentHistory: React.FC<PaymentHistoryProps> = ({ 
+  invoice, 
+  onDeletePayment,
+  onRefresh 
+}) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
 
   const payments = invoice.payments || [];
-  const totalPaid = invoice.amountPaid;
+  const totalPaid = invoice.amount_paid || 0;
   const remainingBalance = invoice.total - totalPaid;
   const isFullyPaid = remainingBalance <= 0;
 
@@ -31,18 +37,29 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ invoice, onDeletePaymen
   };
 
   const handleDeletePayment = async (paymentId: string) => {
-    if (window.confirm('Are you sure you want to delete this payment record?')) {
-      setDeletingPaymentId(paymentId);
-      try {
-        if (onDeletePayment) {
-          onDeletePayment(paymentId);
-        }
-      } catch (error) {
-        console.error('Error deleting payment:', error);
-        alert('Failed to delete payment. Please try again.');
-      } finally {
-        setDeletingPaymentId(null);
+    if (!window.confirm('Are you sure you want to delete this payment record?')) {
+      return;
+    }
+
+    setDeletingPaymentId(paymentId);
+    try {
+      // Note: You'll need to implement a delete payment endpoint
+      // For now, we'll refresh the invoice data
+      if (onDeletePayment) {
+        onDeletePayment(paymentId);
       }
+      
+      // Refresh invoice data
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      toast.success('Success', { description: 'Payment removed successfully' });
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      toast.error('Error', { description: error.message || 'Failed to delete payment' });
+    } finally {
+      setDeletingPaymentId(null);
     }
   };
 
@@ -63,7 +80,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ invoice, onDeletePaymen
       return {
         label: 'Unpaid',
         color: 'bg-red-100 text-red-700',
-        icon: X,
+        icon: AlertCircle,
       };
     }
   };
@@ -75,10 +92,10 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ invoice, onDeletePaymen
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       {/* Header */}
       <div 
-        className="p-4 cursor-pointer hover:bg-slate-50 transition-colors flex justify-between items-center"
+        className="p-4 cursor-pointer hover:bg-background transition-colors flex justify-between items-center"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <Receipt className="w-5 h-5 text-text-light" />
             <h3 className="font-semibold text-text">Payment History</h3>
@@ -87,9 +104,9 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ invoice, onDeletePaymen
             <StatusIcon className="w-4 h-4" />
             {status.label}
           </div>
-          <div className="flex items-center gap-4 text-sm text-text-light">
-            <span>Total Paid: <span className="font-semibold text-emerald-600">GHS {totalPaid.toFixed(2)}</span></span>
-            <span>Remaining: <span className={`font-semibold ${isFullyPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
+          <div className="flex items-center gap-4 text-sm text-text-light flex-wrap">
+            <span>Paid: <span className="font-semibold text-emerald-600">GHS {totalPaid.toFixed(2)}</span></span>
+            <span>Balance: <span className={`font-semibold ${isFullyPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
               GHS {remainingBalance.toFixed(2)}
             </span></span>
           </div>
@@ -122,10 +139,10 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ invoice, onDeletePaymen
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {payments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
+                  {payments.map((payment, index) => (
+                    <tr key={payment.payment_id || index} className="hover:bg-background transition-colors">
                       <td className="px-4 py-3 text-sm text-text">
-                        {formatDate(new Date(payment.date), DateFormatEnums.MEDIUM_DATE)}
+                        {formatDate(payment.date, DateFormatEnums.MEDIUM_DATE)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -144,12 +161,12 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ invoice, onDeletePaymen
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
-                          onClick={() => handleDeletePayment(payment.id)}
-                          disabled={deletingPaymentId === payment.id}
+                          onClick={() => handleDeletePayment(payment.payment_id || `payment-${index}`)}
+                          disabled={deletingPaymentId === payment.payment_id}
                           className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                           title="Delete payment"
                         >
-                          {deletingPaymentId === payment.id ? (
+                          {deletingPaymentId === payment.payment_id ? (
                             <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
                           ) : (
                             <X className="w-4 h-4" />

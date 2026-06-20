@@ -1,39 +1,18 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { SelectOption } from '../../components/common/Input';
 import { Button, DataTable } from '../../components/common';
-import { Invoice } from '../../core/types';
-import { generateSampleInvoices } from '../../data/sampleData';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { DiscountType, InvItemType, InvItemUnitType, Invoice, InvStatus } from '../../core/types';
+import InvoiceService from "../../core/services/invoice";
+import { defaultSystemSettings } from '../../data/sampleData';
 
 const Invoicing = () => {
   const navigate = useNavigate();
 
   // State management
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    // Load invoices from localStorage or generate samples
-    try {
-      const storedInvoices = localStorage.getItem('INVOICES');
-      if (storedInvoices) {
-        const parsed = JSON.parse(storedInvoices);
-        // Convert date strings back to Date objects
-        return parsed.map((inv: any) => ({
-          ...inv,
-          date: new Date(inv.date),
-          dueDate: inv.dueDate ? new Date(inv.dueDate) : undefined,
-          createdAt: new Date(inv.createdAt),
-          updatedAt: new Date(inv.updatedAt),
-          // Ensure payments array exists
-          payments: inv.payments || [],
-          remainingBalance: inv.remainingBalance !== undefined ? inv.remainingBalance : inv.total - (inv.amountPaid || 0),
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading invoices from localStorage:', error);
-    }
-    return generateSampleInvoices();
-  });
-  
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -43,14 +22,54 @@ const Invoicing = () => {
   const [selectedSort, setSelectedSort] = useState('date_desc');
   const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
 
-  // Save invoices to localStorage whenever they change
-  useEffect(() => {
+  // Fetch invoices from API
+  const fetchInvoices = useCallback(async () => {
     try {
-      localStorage.setItem('INVOICES', JSON.stringify(invoices));
-    } catch (error) {
-      console.error('Error saving invoices to localStorage:', error);
+      setLoading(true);
+      
+      // Build query params
+      const params: any = {
+        page,
+        limit,
+      };
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (selectedFilter !== 'all') {
+        params.status = selectedFilter;
+      }
+
+      if (dateRange.start) {
+        params.date_from = dateRange.start.toISOString();
+      }
+
+      if (dateRange.end) {
+        params.date_to = dateRange.end.toISOString();
+      }
+
+      const response = await InvoiceService.getInvoices(params);
+      
+      if (response.success) {
+        const invoiceData = response.results?.invoices || [];
+        setInvoices(invoiceData);
+        setCount(response.results?.pagination?.total || 0);
+      }
+    } catch (error: any) {
+      console.error('Error fetching invoices:', error);
+      toast.error('Error', {
+        description: error.message || 'Failed to load invoices'
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [invoices]);
+  }, [page, limit, searchTerm, selectedFilter, dateRange]);
+
+  // Load invoices on mount and when dependencies change
+  useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
 
   // Filter options
   const statusOptions: SelectOption[] = [
@@ -59,6 +78,9 @@ const Invoicing = () => {
     { value: 'quoted', label: 'Quoted' },
     { value: 'draft', label: 'Draft' },
     { value: 'cancelled', label: 'Cancelled' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'partially_paid', label: 'Partially Paid' },
+    { value: 'overdue', label: 'Overdue' },
   ];
 
   const paymentStatusOptions: SelectOption[] = [
@@ -88,6 +110,9 @@ const Invoicing = () => {
       quoted: 'bg-amber-100 text-amber-700',
       draft: 'bg-slate-100 text-slate-700',
       cancelled: 'bg-red-100 text-red-700',
+      paid: 'bg-emerald-100 text-emerald-700',
+      partially_paid: 'bg-amber-100 text-amber-700',
+      overdue: 'bg-red-100 text-red-700',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
@@ -119,14 +144,14 @@ const Invoicing = () => {
     console.log('Sorting by:', sortValue);
   }, []);
 
-  // Filter and search invoices
+  // Filter and search invoices (frontend filtering)
   const filteredInvoices = useMemo(() => {
     let result = [...invoices];
 
     // Apply status filter
     if (selectedFilter !== 'all') {
       result = result.filter(inv => 
-        inv.status === selectedFilter || inv.paymentStatus === selectedFilter
+        inv.status === selectedFilter
       );
     }
 
@@ -135,9 +160,9 @@ const Invoicing = () => {
       const search = searchTerm.toLowerCase();
       result = result.filter(inv =>
         inv.number.toLowerCase().includes(search) ||
-        inv.customer.toLowerCase().includes(search) ||
-        inv.customerEmail?.toLowerCase().includes(search) ||
-        inv.id.toLowerCase().includes(search)
+        inv.customer?.name.toLowerCase().includes(search) ||
+        inv.customer?.email?.toLowerCase().includes(search) ||
+        inv.number.toLowerCase().includes(search)
       );
     }
 
@@ -152,7 +177,7 @@ const Invoicing = () => {
     return result;
   }, [invoices, selectedFilter, searchTerm, dateRange]);
 
-  // Sort the filtered invoices - similar to Inventory component's approach
+  // Sort the filtered invoices
   const sortedInvoices = useMemo(() => {
     const result = [...filteredInvoices];
     
@@ -169,7 +194,7 @@ const Invoicing = () => {
           cmp = a.number.localeCompare(b.number);
           break;
         case 'customer':
-          cmp = a.customer.localeCompare(b.customer);
+          cmp = a.customer?.name.localeCompare(b.customer?.name);
           break;
         case 'date':
           cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -180,11 +205,8 @@ const Invoicing = () => {
         case 'status':
           cmp = a.status.localeCompare(b.status);
           break;
-        case 'paymentStatus':
-          cmp = a.paymentStatus.localeCompare(b.paymentStatus);
-          break;
         case 'paymentMethod':
-          cmp = a.paymentMethod.localeCompare(b.paymentMethod);
+          cmp = a.payments[0].method.localeCompare(b.payments[0].method);
           break;
         default:
           cmp = 0;
@@ -212,78 +234,130 @@ const Invoicing = () => {
   }, [navigate]);
 
   const onViewInvoice = useCallback((invoice: Invoice) => {
-    navigate(`/invoices/${invoice.id}`, { state: { invoice } });
+    navigate(`/invoices/${invoice.uuid || invoice.uuid}`, { state: { invoice } });
   }, [navigate]);
 
   const onPrintInvoice = useCallback((invoice: Invoice) => {
-    navigate(`/invoices/${invoice.id}`, { state: { invoice, print: true } });
+    navigate(`/invoices/${invoice.uuid || invoice.uuid}`, { state: { invoice, print: true } });
   }, [navigate]);
 
   const onEditInvoice = useCallback((invoice: Invoice) => {
-    navigate(`/invoices/edit/${invoice.id}`, { 
+    navigate(`/invoices/edit/${invoice.uuid || invoice.uuid}`, { 
       state: { 
         invoice: {
           ...invoice,
           date: invoice.date,
-          dueDate: invoice.dueDate,
-          createdAt: invoice.createdAt,
-          updatedAt: invoice.updatedAt,
+          dueDate: invoice.due_date,
+          createdAt: invoice.created_at,
+          updatedAt: invoice.updated_at,
         }
       } 
     });
   }, [navigate]);
 
-  const onCopyInvoice = useCallback((invoice: Invoice) => {
-    console.log('Copy invoice:', invoice);
-    const newInvoice: Invoice = {
-      ...invoice,
-      id: `inv-${Date.now()}`,
-      number: `INV-${String(Date.now()).slice(-4)}`,
-      date: new Date(),
-      status: 'draft',
-      paymentStatus: 'Unpaid',
-      amountPaid: 0,
-      remainingBalance: invoice.total,
-      payments: [],
-      notes: `Duplicate of ${invoice.number} - ${invoice.notes || ''}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setInvoices(prev => [...prev, newInvoice]);
-  }, []);
+  const onCopyInvoice = useCallback(async (invoice: Invoice) => {
+    try {
+      // Create a copy of the invoice
+      const copyData = {
+        customer: {
+          name: invoice.customer?.name || '',
+          email: invoice.customer?.email || '',
+          phone: invoice.customer?.phone || '',
+          address: invoice.customer?.address || '',
+        },
+        items: invoice.items.map(item => ({
+          id: item.id,
+          name: item.description || '',
+          quantity: item.quantity,
+          price: item.price,
+          cost: 0,
+          unit: 'pieces' as InvItemUnitType,
+          type: 'other' as InvItemType,
+        })),
+        date: new Date().toISOString(),
+        discount_type: 'percentage' as DiscountType,
+        discount_rate: 0,
+        vat_rate: defaultSystemSettings.taxRate,
+        notes: `Duplicate of ${invoice.number} - ${invoice.notes || ''}`,
+        terms: invoice.terms || 'Due on Receipt',
+        currency: 'GHS',
+        status: 'draft' as InvStatus,
+        payment_pethod: invoice.payments[0].method || 'Cash',
+      };
 
-  const onMarkAsPaid = useCallback((invoiceId: string) => {
-    console.log('Mark as paid:', invoiceId);
-    setInvoices(prev => prev.map(inv => 
-      inv.id === invoiceId 
-        ? { 
-            ...inv, 
-            paymentStatus: 'Paid' as const, 
-            amountPaid: inv.total,
-            remainingBalance: 0,
-            updated_at: new Date() 
-          }
-        : inv
-    ));
-  }, []);
-
-  const onCancelInvoice = useCallback((invoiceId: string) => {
-    console.log('Cancel invoice:', invoiceId);
-    if (window.confirm('Are you sure you want to cancel this invoice?')) {
-      setInvoices(prev => prev.map(inv => 
-        inv.id === invoiceId 
-          ? { ...inv, status: 'cancelled' as const, updated_at: new Date() }
-          : inv
-      ));
+      const response = await InvoiceService.createInvoice(copyData);
+      
+      if (response.success) {
+        toast.success('Success', {
+          description: `Invoice ${invoice.number} duplicated successfully`
+        });
+        fetchInvoices(); // Refresh the list
+      }
+    } catch (error: any) {
+      console.error('Error copying invoice:', error);
+      toast.error('Error', {
+        description: error.message || 'Failed to duplicate invoice'
+      });
     }
-  }, []);
+  }, [fetchInvoices]);
 
-  const onDeleteInvoice = useCallback((invoiceId: string) => {
-    console.log('Delete invoice:', invoiceId);
-    if (window.confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+  const onMarkAsPaid = useCallback(async (invoiceId: string) => {
+    try {
+      const response = await InvoiceService.markAsPaid(invoiceId);
+      
+      if (response.success) {
+        toast.success('Success', {
+          description: 'Invoice marked as paid successfully'
+        });
+        fetchInvoices(); // Refresh the list
+      }
+    } catch (error: any) {
+      console.error('Error marking invoice as paid:', error);
+      toast.error('Error', {
+        description: error.message || 'Failed to mark invoice as paid'
+      });
     }
-  }, []);
+  }, [fetchInvoices]);
+
+  const onCancelInvoice = useCallback(async (invoiceId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this invoice?')) return;
+    
+    try {
+      const response = await InvoiceService.cancelInvoice(invoiceId);
+      
+      if (response.success) {
+        toast.success('Success', {
+          description: 'Invoice cancelled successfully'
+        });
+        fetchInvoices(); // Refresh the list
+      }
+    } catch (error: any) {
+      console.error('Error cancelling invoice:', error);
+      toast.error('Error', {
+        description: error.message || 'Failed to cancel invoice'
+      });
+    }
+  }, [fetchInvoices]);
+
+  const onDeleteInvoice = useCallback(async (invoiceId: string) => {
+    if (!window.confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) return;
+    
+    try {
+      const response = await InvoiceService.deleteInvoice(invoiceId);
+      
+      if (response.success) {
+        toast.success('Success', {
+          description: 'Invoice deleted successfully'
+        });
+        fetchInvoices(); // Refresh the list
+      }
+    } catch (error: any) {
+      console.error('Error deleting invoice:', error);
+      toast.error('Error', {
+        description: error.message || 'Failed to delete invoice'
+      });
+    }
+  }, [fetchInvoices]);
 
   const onSearch = useCallback((term: string) => {
     setSearchTerm(term);
@@ -319,7 +393,7 @@ const Invoicing = () => {
     },
     {
       header: 'Customer',
-      value: (item: Invoice) => item.customer,
+      value: (item: Invoice) => item.customer?.name || "Walk-In",
       type: 'column' as const,
       sortable: true,
       sortField: 'customer'
@@ -338,13 +412,12 @@ const Invoicing = () => {
       type: 'column' as const,
       sortable: true,
       sortField: "total",
-      // align: 'right' as const,
       bold: true,
     },
     {
       header: 'Payment Progress',
       value: (item: Invoice) => {
-        const percent = item.total > 0 ? (item.amountPaid / item.total) * 100 : 0;
+        const percent = item.total > 0 ? (item.amount_paid / item.total) * 100 : 0;
         return (
           <div className="w-32">
             <div className="flex justify-between text-xs mb-1">
@@ -362,20 +435,19 @@ const Invoicing = () => {
               />
             </div>
             <div className="flex justify-between text-xs mt-1">
-              <span className="text-emerald-600">GHS {item.amountPaid.toFixed(2)}</span>
+              <span className="text-emerald-600">GHS {item.amount_paid.toFixed(2)}</span>
               <span className="text-text-light">GHS {item.total.toFixed(2)}</span>
             </div>
           </div>
         );
       },
       type: 'column' as const,
-      // align: 'center' as const,
     },
     {
       header: 'Payment',
       sortable: true,
       sortField: "paymentMethod",
-      value: (item: Invoice) => `${getPaymentMethodIcon(item.paymentMethod)} ${item.paymentMethod}`,
+      value: (item: Invoice) => `${getPaymentMethodIcon(item.payments[0].method)} ${item.payments[0].method}`,
       type: 'column' as const,
     },
     {
@@ -390,9 +462,9 @@ const Invoicing = () => {
       header: 'Payment Status',
       sortable: true,
       sortField: "paymentStatus",
-      value: (item: Invoice) => item.paymentStatus,
+      value: (item: Invoice) => item.payments[0].method,
       type: 'status' as const,
-      statusClasses: (item: Invoice) => getPaymentStatusColor(item.paymentStatus),
+      statusClasses: (item: Invoice) => getPaymentStatusColor(item.payments[0].method),
     },
   ];
 
@@ -431,21 +503,21 @@ const Invoicing = () => {
     });
 
     // Mark as paid (only for invoiced and not paid)
-    if (item.status === 'invoiced' && item.paymentStatus !== 'Paid') {
+    if ((item.status === 'invoiced' || item.payment_status === 'partially') && item.payment_status !== 'paid') {
       actions.push({
         title: 'Mark as Paid',
         icon: 'check',
-        handler: () => onMarkAsPaid(item.id),
+        handler: () => onMarkAsPaid(item.uuid || item.uuid),
         classes: 'text-emerald-600',
       });
     }
 
     // Cancel action (only for invoiced and not cancelled)
-    if (item.status === 'invoiced') {
+    if (item.status !== 'cancelled' && item.status !== 'draft') {
       actions.push({
         title: 'Cancel Invoice',
         icon: 'delete',
-        handler: () => onCancelInvoice(item.id),
+        handler: () => onCancelInvoice(item.uuid || item.uuid),
         classes: 'text-danger',
       });
     }
@@ -455,7 +527,7 @@ const Invoicing = () => {
       actions.push({
         title: 'Delete',
         icon: 'delete',
-        handler: () => onDeleteInvoice(item.id),
+        handler: () => onDeleteInvoice(item.uuid || item.uuid),
         classes: 'text-danger',
       });
     }
@@ -472,13 +544,13 @@ const Invoicing = () => {
           <div className="flex gap-4 mt-2 text-sm flex-wrap">
             <span>Total: {sortedInvoices.length}</span>
             <span className="text-emerald-600">
-              Paid: {sortedInvoices.filter(inv => inv.paymentStatus === 'Paid').length}
+              Paid: {sortedInvoices.filter(inv => inv.payment_status === 'paid').length}
             </span>
             <span className="text-amber-600">
-              Partial: {sortedInvoices.filter(inv => inv.paymentStatus === 'Partial').length}
+              Partial: {sortedInvoices.filter(inv => inv.payment_status === 'partially').length}
             </span>
             <span className="text-red-600">
-              Unpaid: {sortedInvoices.filter(inv => inv.paymentStatus === 'Unpaid').length}
+              Unpaid: {sortedInvoices.filter(inv => inv.payment_status === 'unpaid').length}
             </span>
           </div>
         </div>

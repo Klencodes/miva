@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DataTable } from '../../components/common';
 import { InventoryItem, IUser } from '../../core/types';
-import { generateInitialInventory } from '../../data/sampleData';
 import { DUMMY_USERS, getPermissions } from '../../core/constants/permissions';
 import { ColumnDef } from '../../components/common/Datatable';
 
@@ -19,23 +18,23 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [selectedUserId, setSelectedUserId] = useState<string>(activeUser.id);
+  const [selectedUserId, setSelectedUserId] = useState<string>(activeUser.uuid);
   const [demoUser, setDemoUser] = useState<IUser>(activeUser);
 
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
-      setInventory(generateInitialInventory());
+      setInventory();
       setLoading(false);
     }, 500);
   }, []);
 
   // ── Demo user switcher ─────────────────────────────────────────────────────
   const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const user = DUMMY_USERS.find((u) => u.id === e.target.value);
+    const user = DUMMY_USERS.find((u) => u.uuid === e.target.value);
     if (user) {
-      setSelectedUserId(user.id);
+      setSelectedUserId(user.uuid);
       setDemoUser(user);
     }
   };
@@ -52,7 +51,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         (item) =>
           item.name.toLowerCase().includes(q) ||
           item.specs?.sae?.toLowerCase().includes(q) ||
-          item.specs?.threadType?.toLowerCase().includes(q) ||
+          item.specs?.thread_type?.toLowerCase().includes(q) ||
           item.supplier?.toLowerCase().includes(q)
       );
     }
@@ -80,8 +79,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         else if (field === 'quantity') cmp = a.quantity - b.quantity;
         else if (field === 'cost') cmp = a.cost - b.cost;
         else if (field === 'price') cmp = a.price - b.price;
-        else if (field === 'location')
-          cmp = (a.location ?? '').localeCompare(b.location ?? '');
+        else if (field === 'description')
+          cmp = (a.description ?? '').localeCompare(b.description ?? '');
         return dir === 'asc' ? cmp : -cmp;
       })
     );
@@ -90,7 +89,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   // ── Stock summary ──────────────────────────────────────────────────────────
   const stockStatus = useMemo(() => {
     const total = inventory.length;
-    const low = inventory.filter((item) => item.quantity <= item.reorderThreshold).length;
+    const low = inventory.filter((item) => item.quantity <= item.reorder_threshold).length;
     return { total, low, healthy: total - low };
   }, [inventory]);
 
@@ -98,7 +97,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const updateInventory = (id: string, newQuantity: number) => {
     setInventory((prev) =>
       prev.map((item) =>
-        item.id === id
+        item.uuid === id
           ? { ...item, quantity: Math.max(0, newQuantity), lastUpdated: new Date() }
           : item
       )
@@ -106,7 +105,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   };
 
   const deleteInventoryItem = (id: string) => {
-    setInventory((prev) => prev.filter((item) => item.id !== id));
+    setInventory((prev) => prev.filter((item) => item.uuid !== id));
   };
 
   // ── Column definitions ─────────────────────────────────────────────────────
@@ -118,7 +117,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       value: (item: InventoryItem) => [item.name, item.supplier || ''],
       type: 'column',
       bold: true,
-      link: (item: InventoryItem) => `/inventory/${item.id}`,
+      link: (item: InventoryItem) => `/inventory/${item.uuid}`,
     },
     {
       header: 'TYPE',
@@ -173,21 +172,21 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       value: (item: InventoryItem) => {
         const specs: string[] = [];
         if (item.specs?.sae) specs.push(`SAE ${item.specs.sae}`);
-        if (item.specs?.threadType) specs.push(item.specs.threadType);
+        if (item.specs?.thread_type) specs.push(item.specs.thread_type);
         if (item.specs?.pressure) specs.push(`${item.specs.pressure} bar`);
         if (item.specs?.diameter) specs.push(`${item.specs.diameter}"`);
         if (item.specs?.material) specs.push(item.specs.material);
         if (item.specs?.angle) specs.push(`${item.specs.angle}°`);
-        if (item.specs?.partNumber) specs.push(item.specs.partNumber);
+        if (item.specs?.part_number) specs.push(item.specs.part_number);
         return specs.slice(0, 3).join(' • ');
       },
       type: 'column',
     },
     {
-      header: 'LOCATION',
+      header: 'description',
       sortable: true,
-      sortField: 'location',
-      value: (item: InventoryItem) => item.location || '—',
+      sortField: 'description',
+      value: (item: InventoryItem) => item.description || '—',
       type: 'column',
     },
   ];
@@ -200,14 +199,14 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       title: 'Add Stock',
       icon: 'add',
       classes: 'text-emerald-600 hover:text-emerald-800',
-      handler: () => updateInventory(item.id, item.quantity + 1),
+      handler: () => updateInventory(item.uuid, item.quantity + 1),
     });
 
     actions.push({
       title: 'Remove Stock',
       icon: 'remove',
       classes: 'text-red-600 hover:text-red-800',
-      handler: () => updateInventory(item.id, item.quantity - 1),
+      handler: () => updateInventory(item.uuid, item.quantity - 1),
     });
 
     if (activePermissions.can_edit_inventory) {
@@ -215,7 +214,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         title: 'Edit',
         icon: 'edit',
         classes: 'text-blue-600 hover:text-blue-800',
-        handler: () => console.log('Edit item:', item.id),
+        handler: () => console.log('Edit item:', item.uuid),
       });
     }
 
@@ -225,7 +224,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         icon: 'delete',
         classes: 'text-red-600 hover:text-red-800',
         handler: () => {
-          if (window.confirm(`Delete "${item.name}"?`)) deleteInventoryItem(item.id);
+          if (window.confirm(`Delete "${item.name}"?`)) deleteInventoryItem(item.uuid);
         },
       });
     }
@@ -267,28 +266,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
           </p>
         </div>
 
-        {/* Demo user switcher */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-text-light font-medium">Demo user:</label>
-          <select
-            value={selectedUserId}
-            onChange={handleUserChange}
-            className="text-sm border border-gray-200 px-3 py-1.5 bg-card shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          >
-            {DUMMY_USERS.map((u: IUser) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({u.role.replace('_', ' ')})
-              </option>
-            ))}
-          </select>
-          <span
-            className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${
-              roleBadgeColor[demoUser.role] ?? 'bg-gray-100 text-text-light'
-            }`}
-          >
-            {demoUser.role.replace('_', ' ')}
-          </span>
-        </div>
       </div>
 
       {/* Stock Status Summary */}

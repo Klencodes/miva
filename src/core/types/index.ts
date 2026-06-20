@@ -3,85 +3,187 @@ export interface IResponse {
   message: string;
   code: string;
   success: boolean;
-  results: any
+  results: any;
 }
+
+/** ==========================================================================================
+ * INVENTORY INTERFACE
+ * ==========================================================================================
+ */
+// types/index.ts
+export type InvItemType = 'hose' | 'fitting' | 'ferrule' | 'assembly' | 'adapter' | 'coupling' | 'other';
+export type InvItemUnitType = 'meters' | 'feet' | 'pieces';
+export type InvItemThreadType = 'BSP' | 'JIC' | 'NPT' | 'ORFS' | 'SAE' | 'Komatsu' | 'Metric';
+
 export interface InventoryItem {
-  id: string;
+  uuid: string;
+  entity_id: string;
   name: string;
-  type: 'hose' | 'fitting' | 'ferrule' | 'assembly' | 'adapter' | 'coupling' | 'other';
-  unit: 'meters' | 'feet' | 'pieces';
+  type: InvItemType;
+  unit: InvItemUnitType;
   quantity: number;
   specs: {
     sae?: string;
     pressure?: number;
-    threadType?: 'BSP' | 'JIC' | 'NPT' | 'ORFS' | 'SAE' | 'Komatsu' | 'Metric';
+    thread_type?: InvItemThreadType;
     diameter?: number;
     material?: string;
-    partNumber?: string;
+    part_number?: string;
     angle?: number;
-    workingTemp?: string;
-    assemblyLength?: number;
+    working_temp?: string;
+    assembly_length?: number;
   };
-  reorderThreshold: number;
+  reorder_threshold: number;
   cost: number;
   price: number;
-  location?: string;
+  description?: string;
   supplier?: string;
-  lastUpdated?: Date;
   image?: string;
+  stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock';
+  total_value?: number;
+  created_at: string;
+  updated_at: string;
 }
 
-// core/types/index.ts
-export interface Payment {
-  id: string;
-  invoiceId: string;
-  amount: number;
-  method: 'Cash' | 'MoMo' | 'Bank' | 'Credit';
-  reference?: string; // Transaction ID, bank reference, etc.
-  date: Date;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+export interface InventoryFilterParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: string;
+  min_quantity?: number;
+  max_quantity?: number;
+  min_price?: number;
+  max_price?: number;
+  stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock';
+  supplier?: string;
 }
 
+/** ==========================================================================================
+ * INVOICE INTERFACE
+ * ==========================================================================================
+ */
 export interface Invoice {
-  id: string;
+  uuid: string;
+  entity_id: string;
   number: string;
-  date: Date;
-  dueDate?: Date;
-  customer: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  customerAddress?: string;
+  date: string;
+  due_date?: string;
+  customer: Customer;
   items: InvoiceItem[];
   subtotal: number;
-  discountTotal: number;
+  discount_total: number;
+  discount_type: DiscountType;
+  discount_rate: number;
   vat: number;
+  vat_rate: number;
   nhil: number;
   getfund: number;
-  covidLevy: number;
+  covid_levy: number;
   total: number;
-  paymentMethod: 'Cash' | 'MoMo' | 'Bank' | 'Credit';
-  momoTransactionId?: string;
-  paymentStatus: 'Paid' | 'Partial' | 'Unpaid';
-  amountPaid: number;
-  remainingBalance: number;
-  status: 'invoiced' | 'quoted' | 'draft' | 'cancelled';
+  amount_paid: number;
+  remaining_balance: number;
+  status: InvStatus;
   notes?: string;
   terms?: string;
-  payments?: Payment[];
-  createdAt: Date;
-  updatedAt: Date;
+  currency: string;
+  payments: InvoicePayment[];
+  payment_status: InvoicePaymentStatus;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
 }
+
+export type InvoicePaymentStatus = "unpaid" | "paid" | "overdue" | "partially"
+export type DiscountType = "percentage" | "fixed";
+export type InvStatus =
+  | "draft"
+  | "quoted"
+  | "invoiced"
+  | "cancelled"
 
 export interface InvoiceItem {
   id: string;
-  description: string;
+  name: string;
+  type: InvItemType;
+  unit: InvItemUnitType;
   quantity: number;
-  unitPrice: number;
-  total: number;
-  discount?: number;
+  specs?: {
+    sae?: string;
+    pressure?: number;
+    thread_type?: InvItemThreadType;
+    diameter?: number;
+    material?: string;
+    part_number?: string;
+    angle?: number;
+    working_temp?: string;
+    assembly_length?: number;
+  };
+  cost: number;
+  price: number;
+  description?: string;
+  supplier?: string;
+  image?: string;
 }
+export interface InvoicePayment {
+  payment_id?: string;
+  amount: number;
+  method: PaymentType;
+  reference?: string;
+  bank_branch?: string;
+  date?: string;
+  notes?: string;
+}
+export type PaymentType = "Cash" | "MoMo" | "Bank" | "Credit";
+export interface InvoiceFilterParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  customer?: string;
+  min_total?: number;
+  max_total?: number;
+}
+
+export interface InvoiceStats {
+  by_status: Array<{
+    status: string;
+    count: number;
+    total_amount: number;
+    total_paid: number;
+  }>;
+  totals: {
+    total_invoices: number;
+    total_amount: number;
+    total_paid: number;
+    total_remaining: number;
+  };
+}
+
+/** ==========================================================================================
+ * CUSTOMER INTERFACE
+ * ==========================================================================================
+ */
+export interface Customer {
+  uuid?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  tax_id?: string;
+  balance?: number;
+  notes?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** ==========================================================================================
+ * USER INTERFACE
+ * ==========================================================================================
+ */
 export interface IUser {
   id: string;
   uuid: string;
@@ -101,46 +203,8 @@ export interface IUser {
   verified?: boolean;
   is_active?: boolean;
   auth_token?: string;
-  entities?: Entity[]
+  entities?: Entity[];
 }
-export interface Entity {
-  id?: string;
-  uuid: string;
-  name: string;
-  branch: string;
-  email: string;
-  phone: string;
-  website: string;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  zip_code: string;
-  registration_number: string;
-  tax_id: string;
-  is_active: boolean;
-  settings?: Record<string, any>;
-  metadata?: Record<string, any>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Supplier {
-  id: string;
-  name: string;
-  address: string;
-  email: string;
-  phone_number: string;
-  secondary_number: string;
-  phone_code: string;
-  secondary_code: string;
-  created_at?: string | Date;
-  updated_at?: string | Date;
-  total_orders?: number;
-  total_spent?: number;
-  status?: 'active' | 'inactive';
-}
-
 export interface UserPermissions {
   can_edit_inventory: boolean;
   can_delete_inventory: boolean;
@@ -164,95 +228,12 @@ export interface ActivityLog {
   ipAddress?: string;
 }
 
-export interface ISupplier {
-  id: string;
-  name: string;
-  contact: string;
-  phone: string;
-  email: string;
-  address: string;
-  paymentTerms: string;
-}
-
-export interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  taxId?: string;
-  creditLimit?: number;
-  balance?: number;
-  createdAt: Date;
-  updatedAt: Date;
-  notes?: string;
-  is_active?: boolean;
-}
-
-export interface SystemSettings {
-  companyName: string;
-  companyAddress: string;
-  companyPhone: string;
-  companyEmail: string;
-  taxRate: number;
-  nhilRate: number;
-  getfundRate: number;
-  covidLevyRate: number;
-  currency: string;
-  invoicePrefix: string;
-  quotePrefix: string;
-  defaultPaymentTerms: string;
-  enableOfflineMode: boolean;
-  autoBackup: boolean;
-  backupFrequency: 'daily' | 'weekly' | 'monthly';
-}
-
-export type TabType = 'dashboard' | 'inventory' | 'builder' | 'invoicing' | 'reports' | 'settings';
-export type OTPType = 'verification' | 'login' | 'password_reset';
-
-export interface StoreShape {
-  user: IUser | null;
-  entity: Entity | null;
-  storeEntities: Entity[];
-  initializationComplete: boolean;
-  adminExists: boolean | null;
-  checkingAdmin: boolean;
-  userRef: React.MutableRefObject<IUser | null>;
-  isAuthenticatedRef: React.MutableRefObject<boolean>;
-  entityRef: React.MutableRefObject<Entity | null>;
-  isAuthenticated: boolean;
-  hasStoreEntities: boolean;
-  userRole: string | null;
-  setUser: (userData: IUser | null) => void;
-  logout: () => Promise<void>;
-  setEntity: (newEntity: Entity | null) => void;
-  setStoreEntities: (newEntities: Entity[] | null) => void;
-  checkAuthStatus: () => Promise<{ isValid: boolean }>;
-  checkAdminExists: (forceCheck?: boolean) => Promise<boolean>;
-}
-
-export interface IUserEntity {
-  entity_id: string;
-  role: 'super_admin' | 'admin' | 'sales' | 'viewer';
-  joined_at: string;
-  is_primary: boolean;
-}
-
 export interface IUserQueryParams {
   page?: number;
   limit?: number;
   search?: string;
   role?: string;
   is_active?: boolean | string;
-}
-
-export interface IEntityQueryParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  country?: string;
-  is_active?: boolean | string;
-  branch?: string;
 }
 
 export interface ICreateUserData {
@@ -282,6 +263,48 @@ export interface IUpdateUserData {
   is_active?: boolean;
 }
 
+/** ==========================================================================================
+ * ENTITY INTERFACE
+ * ==========================================================================================
+ */
+export interface Entity {
+  id?: string;
+  uuid: string;
+  name: string;
+  branch: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zip_code: string;
+  registration_number: string;
+  tax_id: string;
+  is_active: boolean;
+  settings?: Record<string, any>;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IUserEntity {
+  entity_id: string;
+  role: "super_admin" | "admin" | "sales" | "viewer";
+  name: string;
+  branch: string;
+  joined_at: string;
+  is_primary: boolean;
+}
+export interface IEntityQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  country?: string;
+  is_active?: boolean | string;
+  branch?: string;
+}
 export interface ICreateEntityData {
   name: string;
   email: string;
@@ -319,12 +342,95 @@ export interface IUpdateEntityData {
 
 export interface IUserEntityAssignment {
   entity_id: string;
-  role?: 'super_admin' | 'admin' | 'sales' | 'viewer';
+  role?: "super_admin" | "admin" | "sales" | "viewer";
   is_primary?: boolean;
 }
 
+/** ==========================================================================================
+ * SUPPLIER INTERFACE
+ * ==========================================================================================
+ */
+export interface Supplier {
+  id: string;
+  name: string;
+  address: string;
+  email: string;
+  phone_number: string;
+  secondary_number: string;
+  phone_code: string;
+  secondary_code: string;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+  total_orders?: number;
+  total_spent?: number;
+  status?: "active" | "inactive";
+}
+export interface ISupplier {
+  id: string;
+  name: string;
+  contact: string;
+  phone: string;
+  email: string;
+  address: string;
+  paymentTerms: string;
+}
+
+/** ==========================================================================================
+ * SYSTEM INTERFACE
+ * ==========================================================================================
+ */
+export interface SystemSettings {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
+  taxRate: number;
+  nhilRate: number;
+  getfundRate: number;
+  covidLevyRate: number;
+  currency: string;
+  invoicePrefix: string;
+  quotePrefix: string;
+  defaultPaymentTerms: string;
+  enableOfflineMode: boolean;
+  autoBackup: boolean;
+  backupFrequency: "daily" | "weekly" | "monthly";
+}
+
+export type TabType =
+  | "dashboard"
+  | "inventory"
+  | "builder"
+  | "invoicing"
+  | "reports"
+  | "settings";
+export type OTPType = "verification" | "login" | "password_reset";
+
+export interface StoreShape {
+  user: IUser | null;
+  entity: Entity | null;
+  storeEntities: Entity[];
+  initializationComplete: boolean;
+  adminExists: boolean | null;
+  checkingAdmin: boolean;
+  userRef: React.MutableRefObject<IUser | null>;
+  isAuthenticatedRef: React.MutableRefObject<boolean>;
+  entityRef: React.MutableRefObject<Entity | null>;
+  isAuthenticated: boolean;
+  hasStoreEntities: boolean;
+  userRole: string | null;
+  setUser: (userData: IUser | null) => void;
+  logout: () => Promise<void>;
+  setEntity: (newEntity: Entity | null) => void;
+  setStoreEntities: (newEntities: Entity[] | null) => void;
+  checkAuthStatus: () => Promise<{ isValid: boolean }>;
+  checkAdminExists: (forceCheck?: boolean) => Promise<boolean>;
+}
+
 export interface IPaginatedResponse<T> {
-  [key: string]: T[] | { page: number; limit: number; total: number; totalPages: number };
+  [key: string]:
+    | T[]
+    | { page: number; limit: number; total: number; totalPages: number };
   pagination: {
     page: number;
     limit: number;
