@@ -1,5 +1,10 @@
 import { UserRole } from "../constants/permissions";
-
+export interface IResponse {
+  message: string;
+  code: string;
+  success: boolean;
+  results: any
+}
 export interface InventoryItem {
   id: string;
   name: string;
@@ -87,14 +92,35 @@ export interface IUser {
   address?: string;
   role: UserRole;
   avatar?: string;
-  last_login?: Date;
+  last_login?: string;
   permissions?: UserPermissions;
   password?: string;
-  created_at?: Date;
-  updated_at?: Date;
+  created_at?: string;
+  updated_at?: string;
   verified?: boolean;
-  isActive?: boolean;
+  is_active?: boolean;
   auth_token?: string;
+  entities?: Entity[]
+}
+export interface Entity {
+  uuid: string;
+  name: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zip_code: string;
+  registration_number: string;
+  tax_id: string;
+  currency: string;
+  is_active: boolean;
+  settings?: Record<string, any>;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Supplier {
@@ -114,16 +140,16 @@ export interface Supplier {
 }
 
 export interface UserPermissions {
-  canEditInventory: boolean;
-  canDeleteInventory: boolean;
-  canCreateInvoice: boolean;
-  canEditInvoice: boolean;
-  canDeleteInvoice: boolean;
-  canBuildAssembly: boolean;
-  canManageUsers: boolean;
-  canViewReports: boolean;
-  canManageSettings: boolean;
-  canViewActivityLogs: boolean;
+  can_edit_inventory: boolean;
+  can_delete_inventory: boolean;
+  can_create_invoice: boolean;
+  can_edit_invoice: boolean;
+  can_delete_invoice: boolean;
+  can_build_assembly: boolean;
+  can_manage_users: boolean;
+  can_view_reports: boolean;
+  can_manage_settings: boolean;
+  can_view_activity_logs: boolean;
 }
 
 export interface IEntityItem {
@@ -160,7 +186,7 @@ export interface Customer {
   createdAt: Date;
   updatedAt: Date;
   notes?: string;
-  isActive?: boolean;
+  is_active?: boolean;
 }
 
 export interface SystemSettings {
@@ -182,3 +208,151 @@ export interface SystemSettings {
 }
 
 export type TabType = 'dashboard' | 'inventory' | 'builder' | 'invoicing' | 'reports' | 'settings';
+export type OTPType = 'verification' | 'login' | 'password_reset';
+
+export interface StoreShape {
+  user: IUser | null;
+  entity: IEntityItem | null;
+  storeEntities: IEntityItem[];
+  initializationComplete: boolean;
+  adminExists: boolean | null;
+  checkingAdmin: boolean;
+  userRef: React.MutableRefObject<IUser | null>;
+  isAuthenticatedRef: React.MutableRefObject<boolean>;
+  entityRef: React.MutableRefObject<IEntityItem | null>;
+  isAuthenticated: boolean;
+  hasStoreEntities: boolean;
+  userRole: string | null;
+  setUser: (userData: IUser | null) => void;
+  logout: () => Promise<void>;
+  setEntity: (newEntity: IEntityItem | null) => void;
+  setStoreEntities: (newEntities: IEntityItem[] | null) => void;
+  checkAuthStatus: () => Promise<{ isValid: boolean }>;
+  getRequiredRoute: () => string | null;
+  getInitialRoute: () => string;
+  checkAdminExists: (forceCheck?: boolean) => Promise<boolean>;
+}
+
+export interface IUserEntity {
+  entity_id: string;
+  role: 'super_admin' | 'admin' | 'sales' | 'viewer';
+  joined_at: string;
+  is_primary: boolean;
+}
+
+export interface IEntity {
+  uuid: string;
+  name: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zip_code: string;
+  registration_number: string;
+  tax_id: string;
+  currency: string;
+  is_active: boolean;
+  settings: Record<string, any>;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  auth_token?: string;
+}
+
+export interface IUserQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  is_active?: boolean | string;
+}
+
+export interface IEntityQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  country?: string;
+  is_active?: boolean | string;
+  currency?: string;
+}
+
+export interface ICreateUserData {
+  name: string;
+  email: string;
+  password: string;
+  confirm_password: string;
+  phone?: string;
+  address?: string;
+  role?: string;
+  permissions?: Partial<UserPermissions>;
+  verified?: boolean;
+  entities?: Array<{
+    entity_id: string;
+    role?: string;
+    is_primary?: boolean;
+  }>;
+}
+
+export interface IUpdateUserData {
+  name?: string;
+  phone?: string;
+  address?: string;
+  role?: string;
+  permissions?: Partial<UserPermissions>;
+  verified?: boolean;
+  is_active?: boolean;
+}
+
+export interface ICreateEntityData {
+  name: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zip_code?: string;
+  registration_number?: string;
+  tax_id?: string;
+  currency?: string;
+  settings?: Record<string, any>;
+  metadata?: Record<string, any>;
+}
+
+export interface IUpdateEntityData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zip_code?: string;
+  registration_number?: string;
+  tax_id?: string;
+  currency?: string;
+  settings?: Record<string, any>;
+  metadata?: Record<string, any>;
+  is_active?: boolean;
+}
+
+export interface IUserEntityAssignment {
+  entity_id: string;
+  role?: 'super_admin' | 'admin' | 'sales' | 'viewer';
+  is_primary?: boolean;
+}
+
+export interface IPaginatedResponse<T> {
+  [key: string]: T[] | { page: number; limit: number; total: number; totalPages: number };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

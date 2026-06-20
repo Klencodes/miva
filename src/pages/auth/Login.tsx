@@ -1,6 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import AuthService from "../../core/services/auth";
+import { UserRole } from "../../core/constants/permissions";
 import { Button, Input } from "../../components/common";
 import { Lock, Mail } from "lucide-react";
+import { useStore } from "../../core/contexts/StoreProvider";
+import { setStoredItem, USER_KEY } from "../../core/hooks/useStore";
 
 interface LoginForm {
   email: string;
@@ -28,7 +33,7 @@ function validate(form: LoginForm): LoginErrors {
   return errors;
 }
 
-const LoginPage: React.FC = () => {
+const Login: React.FC = () => {
   const [form, setForm] = useState<LoginForm>({
     email: "",
     password: "",
@@ -37,6 +42,18 @@ const LoginPage: React.FC = () => {
   const [errors, setErrors] = useState<LoginErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  const navigate = useNavigate();
+
+  // ✅ Single useStore call — reads from the shared singleton context
+  const { setUser, adminExists, checkAdminExists } = useStore();
+
+  // If no admin exists, redirect to admin creation
+  React.useEffect(() => {
+    if (adminExists === false) {
+      navigate("/create-admin", { replace: true });
+    }
+  }, [adminExists, navigate]);
 
   const handleChange = (field: keyof LoginForm) => (value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -47,18 +64,81 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Client-side validation
     const validationErrors = validate(form);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
+
     setIsLoading(true);
     setSubmitError("");
+
     try {
-      await new Promise((res) => setTimeout(res, 1400));
-      // navigate("/dashboard");
-    } catch {
-      setSubmitError("Invalid email or password. Please try again.");
+      const response = await AuthService.login(form.email, form.password);
+
+      if (response.success) {
+        const userData = response.results;
+        const user = {
+          ...userData,
+          role: userData.role as UserRole,
+          last_login: userData?.last_login || "",
+          permissions: userData?.permissions as any,
+        };
+
+        // ✅ Step 1: Persist to localStorage
+        setStoredItem(USER_KEY, user);
+
+        // ✅ Step 2: Update the shared store state
+        setUser(user);
+
+        // ✅ Step 3: Refresh admin status (force = true, skips stale cache)
+        await checkAdminExists(true);
+
+        // ✅ Step 4: Check user role and entity status
+        const userRole = user.role;
+        const hasEntities = user.entities && user.entities.length > 0;
+
+        let redirectPath = "/dashboard"; // Default path
+
+        // Check if user is super_admin
+        if (userRole === "super_admin") {
+          // Super admin goes to dashboard regardless of entities
+          redirectPath = "/dashboard";
+        }
+        // Check if user is admin
+        else if (userRole === "admin") {
+          if (hasEntities) {
+            // Admin with entities goes to dashboard
+            redirectPath = "/dashboard";
+          } else {
+            // Admin without entities goes to create organisation
+            // ✅ FIX: Use navigate instead of window.location.href
+            redirectPath = "/account/create-organisation";
+          }
+        }
+        // User is regular user (not super_admin or admin)
+        else {
+          if (hasEntities) {
+            // Regular user with entities goes to dashboard
+            redirectPath = "/dashboard";
+          } else {
+            // Regular user without entities goes to contact admin page
+            redirectPath = "/access-denied";
+          }
+        }
+
+        // ✅ Step 5: Navigate to the appropriate page
+        navigate(redirectPath, { replace: true });
+      } else {
+        setSubmitError("Invalid email or password.");
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setSubmitError(
+        err.response?.data?.message || "Invalid email or password",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +148,7 @@ const LoginPage: React.FC = () => {
     <div className="w-full max-w-[500px] mx-auto">
       <div
         className={[
-          "relative  overflow-hidden",
+          "relative overflow-hidden",
           "bg-card border border-border",
           "px-5 py-9",
         ].join(" ")}
@@ -91,7 +171,7 @@ const LoginPage: React.FC = () => {
         {/* Server error */}
         {submitError && (
           <div
-            className="flex items-center gap-2 px-3 py-2.5  mb-4
+            className="flex items-center gap-2 px-3 py-2.5 mb-4
               bg-rose-500/10 border border-rose-500/20 text-[13px] text-rose-400"
             role="alert"
           >
@@ -139,6 +219,7 @@ const LoginPage: React.FC = () => {
               name="password"
             />
           </div>
+
           {/* Remember + Forgot */}
           <div className="flex items-center justify-between -mt-2 mb-5">
             <Input
@@ -205,4 +286,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage;
+export default Login;

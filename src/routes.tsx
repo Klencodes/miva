@@ -1,57 +1,73 @@
+// src/IRoutes.tsx
 import { lazy, Suspense, useMemo } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import CommonLayout from "./components/layouts/CommonLayout";
 import FullLayout from "./components/layouts/FullLayout";
-import { getStoredItem, NO_ENTITY_KEY, useStore } from "./core/hooks/useStore";
 import Loader from "./components/common/Loader";
+import { useStore } from "./core/contexts/StoreProvider";
 
-// ─── Lazy page routes ─────────────────────────────────────────────────────────
+
 const AuthRoutes = lazy(() => import("./pages/auth/AuthRoutes"));
 const PagesRoutes = lazy(() => import("./pages/PageRoutes"));
+const CreateAdmin = lazy(() => import("./pages/auth/CreateAdmin"));
 
-// ─── Full-screen loader fallback ──────────────────────────────────────────────
 const ScreenLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-[#0F172A]">
     <Loader />
   </div>
 );
 
-// ─── ProtectedRoute ───────────────────────────────────────────────────────────
-// Wraps authenticated pages in CommonLayout (Header + Sidebar + Footer).
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const {
-    userRef,
-    getRequiredRoute,
-    isAuthenticatedRef,
-    initializationComplete,
-  } = useStore();
+// ─── AdminGuard ────────────────────────────────────────────────────────────────
+const AdminGuard = ({ children }: { children: React.ReactNode }) => {
+  const { adminExists, checkingAdmin, initializationComplete } = useStore();
   const location = useLocation();
 
+  if (!initializationComplete || checkingAdmin) return <ScreenLoader />;
+
+  // Admin already exists — send away from the create-admin page
+  if (adminExists) {
+    return <Navigate to="/account/login" state={{ from: location }} replace />;
+  }
+
+  return <FullLayout>{children}</FullLayout>;
+};
+
+// ─── ProtectedRoute ────────────────────────────────────────────────────────────
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { userRef, getRequiredRoute, isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, } = useStore();
+  const location = useLocation();
+
+  // ✅ All hooks before any early return
   const requiredRoute = useMemo(() => {
     if (!initializationComplete) return null;
     return getRequiredRoute();
   }, [initializationComplete, getRequiredRoute]);
 
-  const currentAuthState = isAuthenticatedRef.current;
+  if (checkingAdmin || !initializationComplete) return <ScreenLoader />;
 
-  // Not authenticated — send to login, preserving the attempted location
-  if (!userRef.current && !currentAuthState && initializationComplete) {
-    return <Navigate to="/account/login" state={{ from: location }} replace />;
+  if (!adminExists) {
+    return <Navigate to="/account/create-admin" replace />;
   }
 
-  // Store requires a specific route (e.g. setup, verify email)
+  if (!userRef.current && !isAuthenticatedRef.current) {
+    return <Navigate to="/account/login" state={{ from: location }} replace />;
+  }
+  
   if (requiredRoute && requiredRoute !== location.pathname) {
     return <Navigate to={requiredRoute} replace />;
   }
 
-  // Authenticated — render inside the full app shell
   return <CommonLayout>{children}</CommonLayout>;
 };
 
 // ─── PublicRoute ──────────────────────────────────────────────────────────────
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { getRequiredRoute, isAuthenticatedRef, initializationComplete } =
-    useStore();
+  const { getRequiredRoute, isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, userRef, } = useStore();
   const location = useLocation();
 
   const requiredRoute = useMemo(() => {
@@ -60,39 +76,52 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }, [initializationComplete, getRequiredRoute]);
 
   const currentAuthState = isAuthenticatedRef.current;
-  const hasPendingEntity = !!getStoredItem(NO_ENTITY_KEY, null);
+  const verified = userRef.current?.verified;
+  const hasNoEntities = (userRef.current?.entities?.length ?? 0) <= 0;
 
-  // Authenticated with no pending actions → go to main app
-  if (currentAuthState && !requiredRoute && !hasPendingEntity) {
-    return <Navigate to="/store" replace />;
+  if (!initializationComplete || checkingAdmin) return <ScreenLoader />;
+
+  if (!adminExists && location.pathname !== "/account/create-admin") {
+    return <Navigate to="/account/create-admin" replace />;
   }
 
-  // Authenticated but with a required redirect (e.g. forced setup step)
-  if (
-    currentAuthState &&
-    requiredRoute &&
-    requiredRoute !== location.pathname
-  ) {
-    return <Navigate to={requiredRoute} replace />;
+  if (currentAuthState) {
+    // Step 1: Must verify first
+    if (!verified && location.pathname !== "/account/verify") {
+      return <Navigate to="/account/verify" replace />;
+    }
+
+    // Step 2: Verified but no entities — create organisation
+    if (verified && hasNoEntities && location.pathname !== "/account/create-organisation") {
+      return <Navigate to="/account/create-organisation" replace />;
+    }
+
+    // Step 3: Fully set up — go to required route
+    if (verified && !hasNoEntities && requiredRoute && requiredRoute !== location.pathname) {
+      return <Navigate to={requiredRoute} replace />;
+    }
   }
 
-  // Unauthenticated — render as full-screen public page
   return <FullLayout>{children}</FullLayout>;
 };
 
 // ─── AppRoutes ────────────────────────────────────────────────────────────────
-const AppRoutes = () => {
-  const { initializationComplete } = useStore();
+const IRoutes = () => {
+  const { initializationComplete, checkingAdmin } = useStore();
 
-  // Hold rendering until auth state is resolved
-  if (!initializationComplete) {
-    return <ScreenLoader />;
-  }
+  if (!initializationComplete || checkingAdmin) return <ScreenLoader />;
 
   return (
     <Suspense fallback={<ScreenLoader />}>
       <Routes>
-        {/* Public routes — auth pages, landing, etc. */}
+        <Route
+          path="/account/create-admin"
+          element={
+            <AdminGuard>
+              <CreateAdmin />
+            </AdminGuard>
+          }
+        />
         <Route
           path="/account/*"
           element={
@@ -101,8 +130,6 @@ const AppRoutes = () => {
             </PublicRoute>
           }
         />
-
-        {/* Protected routes — main app */}
         <Route
           path="/*"
           element={
@@ -116,4 +143,4 @@ const AppRoutes = () => {
   );
 };
 
-export default AppRoutes;
+export default IRoutes;

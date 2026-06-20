@@ -69,12 +69,12 @@ const CustomerDetail = () => {
         <div className="flex items-center gap-2">
           <span
             className={`px-3 py-1 rounded-full text-sm font-medium ${
-              customer.isActive !== false
+              customer.is_active !== false
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-red-100 text-red-700"
             }`}
           >
-            {customer.isActive !== false ? "Active" : "Inactive"}
+            {customer.is_active !== false ? "Active" : "Inactive"}
           </span>
           <span className="text-sm text-text-light">
             Joined: {formatDate(customer.createdAt)}

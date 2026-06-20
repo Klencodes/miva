@@ -1,15 +1,5 @@
-// features/users/Users.tsx
-import React, { useState, useCallback, useMemo, useEffect } from "react";
-import {
-  Plus,
-  Mail,
-  Phone,
-  Shield,
-  User,
-  Calendar,
-  Check,
-  X,
-} from "lucide-react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { Plus, Mail, Phone, } from "lucide-react";
 import { Button, DataTable } from "../../components/common";
 import { IUser } from "../../core/types";
 import { generateSampleUsers } from "../../data/sampleData";
@@ -80,9 +70,9 @@ const Users = () => {
     let result = [...users];
 
     if (selectedFilter === "active") {
-      result = result.filter((u) => u.isActive !== false);
+      result = result.filter((u) => u.is_active !== false);
     } else if (selectedFilter === "inactive") {
-      result = result.filter((u) => u.isActive === false);
+      result = result.filter((u) => u.is_active === false);
     } else if (selectedFilter !== "all") {
       result = result.filter((u) => u.role === selectedFilter);
     }
@@ -116,13 +106,13 @@ const Users = () => {
       case "newest":
         result.sort(
           (a, b) =>
-            (b.created_at?.getTime() || 0) - (a.created_at?.getTime() || 0),
+            (new Date(b.created_at || "")?.getTime() || 0) - (new Date(a.created_at || "")?.getTime() || 0),
         );
         break;
       case "oldest":
         result.sort(
           (a, b) =>
-            (a.created_at?.getTime() || 0) - (b.created_at?.getTime() || 0),
+            (new Date(a.created_at || "")?.getTime() || 0) - (new Date(b.created_at || "")?.getTime() || 0),
         );
         break;
       case "role_asc":
@@ -226,8 +216,8 @@ const Users = () => {
         u.id === userId
           ? {
               ...u,
-              isActive: u.isActive === false ? true : false,
-              updated_at: new Date(),
+              is_active: u.is_active === false ? true : false,
+              updated_at: new Date().toDateString(),
             }
           : u,
       ),
@@ -306,12 +296,12 @@ const Users = () => {
         <div className="flex items-center gap-2">
           <span
             className={`px-2 py-1 rounded-full text-xs font-medium ${
-              item.isActive !== false
+              item.is_active !== false
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-red-100 text-red-700"
             }`}
           >
-            {item.isActive !== false ? "Active" : "Inactive"}
+            {item.is_active !== false ? "Active" : "Inactive"}
           </span>
           {item.verified && (
             <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
@@ -354,11 +344,11 @@ const Users = () => {
       });
 
       actions.push({
-        title: item.isActive !== false ? "Deactivate" : "Activate",
+        title: item.is_active !== false ? "Deactivate" : "Activate",
         icon: "check",
         handler: () => handleToggleActive(item.id),
         classes:
-          item.isActive !== false ? "text-amber-600" : "text-emerald-600",
+          item.is_active !== false ? "text-amber-600" : "text-emerald-600",
       });
 
       actions.push({
@@ -384,7 +374,7 @@ const Users = () => {
           <div className="flex gap-4 mt-2 text-sm flex-wrap">
             <span>Total: {sortedUsers.length}</span>
             <span className="text-emerald-600">
-              Active: {sortedUsers.filter((u) => u.isActive !== false).length}
+              Active: {sortedUsers.filter((u) => u.is_active !== false).length}
             </span>
             <span className="text-purple-600">
               Super Admin:{" "}

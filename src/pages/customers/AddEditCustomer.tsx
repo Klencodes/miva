@@ -27,7 +27,7 @@ const AddEditCustomer = () => {
     taxId: "",
     creditLimit: undefined,
     notes: "",
-    isActive: true,
+    is_active: true,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -226,8 +226,8 @@ const AddEditCustomer = () => {
                 <Input
                   type="checkbox"
                   label="Active Customer"
-                  checked={formData.isActive !== false}
-                  onChange={(checked: boolean) => handleInputChange("isActive", checked)}
+                  checked={formData.is_active !== false}
+                  onChange={(checked: boolean) => handleInputChange("is_active", checked)}
                   disabled={isSubmitting}
                 />
               </div>

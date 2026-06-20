@@ -80,9 +80,9 @@ const Customers = () => {
 
     // Apply status filter
     if (selectedFilter === "active") {
-      result = result.filter((c) => c.isActive !== false);
+      result = result.filter((c) => c.is_active !== false);
     } else if (selectedFilter === "inactive") {
-      result = result.filter((c) => c.isActive === false);
+      result = result.filter((c) => c.is_active === false);
     }
 
     // Apply search
@@ -183,7 +183,7 @@ const Customers = () => {
         c.id === customerId
           ? {
               ...c,
-              isActive: c.isActive === false ? true : false,
+              is_active: c.is_active === false ? true : false,
               updatedAt: new Date(),
             }
           : c,
@@ -284,12 +284,12 @@ const Customers = () => {
       value: (item: Customer) => (
         <span
           className={`px-2 py-1 rounded-full text-xs font-medium ${
-            item.isActive !== false
+            item.is_active !== false
               ? "bg-emerald-100 text-emerald-700"
               : "bg-red-100 text-red-700"
           }`}
         >
-          {item.isActive !== false ? "Active" : "Inactive"}
+          {item.is_active !== false ? "Active" : "Inactive"}
         </span>
       ),
       type: "column" as const,
@@ -314,11 +314,11 @@ const Customers = () => {
       });
 
       actions.push({
-        title: item.isActive !== false ? "Deactivate" : "Activate",
+        title: item.is_active !== false ? "Deactivate" : "Activate",
         icon: "check",
         handler: () => handleToggleActive(item.id),
         classes:
-          item.isActive !== false ? "text-amber-600" : "text-emerald-600",
+          item.is_active !== false ? "text-amber-600" : "text-emerald-600",
       });
 
       actions.push({
@@ -350,7 +350,7 @@ const Customers = () => {
             <span>Total: {sortedCustomers.length}</span>
             <span className="text-emerald-600">
               Active:{" "}
-              {sortedCustomers.filter((c) => c.isActive !== false).length}
+              {sortedCustomers.filter((c) => c.is_active !== false).length}
             </span>
             <span className="text-amber-600">
               With Balance:{" "}

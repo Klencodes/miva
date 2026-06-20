@@ -996,7 +996,7 @@ const Input: React.FC<CustomInputProps> = ({
         gap: "gap-1.5",
       },
       md: {
-        px: "px-4",
+        px: "px-3",
         py: "py-2.5",
         text: "text-sm",
         icon: "w-4 h-4",
@@ -1032,7 +1032,7 @@ const Input: React.FC<CustomInputProps> = ({
         ? "bg-card border-border"
         : "bg-background border-border";
     const focusState = isFocused ? "border-primary" : "";
-    const errorState = error ? "border-danger ring-2" : "";
+    const errorState = error ? "border-danger" : "";
     const disabledState = disabled
       ? "bg-gray-100 cursor-not-allowed opacity-70"
       : "";

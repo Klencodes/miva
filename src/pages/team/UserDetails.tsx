@@ -65,28 +65,28 @@ const UserDetail = () => {
       title: "Inventory",
       icon: <Package className="w-4 h-4" />,
       permissions: [
-        { key: "canEditInventory", label: "Edit Inventory" },
-        { key: "canDeleteInventory", label: "Delete Inventory" },
-        { key: "canBuildAssembly", label: "Build Assembly" },
+        { key: "can_edit_inventory", label: "Edit Inventory" },
+        { key: "can_delete_inventory", label: "Delete Inventory" },
+        { key: "can_build_assembly", label: "Build Assembly" },
       ],
     },
     {
       title: "Invoices",
       icon: <FileText className="w-4 h-4" />,
       permissions: [
-        { key: "canCreateInvoice", label: "Create Invoice" },
-        { key: "canEditInvoice", label: "Edit Invoice" },
-        { key: "canDeleteInvoice", label: "Delete Invoice" },
+        { key: "can_create_invoice", label: "Create Invoice" },
+        { key: "can_edit_invoice", label: "Edit Invoice" },
+        { key: "can_delete_invoice", label: "Delete Invoice" },
       ],
     },
     {
       title: "System",
       icon: <Settings className="w-4 h-4" />,
       permissions: [
-        { key: "canManageUsers", label: "Manage Users" },
-        { key: "canViewReports", label: "View Reports" },
-        { key: "canManageSettings", label: "Manage Settings" },
-        { key: "canViewActivityLogs", label: "View Activity Logs" },
+        { key: "can_manage_users", label: "Manage Users" },
+        { key: "can_view_reports", label: "View Reports" },
+        { key: "can_manage_settings", label: "Manage Settings" },
+        { key: "can_view_activity_logs", label: "View Activity Logs" },
       ],
     },
   ];
@@ -128,12 +128,12 @@ const UserDetail = () => {
         <div className="flex items-center gap-3 flex-wrap">
           <span
             className={`px-3 py-1 rounded-full text-sm font-medium ${
-              user.isActive !== false
+              user.is_active !== false
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-red-100 text-red-700"
             }`}
           >
-            {user.isActive !== false ? "Active" : "Inactive"}
+            {user.is_active !== false ? "Active" : "Inactive"}
           </span>
           {user.verified && (
             <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700 flex items-center gap-1">

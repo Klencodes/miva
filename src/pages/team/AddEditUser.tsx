@@ -30,16 +30,16 @@ const AddEditUser = () => {
   const editing = !!user;
 
   const defaultPermissions: UserPermissions = {
-    canEditInventory: false,
-    canDeleteInventory: false,
-    canCreateInvoice: false,
-    canEditInvoice: false,
-    canDeleteInvoice: false,
-    canBuildAssembly: false,
-    canManageUsers: false,
-    canViewReports: false,
-    canManageSettings: false,
-    canViewActivityLogs: false,
+    can_edit_inventory: false,
+    can_delete_inventory: false,
+    can_create_invoice: false,
+    can_edit_invoice: false,
+    can_delete_invoice: false,
+    can_build_assembly: false,
+    can_manage_users: false,
+    can_view_reports: false,
+    can_manage_settings: false,
+    can_view_activity_logs: false,
   };
 
   const [formData, setFormData] = useState<FormData>({
@@ -51,7 +51,7 @@ const AddEditUser = () => {
     address: "",
     role: Roles.VIEWER,
     permissions: { ...defaultPermissions },
-    isActive: true,
+    is_active: true,
     verified: false,
   });
 
@@ -64,7 +64,7 @@ const AddEditUser = () => {
       setFormData({
         ...user,
         permissions: user.permissions || { ...defaultPermissions },
-        isActive: user.isActive !== undefined ? user.isActive : true,
+        is_active: user.is_active !== undefined ? user.is_active : true,
       });
     }
   }, [user]);
@@ -167,28 +167,28 @@ const AddEditUser = () => {
       title: "Inventory",
       icon: <Package className="w-4 h-4" />,
       permissions: [
-        { key: "canEditInventory" as const, label: "Edit Inventory" },
-        { key: "canDeleteInventory" as const, label: "Delete Inventory" },
-        { key: "canBuildAssembly" as const, label: "Build Assembly" },
+        { key: "can_edit_inventory" as const, label: "Edit Inventory" },
+        { key: "can_delete_inventory" as const, label: "Delete Inventory" },
+        { key: "can_build_assembly" as const, label: "Build Assembly" },
       ],
     },
     {
       title: "Invoices",
       icon: <FileText className="w-4 h-4" />,
       permissions: [
-        { key: "canCreateInvoice" as const, label: "Create Invoice" },
-        { key: "canEditInvoice" as const, label: "Edit Invoice" },
-        { key: "canDeleteInvoice" as const, label: "Delete Invoice" },
+        { key: "can_create_invoice" as const, label: "Create Invoice" },
+        { key: "can_edit_invoice" as const, label: "Edit Invoice" },
+        { key: "can_delete_invoice" as const, label: "Delete Invoice" },
       ],
     },
     {
       title: "System",
       icon: <Settings className="w-4 h-4" />,
       permissions: [
-        { key: "canManageUsers" as const, label: "Manage Users" },
-        { key: "canViewReports" as const, label: "View Reports" },
-        { key: "canManageSettings" as const, label: "Manage Settings" },
-        { key: "canViewActivityLogs" as const, label: "View Activity Logs" },
+        { key: "can_manage_users" as const, label: "Manage Users" },
+        { key: "can_view_reports" as const, label: "View Reports" },
+        { key: "can_manage_settings" as const, label: "Manage Settings" },
+        { key: "can_view_activity_logs" as const, label: "View Activity Logs" },
       ],
     },
   ];

@@ -7,8 +7,8 @@ import App from "./App";
 import "./index.css";
 import { ThemeProvider } from "./core/contexts/ThemeProvider";
 import { ErrorBoundary } from "./pages/error/ErrorBoundary";
-import { StoreProvider } from "./core/contexts/StoreProvider";
 import { ModalProvider } from "./core/hooks/useModal";
+import { StoreProvider } from "./core/contexts/StoreProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,9 +26,9 @@ const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Failed to find the root element");
 
 // Add modal root if it doesn't exist
-if (!document.getElementById('modal-root')) {
-  const modalRoot = document.createElement('div');
-  modalRoot.id = 'modal-root';
+if (!document.getElementById("modal-root")) {
+  const modalRoot = document.createElement("div");
+  modalRoot.id = "modal-root";
   document.body.appendChild(modalRoot);
 }
 
@@ -40,10 +40,10 @@ declare global {
   }
 }
 
-if (typeof window !== 'undefined' && window.electronAPI) {
+if (typeof window !== "undefined" && window.electronAPI) {
   // Running in Electron
-  window.electronAPI.getAppInfo().then(info => {
-    console.log('Running in Electron:', info);
+  window.electronAPI.getAppInfo().then((info) => {
+    console.log("Running in Electron:", info);
     // You can set this in your state/context
   });
 }
@@ -53,15 +53,15 @@ ReactDOM.createRoot(rootElement).render(
     <ErrorBoundary>
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider>
-              <StoreProvider>
-                  <ModalProvider>
-                    <App />
-                  </ModalProvider>
-              </StoreProvider>
-            </ThemeProvider>
+          <ThemeProvider>
+            <StoreProvider>
+              <ModalProvider>
+                <App />
+              </ModalProvider>
+            </StoreProvider>
+          </ThemeProvider>
         </QueryClientProvider>
       </BrowserRouter>
     </ErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

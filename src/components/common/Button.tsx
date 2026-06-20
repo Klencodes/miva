@@ -34,7 +34,7 @@ export interface ButtonProps {
 const Button: React.FC<ButtonProps> = ({
   variant = "primary",
   size = "md",
-  radius = "md",
+  radius = "none",
   disabled = false,
   loading = false,
   fullWidth = false,
@@ -59,7 +59,7 @@ const Button: React.FC<ButtonProps> = ({
 
   const sizeClasses: Record<ButtonSize, string> = {
     sm: iconOnly ? "h-8 w-8 p-0" : "h-8  px-3   text-xs   gap-1.5",
-    md: iconOnly ? "h-9 w-9 p-0" : "h-9  px-4   text-sm   gap-2",
+    md: iconOnly ? "h-9 w-9 p-0" : "h-9  px-4    text-sm   gap-2",
     lg: iconOnly ? "h-11 w-11 p-0" : "h-11 px-5   text-base gap-2.5",
   };
 

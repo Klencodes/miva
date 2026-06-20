@@ -1,16 +1,16 @@
 import { IUser } from "../types";
 
 export interface UserPermissions {
-  canEditInventory: boolean;
-  canDeleteInventory: boolean;
-  canCreateInvoice: boolean;
-  canEditInvoice: boolean;
-  canDeleteInvoice: boolean;
-  canBuildAssembly: boolean;
-  canManageUsers: boolean;
-  canViewReports: boolean;
-  canManageSettings: boolean;
-  canViewActivityLogs: boolean;
+  can_edit_inventory: boolean;
+  can_delete_inventory: boolean;
+  can_create_invoice: boolean;
+  can_edit_invoice: boolean;
+  can_delete_invoice: boolean;
+  can_build_assembly: boolean;
+  can_manage_users: boolean;
+  can_view_reports: boolean;
+  can_manage_settings: boolean;
+  can_view_activity_logs: boolean;
 }
 
 export type UserRole = 'sales' | 'viewer' | 'admin' | 'super_admin' | 'technician';
@@ -18,64 +18,64 @@ export type UserRole = 'sales' | 'viewer' | 'admin' | 'super_admin' | 'technicia
 
 const ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
   viewer: {
-    canEditInventory: false,
-    canDeleteInventory: false,
-    canCreateInvoice: false,
-    canEditInvoice: false,
-    canDeleteInvoice: false,
-    canBuildAssembly: false,
-    canManageUsers: false,
-    canViewReports: true,
-    canManageSettings: false,
-    canViewActivityLogs: false,
+    can_edit_inventory: false,
+    can_delete_inventory: false,
+    can_create_invoice: false,
+    can_edit_invoice: false,
+    can_delete_invoice: false,
+    can_build_assembly: false,
+    can_manage_users: false,
+    can_view_reports: true,
+    can_manage_settings: false,
+    can_view_activity_logs: false,
   },
   sales: {
-    canEditInventory: false,
-    canDeleteInventory: false,
-    canCreateInvoice: true,
-    canEditInvoice: true,
-    canDeleteInvoice: false,
-    canBuildAssembly: false,
-    canManageUsers: false,
-    canViewReports: true,
-    canManageSettings: false,
-    canViewActivityLogs: false,
+    can_edit_inventory: false,
+    can_delete_inventory: false,
+    can_create_invoice: true,
+    can_edit_invoice: true,
+    can_delete_invoice: false,
+    can_build_assembly: false,
+    can_manage_users: false,
+    can_view_reports: true,
+    can_manage_settings: false,
+    can_view_activity_logs: false,
   },
   technician: {
-    canEditInventory: true,
-    canDeleteInventory: false,
-    canCreateInvoice: false,
-    canEditInvoice: false,
-    canDeleteInvoice: false,
-    canBuildAssembly: true,
-    canManageUsers: false,
-    canViewReports: true,
-    canManageSettings: false,
-    canViewActivityLogs: false,
+    can_edit_inventory: true,
+    can_delete_inventory: false,
+    can_create_invoice: false,
+    can_edit_invoice: false,
+    can_delete_invoice: false,
+    can_build_assembly: true,
+    can_manage_users: false,
+    can_view_reports: true,
+    can_manage_settings: false,
+    can_view_activity_logs: false,
   },
   admin: {
-    canEditInventory: true,
-    canDeleteInventory: true,
-    canCreateInvoice: true,
-    canEditInvoice: true,
-    canDeleteInvoice: true,
-    canBuildAssembly: true,
-    canManageUsers: true,
-    canViewReports: true,
-    canManageSettings: true,
-    canViewActivityLogs: true,
+    can_edit_inventory: true,
+    can_delete_inventory: true,
+    can_create_invoice: true,
+    can_edit_invoice: true,
+    can_delete_invoice: true,
+    can_build_assembly: true,
+    can_manage_users: true,
+    can_view_reports: true,
+    can_manage_settings: true,
+    can_view_activity_logs: true,
   },
   super_admin: {
-    canEditInventory: true,
-    canDeleteInventory: true,
-    canCreateInvoice: true,
-    canEditInvoice: true,
-    canDeleteInvoice: true,
-    canBuildAssembly: true,
-    canManageUsers: true,
-    canViewReports: true,
-    canManageSettings: true,
-    canViewActivityLogs: true,
+    can_edit_inventory: true,
+    can_delete_inventory: true,
+    can_create_invoice: true,
+    can_edit_invoice: true,
+    can_delete_invoice: true,
+    can_build_assembly: true,
+    can_manage_users: true,
+    can_view_reports: true,
+    can_manage_settings: true,
+    can_view_activity_logs: true,
   },
 };
 

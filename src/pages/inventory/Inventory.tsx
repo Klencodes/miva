@@ -210,7 +210,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       handler: () => updateInventory(item.id, item.quantity - 1),
     });
 
-    if (activePermissions.canEditInventory) {
+    if (activePermissions.can_edit_inventory) {
       actions.push({
         title: 'Edit',
         icon: 'edit',
@@ -219,7 +219,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       });
     }
 
-    if (activePermissions.canDeleteInventory) {
+    if (activePermissions.can_delete_inventory) {
       actions.push({
         title: 'Delete',
         icon: 'delete',

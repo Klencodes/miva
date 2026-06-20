@@ -178,8 +178,8 @@ const SettingsPage: React.FC = () => {
   // Password Change
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    new_password: "",
+    confirm_password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -246,12 +246,12 @@ const SettingsPage: React.FC = () => {
 
   // Handle password change
   const handlePasswordChange = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
+    if (passwordData.new_password !== passwordData.confirm_password) {
       setErrorMessage("Passwords do not match");
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
+    if (passwordData.new_password.length < 8) {
       setErrorMessage("Password must be at least 8 characters");
       return;
     }
@@ -263,8 +263,8 @@ const SettingsPage: React.FC = () => {
       setSuccessMessage("Password changed successfully!");
       setPasswordData({
         currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+        new_password: "",
+        confirm_password: "",
       });
 
       setTimeout(() => setSuccessMessage(null), 5000);
@@ -864,9 +864,9 @@ const SettingsPage: React.FC = () => {
             <Input
               label="New Password"
               type={showPassword ? "text" : "password"}
-              value={passwordData.newPassword}
+              value={passwordData.new_password}
               onChange={(e: any) =>
-                setPasswordData((prev) => ({ ...prev, newPassword: e }))
+                setPasswordData((prev) => ({ ...prev, new_password: e }))
               }
             />
           </div>
@@ -874,9 +874,9 @@ const SettingsPage: React.FC = () => {
             <Input
               label="Confirm Password"
               type={showPassword ? "text" : "password"}
-              value={passwordData.confirmPassword}
+              value={passwordData.confirm_password}
               onChange={(e: any) =>
-                setPasswordData((prev) => ({ ...prev, confirmPassword: e }))
+                setPasswordData((prev) => ({ ...prev, confirm_password: e }))
               }
             />
           </div>

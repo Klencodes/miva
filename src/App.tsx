@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"; 
 import { useLocation } from "react-router-dom";
 import { useTheme } from "./core/contexts/ThemeProvider";
-import { useStore } from "./core/hooks/useStore";
-import AppRoutes from "./routes";
+import { useStore } from "./core/contexts/StoreProvider";
+import IRoutes from "./routes";
 import { Loader } from "./components/common";
 import { toast, Toaster } from "sonner";
 
@@ -80,7 +80,7 @@ function App() {
       {(!isAppInitialized || !initializationComplete || !isThemeReady) ? (
         <Loader />
       ) : (
-        <AppRoutes />
+        <IRoutes />
       )}
     </>
   );
