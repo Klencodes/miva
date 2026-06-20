@@ -72,7 +72,7 @@ export const ReadAgreementModalContent: FC = () => {
       <div className="bg-background p-6 mb-4 max-h-96 overflow-y-auto">
         <div className="space-y-6 text-sm">
           {/* Software Protection - New Section */}
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-sm p-4">
+          <div className="bg-danger-5 border border-danger rounded-sm p-4">
             <h4 className="font-semibold text-amber-800 dark:text-amber-400 mb-3 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

@@ -46,7 +46,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   // ✅ Single useStore call — reads from the shared singleton context
-  const { setUser, adminExists, checkAdminExists } = useStore();
+  const { setUser, setEntity, adminExists, checkAdminExists } = useStore();
 
   // If no admin exists, redirect to admin creation
   React.useEffect(() => {
@@ -99,7 +99,6 @@ const Login: React.FC = () => {
         // ✅ Step 4: Check user role and entity status
         const userRole = user.role;
         const hasEntities = user.entities && user.entities.length > 0;
-
         let redirectPath = "/dashboard"; // Default path
 
         // Check if user is super_admin
@@ -111,6 +110,7 @@ const Login: React.FC = () => {
         else if (userRole === "admin") {
           if (hasEntities) {
             // Admin with entities goes to dashboard
+            setEntity(user.entities[0])
             redirectPath = "/dashboard";
           } else {
             // Admin without entities goes to create organisation

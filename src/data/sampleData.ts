@@ -384,6 +384,7 @@ export const generateSampleUsers = (): IUser[] => {
       last_login: "2024-06-18T10:30:00",
       created_at: "2024-01-01T00:00:00",
       updated_at: "2024-06-18T10:30:00",
+      uuid: ''
     },
     {
       id: "user-2",
@@ -409,6 +410,7 @@ export const generateSampleUsers = (): IUser[] => {
       last_login: "2024-06-17T14:20:00",
       created_at: "2024-02-15T00:00:00",
       updated_at: "2024-06-17T14:20:00",
+      uuid: ''
     },
     {
       id: "user-3",
@@ -434,6 +436,7 @@ export const generateSampleUsers = (): IUser[] => {
       last_login: "2024-06-16T09:00:00",
       created_at: "2024-03-01T00:00:00",
       updated_at: "2024-06-16T09:00:00",
+      uuid: ''
     },
     {
       id: "user-4",
@@ -458,6 +461,7 @@ export const generateSampleUsers = (): IUser[] => {
       },
       created_at: "2024-04-10T00:00:00",
       updated_at: "2024-05-01T00:00:00",
+      uuid: ''
     },
     {
       id: "user-5",
@@ -483,6 +487,7 @@ export const generateSampleUsers = (): IUser[] => {
       last_login: "2024-06-15T16:45:00",
       created_at: "2024-05-20T00:00:00",
       updated_at: "2024-06-15T16:45:00",
+      uuid: ''
     },
   ];
 };

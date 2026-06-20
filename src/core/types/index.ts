@@ -84,6 +84,7 @@ export interface InvoiceItem {
 }
 export interface IUser {
   id: string;
+  uuid: string;
   name: string;
   first_name?: string;
   last_name?: string;
@@ -103,8 +104,10 @@ export interface IUser {
   entities?: Entity[]
 }
 export interface Entity {
+  id?: string;
   uuid: string;
   name: string;
+  branch: string;
   email: string;
   phone: string;
   website: string;
@@ -115,7 +118,6 @@ export interface Entity {
   zip_code: string;
   registration_number: string;
   tax_id: string;
-  currency: string;
   is_active: boolean;
   settings?: Record<string, any>;
   metadata?: Record<string, any>;
@@ -152,8 +154,6 @@ export interface UserPermissions {
   can_view_activity_logs: boolean;
 }
 
-export interface IEntityItem {
-}
 export interface ActivityLog {
   id: string;
   userId: string;
@@ -212,24 +212,22 @@ export type OTPType = 'verification' | 'login' | 'password_reset';
 
 export interface StoreShape {
   user: IUser | null;
-  entity: IEntityItem | null;
-  storeEntities: IEntityItem[];
+  entity: Entity | null;
+  storeEntities: Entity[];
   initializationComplete: boolean;
   adminExists: boolean | null;
   checkingAdmin: boolean;
   userRef: React.MutableRefObject<IUser | null>;
   isAuthenticatedRef: React.MutableRefObject<boolean>;
-  entityRef: React.MutableRefObject<IEntityItem | null>;
+  entityRef: React.MutableRefObject<Entity | null>;
   isAuthenticated: boolean;
   hasStoreEntities: boolean;
   userRole: string | null;
   setUser: (userData: IUser | null) => void;
   logout: () => Promise<void>;
-  setEntity: (newEntity: IEntityItem | null) => void;
-  setStoreEntities: (newEntities: IEntityItem[] | null) => void;
+  setEntity: (newEntity: Entity | null) => void;
+  setStoreEntities: (newEntities: Entity[] | null) => void;
   checkAuthStatus: () => Promise<{ isValid: boolean }>;
-  getRequiredRoute: () => string | null;
-  getInitialRoute: () => string;
   checkAdminExists: (forceCheck?: boolean) => Promise<boolean>;
 }
 
@@ -238,28 +236,6 @@ export interface IUserEntity {
   role: 'super_admin' | 'admin' | 'sales' | 'viewer';
   joined_at: string;
   is_primary: boolean;
-}
-
-export interface IEntity {
-  uuid: string;
-  name: string;
-  email: string;
-  phone: string;
-  website: string;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  zip_code: string;
-  registration_number: string;
-  tax_id: string;
-  currency: string;
-  is_active: boolean;
-  settings: Record<string, any>;
-  metadata: Record<string, any>;
-  created_at: string;
-  updated_at: string;
-  auth_token?: string;
 }
 
 export interface IUserQueryParams {
@@ -276,15 +252,15 @@ export interface IEntityQueryParams {
   search?: string;
   country?: string;
   is_active?: boolean | string;
-  currency?: string;
+  branch?: string;
 }
 
 export interface ICreateUserData {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   password: string;
-  confirm_password: string;
-  phone?: string;
+  phone: string;
   address?: string;
   role?: string;
   permissions?: Partial<UserPermissions>;
@@ -318,7 +294,7 @@ export interface ICreateEntityData {
   zip_code?: string;
   registration_number?: string;
   tax_id?: string;
-  currency?: string;
+  branch?: string;
   settings?: Record<string, any>;
   metadata?: Record<string, any>;
 }
@@ -335,7 +311,7 @@ export interface IUpdateEntityData {
   zip_code?: string;
   registration_number?: string;
   tax_id?: string;
-  currency?: string;
+  branch?: string;
   settings?: Record<string, any>;
   metadata?: Record<string, any>;
   is_active?: boolean;

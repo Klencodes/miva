@@ -86,7 +86,8 @@ export const DUMMY_USERS: IUser[] = [
     role: 'super_admin',
     permissions: ROLE_PERMISSIONS.super_admin,
     email: "kwame@gtest.com",
-    phone: "2345656575432"
+    phone: "2345656575432",
+    uuid: ""
   },
   {
     id: 'user-2',
@@ -94,7 +95,8 @@ export const DUMMY_USERS: IUser[] = [
     role: 'admin',
     permissions: ROLE_PERMISSIONS.admin,
     email: "",
-    phone: "2345656575432"
+    phone: "2345656575432",
+    uuid: ""
   },
   {
     id: 'user-3',
@@ -102,7 +104,8 @@ export const DUMMY_USERS: IUser[] = [
     role: 'sales',
     permissions: ROLE_PERMISSIONS.sales,
     email: "",
-    phone: "2345656575432"
+    phone: "2345656575432",
+    uuid: ""
   },
   {
     id: 'user-4',
@@ -110,7 +113,8 @@ export const DUMMY_USERS: IUser[] = [
     role: 'technician',
     permissions: ROLE_PERMISSIONS.technician,
     email: "",
-    phone: "2345656575432"
+    phone: "2345656575432",
+    uuid: ""
   },
   {
     id: 'user-5',
@@ -118,7 +122,8 @@ export const DUMMY_USERS: IUser[] = [
     role: 'viewer',
     permissions: ROLE_PERMISSIONS.viewer,
     email: "",
-    phone: "2345656575432"
+    phone: "2345656575432",
+    uuid: ""
   },
 ];
 

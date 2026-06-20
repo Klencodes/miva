@@ -1,6 +1,6 @@
 // services/entityService.ts
 import axios from 'axios';
-import { IResponse, IEntity, IEntityQueryParams, ICreateEntityData, IUpdateEntityData } from '../types';
+import { IResponse, IEntityQueryParams, ICreateEntityData, IUpdateEntityData, IUser } from '../types';
 import { getStoredItem, USER_KEY } from '../hooks/useStore';
 
 const API_BASE_URL = 'http://localhost:4000/api';
@@ -12,7 +12,7 @@ class EntityService {
    * Get auth token from storage
    */
   private getAuthToken(): string | undefined {
-    return getStoredItem<IEntity | null>(USER_KEY, null)?.auth_token;
+    return getStoredItem<IUser | null>(USER_KEY, null)?.auth_token;
   }
 
   /**

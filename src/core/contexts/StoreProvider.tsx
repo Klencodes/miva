@@ -42,21 +42,17 @@ export const useAuth = () => {
   const {
     isAuthenticated,
     checkAuthStatus,
-    getRequiredRoute,
     initializationComplete,
     adminExists,
     checkingAdmin,
-    getInitialRoute,
     checkAdminExists,
   } = useStore();
   return {
     isAuthenticated,
     checkAuthStatus,
-    getRequiredRoute,
     initializationComplete,
     adminExists,
     checkingAdmin,
-    getInitialRoute,
     checkAdminExists,
   };
 };

@@ -39,14 +39,13 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
 
 // ─── ProtectedRoute ────────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { userRef, getRequiredRoute, isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, } = useStore();
+  const { userRef, isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, } = useStore();
   const location = useLocation();
 
   // ✅ All hooks before any early return
   const requiredRoute = useMemo(() => {
     if (!initializationComplete) return null;
-    return getRequiredRoute();
-  }, [initializationComplete, getRequiredRoute]);
+  }, [initializationComplete]);
 
   if (checkingAdmin || !initializationComplete) return <ScreenLoader />;
 
@@ -67,13 +66,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // ─── PublicRoute ──────────────────────────────────────────────────────────────
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { getRequiredRoute, isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, userRef, } = useStore();
+  const { isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, userRef, } = useStore();
   const location = useLocation();
 
   const requiredRoute = useMemo(() => {
     if (!initializationComplete) return null;
-    return getRequiredRoute();
-  }, [initializationComplete, getRequiredRoute]);
+  }, [initializationComplete]);
 
   const currentAuthState = isAuthenticatedRef.current;
   const verified = userRef.current?.verified;

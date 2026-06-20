@@ -17,7 +17,7 @@ import { Button } from "../../components/common";
 import { useModal } from "../../core/hooks/useModal";
 import { IUser, UserPermissions } from "../../core/types";
 import { Roles } from "../../core/enums/roles";
-
+import UserService from "../../core/services/user";
 // Define the form data type explicitly
 type FormData = Partial<IUser> & {
   password?: string;
@@ -43,7 +43,6 @@ const AddEditUser = () => {
   };
 
   const [formData, setFormData] = useState<FormData>({
-    name: "",
     first_name: "",
     last_name: "",
     email: "",
@@ -72,8 +71,11 @@ const AddEditUser = () => {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name?.trim()) {
-      newErrors.name = "Full name is required";
+    if (!formData.first_name?.trim()) {
+      newErrors.first_name = "First name is required";
+    }
+    if (!formData.last_name?.trim()) {
+      newErrors.last_name = "Last name is required";
     }
 
     if (!formData.email?.trim()) {
@@ -100,7 +102,7 @@ const AddEditUser = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
       setIsSubmitting(true);
@@ -111,31 +113,49 @@ const AddEditUser = () => {
           delete saveData.password;
         }
         if (editing) {
-          modalData?.close({ action: "edit", user: saveData });
+          const result = await UserService.updateUser(user?.uuid, formData);
+          if (result.success) {
+            modalData?.close({ action: "edit" });
+          }
         } else {
-          modalData?.close({ action: "add", user: saveData });
+          const createData = {
+            first_name: formData.first_name || "",
+            last_name: formData.last_name || "",
+            email: formData.email || "",
+            phone: formData.phone || "",
+            address: formData.address || "",
+            role: formData.role || Roles.VIEWER,
+            password: formData.password || "",
+            permissions: formData.permissions,
+            is_active: formData.is_active ?? true,
+            verified: formData.verified ?? false,
+          };
+          const result = await UserService.createUser(createData);
+          if (result.success) {
+            modalData?.close({ action: "add" });
+          }
         }
       } catch (error) {
         console.error("Error saving user:", error);
-        alert("An error occurred while saving the user. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
-  // Fix: Use proper type for field key
-  const handleInputChange = <K extends keyof FormData>(
-    field: K,
-    value: FormData[K],
-  ) => {
-    setFormData((prev: FormData) => ({ ...prev, [field]: value }));
+  // Handle all input changes - detects if it's an event or direct value
+  const handleInputChange = (field: keyof FormData) => (value: any) => {
+    // If the value is an event object (from text inputs), extract the value
+    const actualValue =
+      value?.target?.value !== undefined ? value.target.value : value;
+
+    setFormData((prev: FormData) => ({ ...prev, [field]: actualValue }));
     if (errors[field as string]) {
       setErrors((prev) => ({ ...prev, [field as string]: "" }));
     }
   };
 
-  // Fix: Properly typed permission handler
+  // Handle permission changes
   const handlePermissionChange = (permission: keyof UserPermissions) => {
     setFormData((prev: FormData) => ({
       ...prev,
@@ -161,7 +181,7 @@ const AddEditUser = () => {
     { value: Roles.VIEWER, label: "Viewer" },
   ];
 
-  // Permission groups - Fix: Properly type the permission keys
+  // Permission groups
   const permissionGroups = [
     {
       title: "Inventory",
@@ -197,7 +217,7 @@ const AddEditUser = () => {
     <div className="">
       <div className="max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+        <div className="sticky top-0 border-b border-border px-6 py-4 flex justify-between items-center z-10">
           <div>
             <h3 className="text-lg font-semibold text-text">
               {editing ? "Edit User" : "Add New User"}
@@ -227,22 +247,50 @@ const AddEditUser = () => {
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mb-4">
+                <Input
+                  type="text"
+                  label="First Name"
+                  placeholder="John"
+                  value={formData.first_name}
+                  onChange={handleInputChange("first_name")}
+                  error={errors.first_name}
+                  prefixIcon={<User size={16} />}
+                  required
+                  name="first_name"
+                />
+              </div>
+              <div className="mb-4">
+                <Input
+                  type="text"
+                  label="Last Name"
+                  placeholder="Doe"
+                  value={formData.last_name}
+                  onChange={handleInputChange("last_name")}
+                  error={errors.last_name}
+                  prefixIcon={<User size={16} />}
+                  required
+                  name="last_name"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Full Name"
-                value={formData.name || ""}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                placeholder="Enter full name"
-                error={errors.name}
-                prefixIcon={<User className="w-4 h-4" />}
+                label="Phone Number"
+                value={formData.phone || ""}
+                onChange={handleInputChange("phone")}
+                placeholder="024-123-4567"
+                error={errors.phone}
+                prefixIcon={<Phone className="w-4 h-4" />}
                 required
                 disabled={isSubmitting}
               />
-
               <Input
                 label="Email Address"
                 type="email"
                 value={formData.email || ""}
-                onChange={(e) => handleInputChange("email", e.target.value)}
+                onChange={handleInputChange("email")}
                 placeholder="user@email.com"
                 error={errors.email}
                 prefixIcon={<Mail className="w-4 h-4" />}
@@ -250,24 +298,12 @@ const AddEditUser = () => {
                 disabled={isSubmitting}
               />
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Phone Number"
-                value={formData.phone || ""}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
-                placeholder="024-123-4567"
-                error={errors.phone}
-                prefixIcon={<Phone className="w-4 h-4" />}
-                required
-                disabled={isSubmitting}
-              />
-
               <Input
                 label="Role"
                 type="select"
                 value={formData.role || Roles.VIEWER}
-                onChange={(value) => handleInputChange("role", value)}
+                onChange={handleInputChange("role")}
                 selectOptions={roleOptions}
                 selectPlaceholder="Select role"
                 error={errors.role}
@@ -275,20 +311,19 @@ const AddEditUser = () => {
                 disabled={isSubmitting}
                 required
               />
+              <Input
+                label="Address"
+                value={formData.address || ""}
+                onChange={handleInputChange("address")}
+                placeholder="123 Street Name, City"
+                prefixIcon={<MapPin className="w-4 h-4" />}
+                disabled={isSubmitting}
+              />
             </div>
-
-            <Input
-              label="Address"
-              value={formData.address || ""}
-              onChange={(e) => handleInputChange("address", e.target.value)}
-              placeholder="123 Street Name, City"
-              prefixIcon={<MapPin className="w-4 h-4" />}
-              disabled={isSubmitting}
-            />
           </div>
 
           {/* Password */}
-          <div className="space-y-4 border-t pt-4">
+          <div className="space-y-4 border-t border-border pt-4">
             <h4 className="text-sm font-medium text-text-light flex items-center gap-2">
               <Key className="w-4 h-4" />
               {editing ? "Change Password (Optional)" : "Set Password"}
@@ -298,7 +333,7 @@ const AddEditUser = () => {
               type={showPassword ? "text" : "password"}
               label="Password"
               value={formData.password || ""}
-              onChange={(e) => handleInputChange("password", e.target.value)}
+              onChange={handleInputChange("password")}
               placeholder={
                 editing ? "Leave blank to keep current" : "Enter password"
               }
@@ -319,7 +354,7 @@ const AddEditUser = () => {
           </div>
 
           {/* Permissions */}
-          <div className="space-y-4 border-t pt-4">
+          <div className="space-y-4 border-t border-border pt-4">
             <h4 className="text-sm font-medium text-text-light flex items-center gap-2">
               <Shield className="w-4 h-4" />
               Permissions
@@ -329,7 +364,7 @@ const AddEditUser = () => {
               {permissionGroups.map((group) => (
                 <div
                   key={group.title}
-                  className="border border-slate-200 rounded-lg p-4 space-y-3"
+                  className="border border-border rounded-lg p-4 space-y-3"
                 >
                   <div className="flex items-center gap-2 text-sm font-medium text-text">
                     {group.icon}
@@ -337,16 +372,17 @@ const AddEditUser = () => {
                   </div>
                   {group.permissions.map((perm) => (
                     <div key={perm.key} className="flex items-center gap-2">
-                      <Input
+                      <input
                         type="checkbox"
                         id={perm.key}
                         checked={formData.permissions?.[perm.key] || false}
                         onChange={() => handlePermissionChange(perm.key)}
                         disabled={isSubmitting}
+                        className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
                       />
                       <label
                         htmlFor={perm.key}
-                        className="text-sm text-text-light"
+                        className="text-sm text-text-light cursor-pointer"
                       >
                         {perm.label}
                       </label>
@@ -358,7 +394,7 @@ const AddEditUser = () => {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 border-t pt-4">
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
             <Button
               type="button"
               variant="outline"

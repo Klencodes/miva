@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Building, Mail, Phone, Globe, MapPin, Hash, FileText, CreditCard } from "lucide-react";
 import entity from "../../core/services/entity";
 import { useNavigate } from "react-router-dom";
+import { useStore } from "../../core/contexts/StoreProvider";
 
 interface OrganisationProfileForm {
   name: string;
@@ -20,7 +21,7 @@ interface OrganisationProfileForm {
   zip_code: string;
   registration_number: string;
   tax_id: string;
-  currency: string;
+  branch: string;
 }
 
 const initialFormState: OrganisationProfileForm = {
@@ -35,7 +36,7 @@ const initialFormState: OrganisationProfileForm = {
   zip_code: "GA-123-4567",
   registration_number: "RC-2024-001",
   tax_id: "TIN-123456789",
-  currency: "GHS",
+  branch: "Main Shop",
 };
 
 const URL_PATTERN = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
@@ -46,8 +47,9 @@ const CreateOrganisation: React.FC = () => {
   const [form, setForm] = useState<OrganisationProfileForm>(initialFormState);
   const [errors, setErrors] = useState<Partial<OrganisationProfileForm>>({});
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate()
-  usePageTitle("Create Organisation Account");
+  const navigate = useNavigate();
+  const { setEntity } = useStore()
+  usePageTitle("Create Organisation");
 
   const validate = useCallback(
     (data: OrganisationProfileForm): Partial<OrganisationProfileForm> => {
@@ -74,7 +76,7 @@ const CreateOrganisation: React.FC = () => {
       if (!data.zip_code) newErrors.zip_code = "ZIP/Postal code is required.";
       if (!data.registration_number) newErrors.registration_number = "Registration number is required.";
       if (!data.tax_id) newErrors.tax_id = "Tax ID is required.";
-      if (!data.currency) newErrors.currency = "Currency is required.";
+      if (!data.branch) newErrors.branch = "branch is required.";
       
       return newErrors;
     },
@@ -98,7 +100,7 @@ const saveOrganisationProfile = async (organisationData: any): Promise<void> => 
     if (!response.success) {
       throw new Error(response.message || "Failed to create organisation profile.");
     }
-
+    setEntity(response.results)
     toast.success("Success", {
       description: response.message || "Organisation profile created successfully!",
     });
@@ -268,6 +270,17 @@ const saveOrganisationProfile = async (organisationData: any): Promise<void> => 
 
             {/* Right Column */}
             <div className="space-y-5">
+               <Input
+                label="Branch"
+                placeholder="GHS"
+                required
+                name="branch"
+                id="branch"
+                value={form.branch}
+                onChange={handleChange("branch")}
+                error={errors.branch}
+                prefixIcon={<CreditCard size={16} />}
+              />
               <Input
                 label="Tax ID"
                 placeholder="TIN-123456789"
@@ -278,18 +291,6 @@ const saveOrganisationProfile = async (organisationData: any): Promise<void> => 
                 onChange={handleChange("tax_id")}
                 error={errors.tax_id}
                 prefixIcon={<FileText size={16} />}
-              />
-
-              <Input
-                label="Currency"
-                placeholder="GHS"
-                required
-                name="currency"
-                id="currency"
-                value={form.currency}
-                onChange={handleChange("currency")}
-                error={errors.currency}
-                prefixIcon={<CreditCard size={16} />}
               />
 
               <Input

@@ -1,6 +1,5 @@
-// components/auth/Verify.tsx
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button, Input } from "../../components/common";
 import {
   Mail,
@@ -301,9 +300,9 @@ const Verify = () => {
 
         {/* OTP Inputs */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-text-primary mb-2">
+          {/* <label className="block text-sm font-medium text-text-primary mb-2">
             Verification Code
-          </label>
+          </label> */}
           <div className="flex gap-2 justify-center">
             {otp.map((digit, index) => (
               <input

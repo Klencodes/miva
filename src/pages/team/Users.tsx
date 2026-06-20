@@ -1,32 +1,15 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { Plus, Mail, Phone, } from "lucide-react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { Plus, Mail, Phone } from "lucide-react";
 import { Button, DataTable } from "../../components/common";
 import { IUser } from "../../core/types";
-import { generateSampleUsers } from "../../data/sampleData";
 import { Roles } from "../../core/enums/roles";
 import { useModal } from "../../core/hooks/useModal";
 import AddEditUser from "./AddEditUser";
 import UserDetail from "./UserDetails";
-
+import { eventService } from "../../core/services/events";
+import UserService from "../../core/services/user"
 const Users = () => {
-  const [users, setUsers] = useState<IUser[]>(() => {
-    try {
-      const stored = localStorage.getItem("USERS");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed.map((u: any) => ({
-          ...u,
-          last_login: u.last_login ? new Date(u.last_login) : undefined,
-          created_at: u.created_at ? new Date(u.created_at) : undefined,
-          updated_at: u.updated_at ? new Date(u.updated_at) : undefined,
-        }));
-      }
-    } catch (error) {
-      console.error("Error loading users:", error);
-    }
-    return generateSampleUsers();
-  });
-
+  const [users, setUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -34,15 +17,72 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedSort, setSelectedSort] = useState("name_asc");
+  const [refreshKey, setRefreshKey] = useState(0);
   const { openModal } = useModal();
-  // Save to localStorage
-  useEffect(() => {
+
+  // Fetch users from API
+  const fetchUsers = useCallback(async () => {
     try {
-      localStorage.setItem("USERS", JSON.stringify(users));
+      setLoading(true);
+      
+      // Build query params
+      const params: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        role?: string;
+        is_active?: boolean;
+      } = {
+        page,
+        limit,
+      };
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (selectedFilter !== "all") {
+        if (selectedFilter === "active") {
+          params.is_active = true;
+        } else if (selectedFilter === "inactive") {
+          params.is_active = false;
+        } else {
+          params.role = selectedFilter;
+        }
+      }
+
+      const response = await UserService.getUsers(params);
+      
+      if (response.success) {
+        const userData = response.results?.users || [];
+        setUsers(userData);
+        setCount(response.results?.pagination?.total || 0);
+      }
     } catch (error) {
-      console.error("Error saving users:", error);
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [users]);
+  }, [page, limit, searchTerm, selectedFilter]);
+
+  // Listen for entity refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      setRefreshKey(prev => prev + 1);
+      fetchUsers();
+    };
+
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, [fetchUsers]);
+
+  // Fetch users on mount and when dependencies change
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers, refreshKey]);
 
   // Filter options
   const filterOptions = [
@@ -65,36 +105,9 @@ const Users = () => {
     { value: "role_desc", label: "Role Z-A" },
   ];
 
-  // Filter and search users
-  const filteredUsers = useMemo(() => {
-    let result = [...users];
-
-    if (selectedFilter === "active") {
-      result = result.filter((u) => u.is_active !== false);
-    } else if (selectedFilter === "inactive") {
-      result = result.filter((u) => u.is_active === false);
-    } else if (selectedFilter !== "all") {
-      result = result.filter((u) => u.role === selectedFilter);
-    }
-
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      result = result.filter(
-        (u) =>
-          u.name.toLowerCase().includes(search) ||
-          u.email.toLowerCase().includes(search) ||
-          u.phone.includes(search) ||
-          u.id.toLowerCase().includes(search) ||
-          u.role.toLowerCase().includes(search),
-      );
-    }
-
-    return result;
-  }, [users, selectedFilter, searchTerm]);
-
   // Sort users
   const sortedUsers = useMemo(() => {
-    const result = [...filteredUsers];
+    const result = [...users];
 
     switch (selectedSort) {
       case "name_asc":
@@ -106,13 +119,15 @@ const Users = () => {
       case "newest":
         result.sort(
           (a, b) =>
-            (new Date(b.created_at || "")?.getTime() || 0) - (new Date(a.created_at || "")?.getTime() || 0),
+            (new Date(b.created_at || "").getTime() || 0) - 
+            (new Date(a.created_at || "").getTime() || 0)
         );
         break;
       case "oldest":
         result.sort(
           (a, b) =>
-            (new Date(a.created_at || "")?.getTime() || 0) - (new Date(b.created_at || "")?.getTime() || 0),
+            (new Date(a.created_at || "").getTime() || 0) - 
+            (new Date(b.created_at || "").getTime() || 0)
         );
         break;
       case "role_asc":
@@ -126,12 +141,7 @@ const Users = () => {
     }
 
     return result;
-  }, [filteredUsers, selectedSort]);
-
-  // Update count
-  useEffect(() => {
-    setCount(sortedUsers.length);
-  }, [sortedUsers.length]);
+  }, [users, selectedSort]);
 
   // Get paginated data
   const paginatedData = useMemo(() => {
@@ -164,33 +174,21 @@ const Users = () => {
   };
 
   // Handler functions
-  const handleAddUser = async (user?: IUser) => {
+  const handleAddUser = async (userData?: IUser) => {
     const result = await openModal(AddEditUser, {
-      data: { user },
+      data: { user: userData },
       size: "xl",
       side: "right",
     });
 
-    if (result?.action === "add") {
-      setUsers((prev) => [...prev, result?.user]);
-    } else if (result?.action === "edit") {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === user?.id
-            ? {
-                ...u,
-                ...result?.user,
-                updated_at: new Date(),
-              }
-            : u,
-        ),
-      );
+    if (result?.action === "add" || result?.action === "edit") {
+      fetchUsers(); 
     }
   };
 
-  const handleViewUser = async (user: IUser) => {
+  const handleViewUser = async (userData: IUser) => {
     const result = await openModal(UserDetail, {
-      data: { user },
+      data: { user: userData },
       size: "xl",
       side: "right",
     });
@@ -200,29 +198,36 @@ const Users = () => {
     }
   };
 
-  const handleDeleteUser = useCallback((userId: string) => {
+  const handleDeleteUser = useCallback(async (userId: string) => {
     if (
       window.confirm(
         "Are you sure you want to delete this user? This action cannot be undone.",
       )
     ) {
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      try {
+        // const response = await UserService.deleteUser(userId);
+        // if (response.success) {
+          fetchUsers();
+        // }
+      } catch (error) {
+        console.error("Error deleting user:", error);
+      }
     }
-  }, []);
+  }, [fetchUsers]);
 
-  const handleToggleActive = useCallback((userId: string) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? {
-              ...u,
-              is_active: u.is_active === false ? true : false,
-              updated_at: new Date().toDateString(),
-            }
-          : u,
-      ),
-    );
-  }, []);
+  const handleToggleActive = useCallback(async (userId: string) => {
+    try {
+      // const user = users.find(u => u.uuid === userId);
+      // if (user) {
+      //   const response = await UserService.toggleUserActive(userId, !user.is_active);
+      //   if (response.success) {
+          fetchUsers();
+      //   }
+      // }
+    } catch (error) {
+      console.error("Error toggling user status:", error);
+    }
+  }, [users, fetchUsers]);
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
@@ -346,7 +351,7 @@ const Users = () => {
       actions.push({
         title: item.is_active !== false ? "Deactivate" : "Activate",
         icon: "check",
-        handler: () => handleToggleActive(item.id),
+        handler: () => handleToggleActive(item.uuid || item.id),
         classes:
           item.is_active !== false ? "text-amber-600" : "text-emerald-600",
       });
@@ -354,7 +359,7 @@ const Users = () => {
       actions.push({
         title: "Delete",
         icon: "delete",
-        handler: () => handleDeleteUser(item.id),
+        handler: () => handleDeleteUser(item.uuid || item.id),
         classes: "text-danger",
       });
 
@@ -365,33 +370,36 @@ const Users = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      {/* Header with Entity Dropdown */}
+      <div className="flex justify-between items-start">
         <div>
           <h2 className="text-2xl font-bold text-text">Users</h2>
           <p className="text-text-light text-sm">
             Manage system users and permissions
           </p>
           <div className="flex gap-4 mt-2 text-sm flex-wrap">
-            <span>Total: {sortedUsers.length}</span>
+            <span>Total: {count}</span>
             <span className="text-emerald-600">
-              Active: {sortedUsers.filter((u) => u.is_active !== false).length}
+              Active: {users.filter((u) => u.is_active !== false).length}
             </span>
             <span className="text-purple-600">
               Super Admin:{" "}
-              {sortedUsers.filter((u) => u.role === Roles.SUPER_ADMIN).length}
+              {users.filter((u) => u.role === Roles.SUPER_ADMIN).length}
             </span>
             <span className="text-blue-600">
-              Admin: {sortedUsers.filter((u) => u.role === Roles.ADMIN).length}
+              Admin: {users.filter((u) => u.role === Roles.ADMIN).length}
             </span>
           </div>
         </div>
-        <Button
-          onClick={() => handleAddUser()}
-          className="flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add User
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => handleAddUser()}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add User
+          </Button>
+        </div>
       </div>
 
       <DataTable

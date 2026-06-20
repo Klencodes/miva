@@ -2,94 +2,120 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../common";
 import { toast } from "sonner";
-
-interface BusinessProfileForm {
-  country: string;
+import EntityService from "../../../core/services/entity"
+interface OrganisationProfileForm {
   name: string;
-  branch: string;
   email: string;
-  address: string;
-  phone_number: string;
+  phone: string;
   website: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zip_code: string;
+  registration_number: string;
+  tax_id: string;
+  branch: string;
 }
 
 interface AddEntityModalProps {
   data?: any; // Add props to receive edit data
 }
 
-const initialFormState: BusinessProfileForm = {
-  country: "",
+const initialFormState: OrganisationProfileForm = {
   name: "",
-  branch: "",
   email: "",
-  address: "",
-  phone_number: "",
+  phone: "",
   website: "",
+  address: "",
+  city: "",
+  state: "",
+  country: "",
+  zip_code: "",
+  registration_number: "",
+  tax_id: "",
+  branch: "",
 };
 
 const URL_PATTERN = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
 const PHONE_PATTERN = /^[0-9]+$/;
+const ZIP_PATTERN = /^[0-9]{5,10}$/;
 
 const AddEntityModal: React.FC<AddEntityModalProps> = () => { 
   const { modalRef, modalData } = useModal(); 
 
-  const [form, setForm] = useState<BusinessProfileForm>(initialFormState);
-  const [errors, setErrors] = useState<Partial<BusinessProfileForm>>({});
+  const [form, setForm] = useState<OrganisationProfileForm>(initialFormState);
+  const [errors, setErrors] = useState<Partial<OrganisationProfileForm>>({});
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const [supportedCountries, setSupportedCountries] = useState<any[]>([]);
+  const [supportedCountries, setSupportedCountries] = useState<any[]>([{value: "", label: "Choose Country"}, {value: "Ghana", label: "Ghana"}, {value: "Nigeria", label: "Nigeria"}]);
   
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
-  const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null);
 
   // Initialize form with edit data if provided
   useEffect(() => {
     if (modalData) {
       setIsEditMode(true);
       setForm({
-        country: modalData.country || "",
         name: modalData.name || "",
-        branch: modalData.branch || "",
         email: modalData.email || "",
-        address: modalData.address || "",
-        phone_number: modalData.phone_number || "",
+        phone: modalData.phone || "",
         website: modalData.website || "",
+        address: modalData.address || "",
+        city: modalData.city || "",
+        state: modalData.state || "",
+        country: modalData.country || "",
+        zip_code: modalData.zip_code || "",
+        registration_number: modalData.registration_number || "",
+        tax_id: modalData.tax_id || "",
+        branch: modalData.branch || "",
       });
-      
-      if (modalData.logo) {
-        setExistingLogoUrl(modalData.logo);
-        setLogoPreview(modalData.logo);
-      }
     }
   }, 
   //es-lint-disable-next-line
   [modalData]);
 
   const validate = useCallback(
-    (data: BusinessProfileForm): Partial<BusinessProfileForm> => {
-      const newErrors: Partial<BusinessProfileForm> = {};
-      if (!data.country) newErrors.country = "Country is required.";
+    (data: OrganisationProfileForm): Partial<OrganisationProfileForm> => {
+      const newErrors: Partial<OrganisationProfileForm> = {};
+      
       if (!data.name) newErrors.name = "Business Name is required.";
       if (!data.branch) newErrors.branch = "Business branch is required.";
+      if (!data.country) newErrors.country = "Country is required.";
+      if (!data.city) newErrors.city = "City is required.";
+      if (!data.state) newErrors.state = "State is required.";
+      if (!data.address) newErrors.address = "Business Address is required.";
+      if (!data.zip_code) {
+        newErrors.zip_code = "ZIP Code is required.";
+      } else if (!ZIP_PATTERN.test(data.zip_code)) {
+        newErrors.zip_code = "Invalid ZIP code format (5-10 digits).";
+      }
+      
       if (!data.email) {
         newErrors.email = "Contact Email is required.";
       } else if (!/^\S+@\S+$/i.test(data.email)) {
         newErrors.email = "Invalid email format.";
       }
-      if (!data.address) newErrors.address = "Business Address is required.";
-      if (!data.phone_number) {
-        newErrors.phone_number = "Phone Number is required.";
-      } else if (!PHONE_PATTERN.test(data.phone_number)) {
-        newErrors.phone_number = "Only digits are allowed.";
+      
+      if (!data.phone) {
+        newErrors.phone = "Phone Number is required.";
+      } else if (!PHONE_PATTERN.test(data.phone)) {
+        newErrors.phone = "Only digits are allowed.";
       }
+      
       if (data.website && !URL_PATTERN.test(data.website)) {
         newErrors.website = "Invalid URL format.";
       }
+      
+      // Optional validations for registration and tax ID
+      if (data.registration_number && data.registration_number.length < 3) {
+        newErrors.registration_number = "Registration number is too short.";
+      }
+      
+      if (data.tax_id && data.tax_id.length < 3) {
+        newErrors.tax_id = "Tax ID is too short.";
+      }
+      
       return newErrors;
     },
     []
@@ -114,7 +140,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
     getCountries();
   }, []);
 
-  const handleChange = (name: keyof BusinessProfileForm) => (value: any) => {
+  const handleChange = (name: keyof OrganisationProfileForm) => (value: any) => {
     setForm(prev => ({ ...prev, [name]: value }));
     // Clear error for this field when user starts typing
     if (errors[name]) {
@@ -126,93 +152,21 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
     }
   };
   
-  const handleBlur = (field: keyof BusinessProfileForm) => {
+  const handleBlur = (field: keyof OrganisationProfileForm) => {
     setErrors(validate(form));
   };
-
-  const clearFileInput = useCallback(() => {
-    if (logoInputRef.current) {
-      logoInputRef.current.value = "";
-    }
-  }, []);
-
-  const onLogoSelected = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    const maxSize = 5 * 1024 * 1024;
-
-    if (!validTypes.includes(file.type)) {
-      setLogoError("Please select a valid image file (JPEG, PNG, WEBP)");
-      clearFileInput();
-      return;
-    }
-
-    if (file.size > maxSize) {
-      setLogoError("File size must be less than 5MB");
-      clearFileInput();
-      return;
-    }
-
-    setLogoError(null);
-    setSelectedFile(file);
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setLogoPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeLogo = (): void => {
-    setLogoPreview(null);
-    setSelectedFile(null);
-    setExistingLogoUrl(null);
-    clearFileInput();
-    setLogoError(null);
-  };
-
-  const uploadLogo = useCallback(async (): Promise<string | null> => {
-    if (!selectedFile) return existingLogoUrl; // Return existing logo if no new file
-
-    setUploading(true);
-    setLogoError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("file_type", "image");
-      formData.append("file_purpose", "ev3-station-pictures");
-
-      const uploadResponse: any = {};
-      // const uploadResponse: any = await appService.uploadAsset(formData);
-      
-      if (!uploadResponse.success) {
-        throw new Error(uploadResponse.message || "Failed to upload logo");
-      }
-      
-      return uploadResponse?.results?.secure_url || null;
-    } catch (error: any) {
-      const errorMessage = error.error?.message || error.message || "Failed to upload logo";
-      setLogoError(errorMessage);
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  }, [selectedFile, existingLogoUrl]);
 
   const saveBusinessProfile = async (businessData: any): Promise<void> => {
     try {
       let response: any;
       
-      // if (isEditMode && modalData?.id) {
-      //   // Update existing entity
-      //   response = await appService.updateBusiness({id: modalData?.id, ...businessData});
-      // } else {
-      //   // Create new entity
-      //   response = await appService.createBusiness(businessData);
-      // }
+      if (isEditMode && modalData?.id) {
+        // Update existing entity
+        response = await EntityService.updateEntity(modalData?.uuid, businessData );
+      } else {
+        // Create new entity
+        response = await EntityService.createEntity(businessData);
+      }
       
       if (!response.success) {
         throw new Error(response.message || `Failed to ${isEditMode ? 'update' : 'create'} business profile.`);
@@ -224,7 +178,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
       );
       
       // Close the modal upon success
-      modalRef!.close({ success: "success" }); 
+      modalRef!.close({ success: true }); 
     } catch (error: any) {
       toast.error(
         "Error", 
@@ -248,24 +202,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
     setLoading(true);
 
     try {
-      let logoUrl: string | null = null;
-
-      // Only upload logo if a new file was selected, otherwise use existing
-      if (selectedFile || existingLogoUrl) {
-        logoUrl = (await uploadLogo()) || null;
-        if (selectedFile && !logoUrl) {
-          setLoading(false);
-          return;
-        }
-      }
-
-      const finalFormData = {
-        ...form,
-        logo: logoUrl,
-      };
-
-      await saveBusinessProfile(finalFormData);
-      
+      await saveBusinessProfile(form);
     } catch (error) {
       console.error("Form submission error:", error);
     } finally {
@@ -299,25 +236,6 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         </button>
       </div>
 
-     
-
-      {/* Form Guidance (Modal Style) */}
-      <div className="bg-primary-5 border border-primary-20 rounded-sm p-2 mb-6">
-        <div className="flex items-start">
-          <i className="ri-building-line text-primary text-lg mr-3 mt-0.5"></i>
-          <div>
-            <p className="font-medium text-primary mb-1">
-              Business Profile {isEditMode ? 'Update' : 'Requirements'}
-            </p>
-            <ul className="text-sm text-primary list-disc list-inside space-y-1">
-              <li>All fields marked with * are required.</li>
-              <li>A valid business email and contact number are mandatory.</li>
-              {!isEditMode && <li>You must accept the Merchant Agreement to proceed.</li>}
-            </ul>
-          </div>
-        </div>
-      </div>
-
       {/* Scrollable Form Body */}
       <div className="flex-1 overflow-y-auto space-y-6 pb-4">
         <form onSubmit={onSubmit} className="space-y-6">
@@ -328,20 +246,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 <i className="ri-information-line text-primary text-lg mr-2"></i>
                 <h3 className="font-semibold text-text">Core Information</h3>
               </div>
-              <Input
-                type="select"
-                label="Select Country"
-                placeholder="Select Country"
-                required
-                name="country"
-                id="country"
-                selectOptions={supportedCountries}
-                value={form.country}
-                onChange={handleChange("country")}
-                onBlur={() => handleBlur("country")}
-                error={errors.country}
-              />
-
+              
               <Input
                 label="Business Name"
                 placeholder="Enter your business name"
@@ -353,6 +258,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onBlur={() => handleBlur("name")}
                 error={errors.name}
               />
+
               <Input
                 label="Business Branch"
                 placeholder="Enter your business branch"
@@ -363,6 +269,28 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onChange={handleChange("branch")}
                 onBlur={() => handleBlur("branch")}
                 error={errors.branch}
+              />
+
+              <Input
+                label="Registration Number (Optional)"
+                placeholder="e.g., RC1234567"
+                name="registration_number"
+                id="registration_number"
+                value={form.registration_number}
+                onChange={handleChange("registration_number")}
+                onBlur={() => handleBlur("registration_number")}
+                error={errors.registration_number}
+              />
+
+              <Input
+                label="Tax ID (Optional)"
+                placeholder="e.g., 1234567890"
+                name="tax_id"
+                id="tax_id"
+                value={form.tax_id}
+                onChange={handleChange("tax_id")}
+                onBlur={() => handleBlur("tax_id")}
+                error={errors.tax_id}
               />
 
               <Input
@@ -383,12 +311,12 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 type="tel"
                 placeholder="e.g., 9876543210"
                 required
-                name="phone_number"
-                id="phone_number"
-                value={form.phone_number}
-                onChange={handleChange("phone_number")}
-                onBlur={() => handleBlur("phone_number")}
-                error={errors.phone_number}
+                name="phone"
+                id="phone"
+                value={form.phone}
+                onChange={handleChange("phone")}
+                onBlur={() => handleBlur("phone")}
+                error={errors.phone}
               />
 
               <Input
@@ -404,13 +332,51 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
               />
             </div>
 
-            {/* Column 2: Address and Logo */}
+            {/* Column 2: Address */}
             <div className="space-y-4 border border-border rounded-sm p-4">
               <div className="flex items-center mb-4">
-                <i className="ri-image-line text-primary text-lg mr-2"></i>
-                <h3 className="font-semibold text-text">Address & Logo</h3>
+                <i className="ri-map-pin-line text-primary text-lg mr-2"></i>
+                <h3 className="font-semibold text-text">Address</h3>
               </div>
               
+              <Input
+                type="select"
+                label="Country"
+                placeholder="Select Country"
+                required
+                name="country"
+                id="country"
+                selectOptions={supportedCountries}
+                value={form.country}
+                onChange={handleChange("country")}
+                onBlur={() => handleBlur("country")}
+                error={errors.country}
+              />
+
+              <Input
+                label="State/Province"
+                placeholder="Enter state or province"
+                required
+                name="state"
+                id="state"
+                value={form.state}
+                onChange={handleChange("state")}
+                onBlur={() => handleBlur("state")}
+                error={errors.state}
+              />
+
+              <Input
+                label="City"
+                placeholder="Enter city"
+                required
+                name="city"
+                id="city"
+                value={form.city}
+                onChange={handleChange("city")}
+                onBlur={() => handleBlur("city")}
+                error={errors.city}
+              />
+
               <Input
                 label="Business Address"
                 type="textarea"
@@ -424,60 +390,17 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 error={errors.address}
               />
 
-              <div className="space-y-2 mt-4">
-                {logoPreview && (
-                  <div className="relative inline-block w-full">
-                    <img
-                      src={logoPreview}
-                      alt="Logo preview"
-                      className="w-full h-40 object-contain border border-border p-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeLogo}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-danger text-white rounded-full flex items-center justify-center text-xs hover:bg-danger-80 transition-colors z-20"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                )}
-
-                {!logoPreview && (
-                  <div className="flex items-center gap-3">
-                    <label className="flex-1 cursor-pointer">
-                      <input
-                        type="file"
-                        ref={logoInputRef}
-                        onChange={onLogoSelected}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                      <div className="h-40 border-2 border-dashed border-border rounded-sm p-4 text-center hover:border-primary transition-colors">
-                        <i className="ri-upload-cloud-2-line text-2xl text-text-light mb-2 block"></i>
-                        <p className="text-sm text-text-light">
-                          Click to upload business logo
-                        </p>
-                        <p className="text-xs text-text-lighter mt-1">
-                          PNG, JPG, WEBP up to 5MB
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                )}
-
-                {uploading && (
-                  <div className="mt-2">
-                    <div className="flex items-center gap-2 text-sm text-text-light">
-                      <i className="ri-loader-4-line animate-spin"></i>
-                      <span>Uploading logo...</span>
-                    </div>
-                  </div>
-                )}
-
-                {logoError && (
-                  <div className="text-danger text-sm mt-1">{logoError}</div>
-                )}
-              </div>
+              <Input
+                label="ZIP Code"
+                placeholder="Enter postal/ZIP code"
+                required
+                name="zip_code"
+                id="zip_code"
+                value={form.zip_code}
+                onChange={handleChange("zip_code")}
+                onBlur={() => handleBlur("zip_code")}
+                error={errors.zip_code}
+              />
             </div>
           </div>
         </form>
@@ -488,13 +411,11 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         <Button
           type="submit"
           onClick={onSubmit}
-          disabled={!isFormValid || loading || uploading}
-          loading={loading || uploading}
+          disabled={!isFormValid || loading}
+          loading={loading}
           variant="primary"
         >
-          {uploading
-            ? "Uploading Logo..."
-            : loading
+          {loading
             ? "Processing..."
             : isEditMode
             ? "Update Entity"
