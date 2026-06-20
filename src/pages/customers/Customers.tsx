@@ -12,7 +12,6 @@ import {
 import { Button, DataTable } from "../../components/common";
 import { Customer } from "../../core/types";
 import { useNavigate } from "react-router-dom";
-import { generateSampleCustomers } from "../../data/sampleData";
 import { useModal } from "../../core/hooks/useModal";
 import AddEditCustomer from "./AddEditCustomer";
 import CustomerDetail from "./CustomerDetails";
@@ -28,14 +27,13 @@ const Customers = () => {
         const parsed = JSON.parse(stored);
         return parsed.map((c: any) => ({
           ...c,
-          createdAt: new Date(c.createdAt),
+          created_at: new Date(c.created_at),
           updatedAt: new Date(c.updatedAt),
         }));
       }
     } catch (error) {
       console.error("Error loading customers:", error);
     }
-    return generateSampleCustomers();
   });
 
   const [loading, setLoading] = useState(false);
@@ -91,9 +89,9 @@ const Customers = () => {
       result = result.filter(
         (c) =>
           c.name.toLowerCase().includes(search) ||
-          c.email.toLowerCase().includes(search) ||
-          c.phone.includes(search) ||
-          c.id.toLowerCase().includes(search),
+          c.email?.toLowerCase().includes(search) ||
+          c.phone?.includes(search) ||
+          c.uuid?.toLowerCase().includes(search),
       );
     }
 
@@ -118,10 +116,10 @@ const Customers = () => {
         result.sort((a, b) => (a.balance || 0) - (b.balance || 0));
         break;
       case "newest":
-        result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime());
         break;
       case "oldest":
-        result.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        result.sort((a, b) => new Date(a.created_at || "").getTime() - new Date(b.created_at || "").getTime());
         break;
       default:
         break;
@@ -173,14 +171,14 @@ const Customers = () => {
         "Are you sure you want to delete this customer? This action cannot be undone.",
       )
     ) {
-      setCustomers((prev) => prev.filter((c) => c.id !== customerId));
+      setCustomers((prev) => prev.filter((c) => c.uuid !== customerId));
     }
   }, []);
 
   const handleToggleActive = useCallback((customerId: string) => {
     setCustomers((prev) =>
       prev.map((c) =>
-        c.id === customerId
+        c.uuid === customerId
           ? {
               ...c,
               is_active: c.is_active === false ? true : false,
@@ -256,28 +254,8 @@ const Customers = () => {
     },
     {
       header: "Tax ID",
-      value: (item: Customer) => item.taxId || "-",
+      value: (item: Customer) => item.tax_id || "-",
       type: "column" as const,
-    },
-    {
-      header: "Balance",
-      value: (item: Customer) => (
-        <div className="text-right">
-          <div
-            className={`font-semibold ${(item.balance || 0) > 0 ? "text-amber-600" : "text-emerald-600"}`}
-          >
-            GHS {(item.balance || 0).toFixed(2)}
-          </div>
-          {item.creditLimit && (
-            <div className="text-xs text-text-light">
-              Limit: GHS {item.creditLimit.toFixed(2)}
-            </div>
-          )}
-        </div>
-      ),
-      type: "column" as const,
-      sortable: true,
-      sortField: "balance",
     },
     {
       header: "Status",
@@ -316,7 +294,7 @@ const Customers = () => {
       actions.push({
         title: item.is_active !== false ? "Deactivate" : "Activate",
         icon: "check",
-        handler: () => handleToggleActive(item.id),
+        handler: () => handleToggleActive(item.uuid || ""),
         classes:
           item.is_active !== false ? "text-amber-600" : "text-emerald-600",
       });
@@ -324,7 +302,7 @@ const Customers = () => {
       actions.push({
         title: "Delete",
         icon: "delete",
-        handler: () => handleDeleteCustomer(item.id),
+        handler: () => handleDeleteCustomer(item.uuid || ""),
         classes: "text-danger",
       });
 

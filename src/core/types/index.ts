@@ -438,3 +438,65 @@ export interface IPaginatedResponse<T> {
     totalPages: number;
   };
 }
+
+
+/** ==========================================================================================
+ * DASHBOARD INTERFACE
+ * ==========================================================================================
+ */
+export interface DashboardStats {
+  inventory: {
+    total_items: number;
+    total_quantity: number;
+    total_value: number;
+    total_price: number;
+    avg_cost: number;
+    avg_price: number;
+  };
+  invoices: {
+    total_invoices: number;
+    total_amount: number;
+    total_paid: number;
+    total_remaining: number;
+  };
+  recent_transactions: Array<{
+    id: string;
+    type: 'invoice' | 'payment';
+    description: string;
+    amount: number;
+    date: string;
+    status: string;
+    reference?: string;
+  }>;
+  weekly_sales: Array<{
+    day: string;
+    amount: number;
+    count: number;
+  }>;
+  top_selling_items: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    revenue: number;
+  }>;
+  inventory_by_type: Array<{
+    name: string;
+    count: number;
+    quantity: number;
+    value: number;
+  }>;
+  low_stock_count: {
+    low_stock: number;
+    out_of_stock: number;
+    total: number;
+  };
+  invoice_status_breakdown: {
+    draft: { count: number; amount: number };
+    quoted: { count: number; amount: number };
+    invoiced: { count: number; amount: number };
+    partially_paid: { count: number; amount: number };
+    paid: { count: number; amount: number };
+    cancelled: { count: number; amount: number };
+    overdue: { count: number; amount: number };
+  };
+}

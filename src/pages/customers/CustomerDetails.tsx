@@ -10,6 +10,7 @@ import {
 import { Customer } from "../../core/types";
 import { Button } from "../../components/common";
 import { useModal } from "../../core/hooks/useModal";
+import { DateFormatEnums, formatDate } from "../../core/utils/date-format";
 
 const CustomerDetail = () => {
   const { modalData, modalRef } = useModal();
@@ -19,14 +20,6 @@ const CustomerDetail = () => {
   if (!customer) {
     return null;
   }
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   const handleEdit = () => {
     modalRef?.close({ action: "edit", customer });
@@ -77,7 +70,7 @@ const CustomerDetail = () => {
             {customer.is_active !== false ? "Active" : "Inactive"}
           </span>
           <span className="text-sm text-text-light">
-            Joined: {formatDate(customer.createdAt)}
+            Joined: {formatDate(customer?.created_at, DateFormatEnums.DATE_TIME_SHORT)}
           </span>
         </div>
 
@@ -107,13 +100,13 @@ const CustomerDetail = () => {
             <p className="text-text font-medium">{customer.address}</p>
           </div>
 
-          {customer.taxId && (
+          {customer.tax_id && (
             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
               <div className="flex items-center gap-2 text-text-light mb-2">
                 <Building className="w-4 h-4" />
                 <span className="text-sm font-medium">Tax ID</span>
               </div>
-              <p className="text-text font-medium">{customer.taxId}</p>
+              <p className="text-text font-medium">{customer.tax_id}</p>
             </div>
           )}
 
@@ -127,11 +120,11 @@ const CustomerDetail = () => {
             >
               GHS {(customer.balance || 0).toFixed(2)}
             </p>
-            {customer.creditLimit && (
+            {/* {customer.creditLimit && (
               <p className="text-sm text-text-light mt-1">
                 Credit Limit: GHS {customer.creditLimit.toFixed(2)}
               </p>
-            )}
+            )} */}
           </div>
         </div>
 

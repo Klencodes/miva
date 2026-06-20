@@ -1,8 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { DataTable } from '../../components/common';
 import { InventoryItem, IUser } from '../../core/types';
 import { DUMMY_USERS, getPermissions } from '../../core/constants/permissions';
 import { ColumnDef } from '../../components/common/Datatable';
+import { useStore } from '../../core/contexts/StoreProvider';
+import { useModal } from '../../core/hooks/useModal';
+import { eventService } from '../../core/services/events';
+import InventoryService from '../../core/services/inventory';
+import AddEditInventory from './AddEditInventory';
+import { toast } from 'sonner';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -11,7 +17,9 @@ interface InventoryProps {
 }
 
 const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
-  const activeUser: IUser = currentUser ?? DUMMY_USERS[0];
+  const { user } = useStore();
+  const { openModal } = useModal();
+  const activeUser: IUser = currentUser ?? user ?? DUMMY_USERS[0];
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -20,15 +28,68 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState<string>(activeUser.uuid);
   const [demoUser, setDemoUser] = useState<IUser>(activeUser);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  });
 
   // ── Load data ──────────────────────────────────────────────────────────────
-  useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setInventory();
+  const fetchInventory = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params: any = {
+        page: pagination.page,
+        limit: pagination.limit,
+      };
+
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+
+      if (filterType !== 'all') {
+        params.type = filterType;
+      }
+
+      const response = await InventoryService.getItems(params);
+      
+      if (response.success) {
+        setInventory(response.results?.items || []);
+        setPagination(response.results?.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching inventory:', error);
+      toast.error('Error', { description: error.message || 'Failed to load inventory' });
+    } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+    }
+  }, [searchQuery, filterType, pagination.page, pagination.limit]);
+
+  // Listen for refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      setRefreshKey(prev => prev + 1);
+      fetchInventory();
+    };
+
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, [fetchInventory]);
+
+  // Load data on mount and when dependencies change
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory, refreshKey]);
 
   // ── Demo user switcher ─────────────────────────────────────────────────────
   const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -43,25 +104,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
 
   // ── Filter (sort is delegated to DataTable via onSort) ─────────────────────
   const filteredInventory = useMemo(() => {
-    let filtered = inventory;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(
-        (item) =>
-          item.name.toLowerCase().includes(q) ||
-          item.specs?.sae?.toLowerCase().includes(q) ||
-          item.specs?.thread_type?.toLowerCase().includes(q) ||
-          item.supplier?.toLowerCase().includes(q)
-      );
-    }
-
-    if (filterType !== 'all') {
-      filtered = filtered.filter((item) => item.type === filterType);
-    }
-
-    return filtered;
-  }, [inventory, searchQuery, filterType]);
+    return inventory;
+  }, [inventory]);
 
   // ── onSort handler (DataTable emits "field_dir") ───────────────────────────
   const handleSort = (sortValue: string) => {
@@ -79,8 +123,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         else if (field === 'quantity') cmp = a.quantity - b.quantity;
         else if (field === 'cost') cmp = a.cost - b.cost;
         else if (field === 'price') cmp = a.price - b.price;
-        else if (field === 'description')
-          cmp = (a.description ?? '').localeCompare(b.description ?? '');
         return dir === 'asc' ? cmp : -cmp;
       })
     );
@@ -94,18 +136,59 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   }, [inventory]);
 
   // ── CRUD handlers ──────────────────────────────────────────────────────────
-  const updateInventory = (id: string, newQuantity: number) => {
-    setInventory((prev) =>
-      prev.map((item) =>
-        item.uuid === id
-          ? { ...item, quantity: Math.max(0, newQuantity), lastUpdated: new Date() }
-          : item
-      )
-    );
+  const updateInventory = async (id: string, newQuantity: number) => {
+    try {
+      const response = await InventoryService.adjustStock(id, {
+        quantity: newQuantity,
+        type: 'set',
+        reason: 'Manual adjustment',
+      });
+      
+      if (response.success) {
+        toast.success('Success', { description: 'Stock updated successfully' });
+        fetchInventory();
+      }
+    } catch (error: any) {
+      toast.error('Error', { description: error.message || 'Failed to update stock' });
+    }
   };
 
-  const deleteInventoryItem = (id: string) => {
-    setInventory((prev) => prev.filter((item) => item.uuid !== id));
+  const deleteInventoryItem = async (id: string) => {
+    try {
+      const response = await InventoryService.deleteItem(id);
+      
+      if (response.success) {
+        toast.success('Success', { description: 'Item deleted successfully' });
+        fetchInventory();
+      }
+    } catch (error: any) {
+      toast.error('Error', { description: error.message || 'Failed to delete item' });
+    }
+  };
+
+  // ── Add/Edit modal handlers ────────────────────────────────────────────────
+  const handleAddItem = async () => {
+    const result = await openModal(AddEditInventory, {
+      data: { item: null },
+      size: "xl",
+      side: "right",
+    });
+
+    if (result?.success) {
+      fetchInventory();
+    }
+  };
+
+  const handleEditItem = async (item: InventoryItem) => {
+    const result = await openModal(AddEditInventory, {
+      data: { item },
+      size: "xl",
+      side: "right",
+    });
+
+    if (result?.success) {
+      fetchInventory();
+    }
   };
 
   // ── Column definitions ─────────────────────────────────────────────────────
@@ -148,7 +231,16 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       header: 'QUANTITY',
       sortable: true,
       sortField: 'quantity',
-      value: (item: InventoryItem) => item.quantity,
+      value: (item: InventoryItem) => {
+        const isLow = item.quantity <= item.reorder_threshold;
+        return (
+          <span className={isLow && item.quantity > 0 ? 'text-amber-600 font-bold' : 
+                         item.quantity === 0 ? 'text-red-600 font-bold' : ''}>
+            {item.quantity}
+            {isLow && item.quantity > 0 && <span className="ml-1 text-xs">⚠️</span>}
+          </span>
+        );
+      },
       type: 'column',
       bold: true,
     },
@@ -182,13 +274,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       },
       type: 'column',
     },
-    {
-      header: 'description',
-      sortable: true,
-      sortField: 'description',
-      value: (item: InventoryItem) => item.description || '—',
-      type: 'column',
-    },
   ];
 
   // ── Row actions ────────────────────────────────────────────────────────────
@@ -206,7 +291,13 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       title: 'Remove Stock',
       icon: 'remove',
       classes: 'text-red-600 hover:text-red-800',
-      handler: () => updateInventory(item.uuid, item.quantity - 1),
+      handler: () => {
+        if (item.quantity > 0) {
+          updateInventory(item.uuid, item.quantity - 1);
+        } else {
+          toast.warning('Warning', { description: 'Cannot remove stock from zero quantity' });
+        }
+      },
     });
 
     if (activePermissions.can_edit_inventory) {
@@ -214,7 +305,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         title: 'Edit',
         icon: 'edit',
         classes: 'text-blue-600 hover:text-blue-800',
-        handler: () => console.log('Edit item:', item.uuid),
+        handler: () => handleEditItem(item),
       });
     }
 
@@ -224,7 +315,9 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         icon: 'delete',
         classes: 'text-red-600 hover:text-red-800',
         handler: () => {
-          if (window.confirm(`Delete "${item.name}"?`)) deleteInventoryItem(item.uuid);
+          if (window.confirm(`Delete "${item.name}"? This action cannot be undone.`)) {
+            deleteInventoryItem(item.uuid);
+          }
         },
       });
     }
@@ -241,6 +334,17 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     { value: 'adapter', label: 'Adapters' },
     { value: 'coupling', label: 'Couplings' },
     { value: 'other', label: 'Other' },
+  ];
+
+  const sortOptions = [
+    { value: 'name_asc', label: 'Name A-Z' },
+    { value: 'name_desc', label: 'Name Z-A' },
+    { value: 'quantity_asc', label: 'Quantity Low-High' },
+    { value: 'quantity_desc', label: 'Quantity High-Low' },
+    { value: 'price_asc', label: 'Price Low-High' },
+    { value: 'price_desc', label: 'Price High-Low' },
+    { value: 'cost_asc', label: 'Cost Low-High' },
+    { value: 'cost_desc', label: 'Cost High-Low' },
   ];
 
   // ── Role badge colours ─────────────────────────────────────────────────────
@@ -266,23 +370,40 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
           </p>
         </div>
 
+        <div className="flex items-center gap-3">
+          {/* Demo User Switcher */}
+          <select
+            value={selectedUserId}
+            onChange={handleUserChange}
+            className="px-3 py-1.5 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary"
+          >
+            {DUMMY_USERS.map((u) => (
+              <option key={u.uuid} value={u.uuid}>
+                {u.name} ({u.role})
+              </option>
+            ))}
+          </select>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${roleBadgeColor[demoUser.role]}`}>
+            {demoUser.role}
+          </span>
+        </div>
       </div>
 
       {/* Stock Status Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-card shadow-sm p-4 border border-gray-200">
+        <div className="bg-card shadow-sm p-4 border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-sm text-text-light">Total Items</span>
             <span className="text-2xl font-bold text-text">{stockStatus.total}</span>
           </div>
         </div>
-        <div className="bg-card shadow-sm p-4 border border-gray-200">
+        <div className="bg-card shadow-sm p-4 border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-sm text-text-light">Healthy Stock</span>
             <span className="text-2xl font-bold text-emerald-600">{stockStatus.healthy}</span>
           </div>
         </div>
-        <div className="bg-card shadow-sm p-4 border border-gray-200">
+        <div className="bg-card shadow-sm p-4 border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-sm text-text-light">Low Stock</span>
             <span
@@ -311,16 +432,17 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         }
         addButtonText="Add Product"
         userRole={demoUser.role as any}
-        page={1}
-        limit={10}
-        count={filteredInventory.length}
+        page={pagination.page}
+        limit={pagination.limit}
+        count={pagination.total}
         filterOptions={filterOptions}
+        sortOptions={sortOptions}
         customActions={getCustomActions}
         onSearch={setSearchQuery}
         onFilter={setFilterType}
         onSort={handleSort}
-        onPageChange={(page) => console.log('Page changed:', page)}
-        onAdd={() => console.log('Add product clicked')}
+        onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
+        onAdd={handleAddItem}
       />
     </div>
   );

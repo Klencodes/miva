@@ -418,7 +418,7 @@ const CreateInvoice = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="h-full p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-card shadow-sm p-6 mb-6 border border-border flex justify-between items-center flex-wrap gap-4">
@@ -690,17 +690,7 @@ const CreateInvoice = () => {
                     max={discountType === 'percentage' ? 100 : undefined}
                   />
                 </div>
-                <div>
-                  <Input
-                    type="number"
-                    label="VAT Rate (%)"
-                    labelType="default"
-                    value={vatRate}
-                    onChange={(value: number) => setVatRate(Math.max(0, value || 0))}
-                    min={0}
-                    max={100}
-                  />
-                </div>
+
               </div>
             </div>
 

@@ -24,8 +24,7 @@ const AddEditCustomer = () => {
     email: "",
     phone: "",
     address: "",
-    taxId: "",
-    creditLimit: undefined,
+    tax_id: "",
     notes: "",
     is_active: true,
   });
@@ -37,7 +36,6 @@ const AddEditCustomer = () => {
     if (customer) {
       setFormData({
         ...customer,
-        creditLimit: customer.creditLimit || undefined,
       });
     }
   }, [customer]);
@@ -61,10 +59,6 @@ const AddEditCustomer = () => {
 
     if (!formData.address?.trim()) {
       newErrors.address = "Address is required";
-    }
-
-    if (formData.creditLimit !== undefined && formData.creditLimit < 0) {
-      newErrors.creditLimit = "Credit limit cannot be negative";
     }
 
     setErrors(newErrors);
@@ -173,8 +167,8 @@ const AddEditCustomer = () => {
 
               <Input
                 label="Tax ID"
-                value={formData.taxId || ""}
-                onChange={(e) => handleInputChange("taxId", e.target.value)}
+                value={formData.tax_id || ""}
+                onChange={(e) => handleInputChange("tax_id", e.target.value)}
                 placeholder="C-12345"
                 prefixIcon={<Building className="w-4 h-4" />}
                 disabled={isSubmitting}
@@ -201,26 +195,7 @@ const AddEditCustomer = () => {
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Credit Limit"
-                value={
-                  formData.creditLimit !== undefined &&
-                  formData.creditLimit !== null
-                    ? formData.creditLimit.toString()
-                    : ""
-                }
-                onChange={(e) => {
-                  const value = e.target.value
-                    ? parseFloat(e.target.value)
-                    : undefined;
-                  handleInputChange("creditLimit", value);
-                }}
-                placeholder="0.00"
-                error={errors.creditLimit}
-                prefixIcon={<CreditCard className="w-4 h-4" />}
-                disabled={isSubmitting}
-              />
-
+              
               {/* ✅ FIXED CHECKBOX SECTION */}
               <div className="flex items-center h-full">
                 <Input
