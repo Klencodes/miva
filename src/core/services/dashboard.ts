@@ -40,11 +40,12 @@ class DashboardService {
     
     return { headers };
   }
+  
 
   /**
    * Get complete dashboard statistics with optional date range
    */
-  async getDashboardStats(dateFrom?: string, dateTo?: string): Promise<IResponse> {
+  async getDashboardStats(dateFrom?: string, dateTo?: string, entity_id?: string): Promise<IResponse> {
     try {
       const params: Record<string, string> = {};
       
@@ -54,7 +55,11 @@ class DashboardService {
       
       if (dateTo) {
         params.date_to = dateTo;
+      } 
+      if (entity_id) {
+        params.entity_id = entity_id;
       }
+      
 
       const response = await axios.get(
         `${this.baseURL}/dashboard`,
@@ -270,5 +275,5 @@ class DashboardService {
     }
   }
 }
-
-export default new DashboardService();
+const dashboardServiceInstance = new DashboardService();
+export default dashboardServiceInstance;

@@ -1,5 +1,18 @@
 import React, { useState, useMemo, useRef, useEffect, JSX } from "react";
 import { Link } from "react-router-dom";
+import {
+  ChevronUp,
+  ChevronDown,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Eye,
+  Copy,
+  Plus,
+  Minus,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { SearchFilter } from "./SearchFilter";
 import { SelectOption } from "./Input";
 import Button from "./Button";
@@ -9,43 +22,44 @@ import { formatDate } from "../../core/utils/date-format";
 
 // ─── Internal sort types ──────────────────────────────────────────────────────
 
-type _SortDir = 'asc' | 'desc';
+type SortDir = "asc" | "desc";
 
-interface _InternalSortState {
+interface InternalSortState {
   field: string | null;
-  dir: _SortDir;
+  dir: SortDir;
 }
 
 // ─── Sort icon ────────────────────────────────────────────────────────────────
 
-const _SortIcon: React.FC<{ field: string; sort: _InternalSortState }> = ({ field, sort }) => {
+const SortIcon: React.FC<{ field: string; sort: InternalSortState }> = ({
+  field,
+  sort,
+}) => {
   const active = sort.field === field;
   return (
     <span className="inline-flex flex-col ml-1 leading-none select-none">
-      <svg
-        width="8" height="5" viewBox="0 0 8 5"
-        className={`mb-[1px] transition-colors ${active && sort.dir === 'asc' ? 'text-amber-600' : 'text-text-light'}`}
-        fill="currentColor"
-      >
-        <path d="M4 0L8 5H0L4 0Z" />
-      </svg>
-      <svg
-        width="8" height="5" viewBox="0 0 8 5"
-        className={`transition-colors ${active && sort.dir === 'desc' ? 'text-amber-600' : 'text-text-light'}`}
-        fill="currentColor"
-      >
-        <path d="M4 5L0 0H8L4 5Z" />
-      </svg>
+      <ChevronUp
+        size={12}
+        className={`mb-[1px] transition-colors ${
+          active && sort.dir === "asc" ? "text-amber-600" : "text-text-light"
+        }`}
+      />
+      <ChevronDown
+        size={12}
+        className={`transition-colors ${
+          active && sort.dir === "desc" ? "text-amber-600" : "text-text-light"
+        }`}
+      />
     </span>
   );
 };
 
 // ─── Sortable header ──────────────────────────────────────────────────────────
 
-const _SortableHeader: React.FC<{
+const SortableHeader: React.FC<{
   label: string;
   field: string;
-  sort: _InternalSortState;
+  sort: InternalSortState;
   onSort: (field: string) => void;
 }> = ({ label, field, sort, onSort }) => (
   <button
@@ -54,7 +68,7 @@ const _SortableHeader: React.FC<{
     className="inline-flex items-center gap-0.5 font-semibold text-text hover:text-amber-700 transition-colors cursor-pointer select-none whitespace-nowrap"
   >
     {label}
-    <_SortIcon field={field} sort={sort} />
+    <SortIcon field={field} sort={sort} />
   </button>
 );
 
@@ -84,7 +98,7 @@ const Pagination: React.FC<any> = ({ page, limit, count, onPageChange }) => {
   };
 
   return (
-    <nav className="flex justify-between items-center mt-4 pt-3 border-t border-border">
+    <nav className="flex justify-between items-center mt-4 p-4 border-t border-border">
       <div className="text-text-light text-sm">
         Showing {startItem}–{endItem} of {count} items
       </div>
@@ -94,7 +108,9 @@ const Pagination: React.FC<any> = ({ page, limit, count, onPageChange }) => {
             onClick={() => changePage(page - 1)}
             disabled={page === 1}
             className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-              page === 1 ? 'text-text-light cursor-not-allowed' : 'text-text hover:bg-background'
+              page === 1
+                ? "text-text-light cursor-not-allowed"
+                : "text-text hover:bg-background"
             }`}
           >
             &laquo;
@@ -105,7 +121,9 @@ const Pagination: React.FC<any> = ({ page, limit, count, onPageChange }) => {
             <button
               onClick={() => changePage(pageNum)}
               className={`px-3.5 py-1.5 rounded-md text-sm transition-colors ${
-                pageNum === page ? 'bg-primary text-white' : 'text-text hover:bg-background'
+                pageNum === page
+                  ? "bg-primary text-white"
+                  : "text-text hover:bg-background"
               }`}
             >
               {pageNum}
@@ -117,7 +135,9 @@ const Pagination: React.FC<any> = ({ page, limit, count, onPageChange }) => {
             onClick={() => changePage(page + 1)}
             disabled={page === totalPages}
             className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-              page === totalPages ? 'text-text-light cursor-not-allowed' : 'text-text hover:bg-background'
+              page === totalPages
+                ? "text-text-light cursor-not-allowed"
+                : "text-text hover:bg-background"
             }`}
           >
             &raquo;
@@ -133,18 +153,18 @@ const Pagination: React.FC<any> = ({ page, limit, count, onPageChange }) => {
 export interface ColumnDef {
   header: string;
   value: (item: any) => any;
-  type?: 'column' | 'status' | 'date' | 'image';
+  type?: "column" | "status" | "date" | "image";
   bold?: boolean;
-  align?: 'left' | 'center' | 'right';
-  sortable?: boolean;       // if true, DataTable renders a sortable header button
-  sortField?: string;       // key passed to onSort; defaults to column.header
+  align?: "left" | "center" | "right";
+  sortable?: boolean;
+  sortField?: string;
   link?: (item: any) => string | string[];
   onClick?: (item: any) => void;
   statusClasses?: (item: any) => string;
   showSyncBadge?: boolean;
   format?: string;
   imageConfig?: {
-    size?: 'xs' | 'sm' | 'md' | 'lg';
+    size?: "xs" | "sm" | "md" | "lg";
     altText?: (item: any) => string;
     className?: string;
   };
@@ -175,7 +195,9 @@ interface DataTableProps {
   onSort?: (sort: string) => void;
   onPageChange?: (page: number) => void;
   onAdd?: () => void;
-  onDateRangeChange?: (dateRange: { start_date: string; end_date: string } | any) => void;
+  onDateRangeChange?: (
+    dateRange: { start_date: string; end_date: string } | any,
+  ) => void;
 }
 
 // ─── Skeleton loader ──────────────────────────────────────────────────────────
@@ -193,24 +215,28 @@ const TableSkeletonLoader: React.FC<{
     <>
       {skeletonRows.map((_, rowIndex) => (
         <tr key={rowIndex} className="border-b border-border animate-pulse">
-          {Array(totalColumns).fill(0).map((_, colIndex) => {
-            const isActionsCol = showActions && colIndex === actionsColIndex;
-            return (
-              <td key={colIndex} className="px-4 py-3 align-middle">
-                <div className={`flex items-center ${isActionsCol ? 'justify-end' : ''}`}>
+          {Array(totalColumns)
+            .fill(0)
+            .map((_, colIndex) => {
+              const isActionsCol = showActions && colIndex === actionsColIndex;
+              return (
+                <td key={colIndex} className="px-4 py-3 align-middle">
                   <div
-                    className={`h-4 bg-background rounded ${
-                      isActionsCol
-                        ? 'w-4 h-4 rounded-full'
-                        : colIndex === 0
-                        ? 'w-2/3 max-w-[75%]'
-                        : 'w-full max-w-full'
-                    }`}
-                  />
-                </div>
-              </td>
-            );
-          })}
+                    className={`flex items-center ${isActionsCol ? "justify-end" : ""}`}
+                  >
+                    <div
+                      className={`h-4 bg-background rounded ${
+                        isActionsCol
+                          ? "w-4 h-4 rounded-full"
+                          : colIndex === 0
+                            ? "w-2/3 max-w-[75%]"
+                            : "w-full max-w-full"
+                      }`}
+                    />
+                  </div>
+                </td>
+              );
+            })}
         </tr>
       ))}
     </>
@@ -224,22 +250,148 @@ const PendingSyncBadge: React.FC = () => (
     title="Not yet synced to server"
     className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-border whitespace-nowrap align-middle"
   >
-    <svg
-      className="w-3 h-3 animate-spin"
-      fill="none"
-      viewBox="0 0 24 24"
-      style={{ animationDuration: '2s' }}
-    >
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      />
-    </svg>
+    <RefreshCw
+      size={12}
+      className="animate-spin"
+      style={{ animationDuration: "2s" }}
+    />
     Pending
   </span>
 );
+
+// ─── Action dropdown menu (fixed-positioned to escape overflow containers) ────
+
+interface DropdownMenuProps {
+  anchorRef: React.RefObject<HTMLButtonElement>;
+  open: boolean;
+  actions: any[];
+  onAction: (action: any) => void;
+  onClose: () => void;
+}
+
+const FixedDropdownMenu: React.FC<DropdownMenuProps> = ({
+  anchorRef,
+  open,
+  actions,
+  onAction,
+  onClose,
+}) => {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (open && anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [open, anchorRef]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        anchorRef.current &&
+        !anchorRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open, onClose, anchorRef]);
+
+  if (!open || !coords) return null;
+
+  const getActionIcon = (icon: string) => {
+    switch (icon) {
+      case "edit":
+        return <Edit size={16} />;
+      case "delete":
+        return <Trash2 size={16} />;
+      case "view":
+        return <Eye size={16} />;
+      case "copy":
+        return <Copy size={16} />;
+      case "add":
+        return <Plus size={16} />;
+      case "remove":
+        return <Minus size={16} />;
+      default:
+        return <AlertCircle size={16} />;
+    }
+  };
+
+  return (
+    <div
+      ref={menuRef}
+      style={{
+        position: "fixed",
+        top: coords.top,
+        right: coords.right,
+        zIndex: 9999,
+      }}
+      className="w-40 bg-card rounded-md shadow-lg border border-border py-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {actions.map((action) => (
+        <button
+          key={action.title}
+          onClick={() => onAction(action)}
+          className={`w-full text-left px-4 py-2 text-sm hover:bg-primary-5 transition-colors flex items-center gap-2 ${action.classes || ""}`}
+        >
+          <span className="w-4 h-4 flex items-center justify-center">
+            {getActionIcon(action.icon)}
+          </span>
+          <span>{action.title}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ─── Per-row action trigger ───────────────────────────────────────────────────
+
+const RowActionButton: React.FC<{
+  item: any;
+  actions: any[];
+  onAction: (action: any, item: any) => void;
+}> = ({ item, actions, onAction }) => {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null!);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="p-1.5 rounded-md hover:bg-primary-10 transition-colors text-text-light hover:text-text"
+      >
+        <MoreVertical size={20} />
+      </button>
+
+      <FixedDropdownMenu
+        anchorRef={btnRef}
+        open={open}
+        actions={actions}
+        onAction={(action) => {
+          onAction(action, item);
+          setOpen(false);
+        }}
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
+};
 
 // ─── DataTable ────────────────────────────────────────────────────────────────
 
@@ -248,11 +400,11 @@ const DataTable: React.FC<DataTableProps> = ({
   sortOptions = [],
   filterOptions = [],
   data = null,
-  placeholder = 'Search...',
-  searchLabel = 'Search',
+  placeholder = "Search...",
+  searchLabel = "Search",
   loading = false,
-  noDataMessage = 'No data found.',
-  addButtonText = 'Add New',
+  noDataMessage = "No data found.",
+  addButtonText = "Add New",
   userRole = Roles.SALES,
   page = 1,
   limit = 10,
@@ -266,41 +418,27 @@ const DataTable: React.FC<DataTableProps> = ({
   onAdd,
   onDateRangeChange,
 }) => {
-  const [openedActionMenu, setOpenedActionMenu] = useState<string | null>(null);
-  const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { isDark } = useTheme();
 
-  // ── Internal sort state (used when column.sortable === true) ───────────────
-  const [internalSort, setInternalSort] = useState<_InternalSortState>({
+  // ── Internal sort state ────────────────────────────────────────────────────
+  const [internalSort, setInternalSort] = useState<InternalSortState>({
     field: null,
-    dir: 'asc',
+    dir: "asc",
   });
 
   const handleInternalSort = (field: string) => {
-    const dir = internalSort.field === field && internalSort.dir === 'asc' ? 'desc' : 'asc';
+    const dir =
+      internalSort.field === field && internalSort.dir === "asc"
+        ? "desc"
+        : "asc";
     setInternalSort({ field, dir });
     onSort?.(`${field}_${dir}`);
   };
 
-  // ── Action menu ────────────────────────────────────────────────────────────
-  const toggleActionMenu = (itemId: string) =>
-    setOpenedActionMenu((prev) => (prev === itemId ? null : itemId));
-  const closeMenu = () => setOpenedActionMenu(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (openedActionMenu === null) return;
-      const currentMenuRef = actionMenuRefs.current[openedActionMenu];
-      if (currentMenuRef && !currentMenuRef.contains(event.target as Node)) closeMenu();
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [openedActionMenu]);
-
   // ── Derived flags ──────────────────────────────────────────────────────────
   const showActionsColumn = useMemo(() => {
-    if (typeof customActions === 'function') return true;
-    return customActions.length > 0;
+    if (typeof customActions === "function") return true;
+    return (customActions as any[]).length > 0;
   }, [customActions]);
 
   const showSearchFeature = !!onSearch;
@@ -308,7 +446,6 @@ const DataTable: React.FC<DataTableProps> = ({
   const showSortFeature = !!onSort && (sortOptions?.length || 0) > 0;
   const showPaginationFeature = !!onPageChange && count > limit;
   const showAddButtonFeature = !!onAdd;
-  const useActionDropdowns = showActionsColumn;
 
   // ── Cell renderer ──────────────────────────────────────────────────────────
   const renderCellContent = (item: any, column: ColumnDef) => {
@@ -316,22 +453,26 @@ const DataTable: React.FC<DataTableProps> = ({
     const hasLink = !!column.link;
     const hasClick = !!column.onClick;
     const shouldBeBold = !!column.bold || hasLink || hasClick;
-    const boldClass = shouldBeBold ? 'font-medium' : '';
+    const boldClass = shouldBeBold ? "font-medium" : "";
 
-    const isPending = item.status === 'pending';
+    const isPending = item.status === "pending";
     const showPendingBadge = isPending && column.showSyncBadge;
 
     const renderArrayStructure = (val: any, isBold: boolean) => {
       const primary = Array.isArray(val) ? val[0] : val;
       const secondary = Array.isArray(val) && val[1] ? val[1] : null;
-      const primaryClass = isBold ? 'font-medium' : '';
+      const primaryClass = isBold ? "font-medium" : "";
       return (
         <div className="flex flex-col">
-          <div className={`${primaryClass} text-text leading-tight flex items-center flex-wrap gap-x-1`}>
+          <div
+            className={`${primaryClass} text-text leading-tight flex items-center flex-wrap gap-x-1`}
+          >
             <span>{primary}</span>
             {showPendingBadge && <PendingSyncBadge />}
           </div>
-          {secondary && <div className="text-text-light text-xs mt-0.5">{secondary}</div>}
+          {secondary && (
+            <div className="text-text-light text-xs mt-0.5">{secondary}</div>
+          )}
         </div>
       );
     };
@@ -341,7 +482,7 @@ const DataTable: React.FC<DataTableProps> = ({
         const link = column.link!(item);
         return (
           <Link
-            to={Array.isArray(link) ? link.join('/') : link}
+            to={Array.isArray(link) ? link.join("/") : link}
             className={`block hover:text-primary transition-colors ${boldClass}`}
           >
             {content}
@@ -361,42 +502,50 @@ const DataTable: React.FC<DataTableProps> = ({
     };
 
     switch (column.type) {
-      case 'column':
+      case "column":
         return clickableWrapper(renderArrayStructure(value, shouldBeBold));
 
-      case 'status': {
-        const statusClasses = column.statusClasses ? column.statusClasses(item) : '';
+      case "status": {
+        const statusClasses = column.statusClasses
+          ? column.statusClasses(item)
+          : "";
         return (
           <span
             className={`inline-flex items-center px-2.5 py-1 text-xs rounded-full whitespace-nowrap ${statusClasses} ${boldClass}`}
           >
-            {typeof value === 'string'
+            {typeof value === "string"
               ? value.charAt(0).toUpperCase() + value.slice(1)
               : value}
           </span>
         );
       }
 
-      case 'date':
+      case "date":
         return (
           <span className={`whitespace-nowrap ${boldClass}`}>
             {formatDate(value, column.format)}
           </span>
         );
 
-      case 'image': {
+      case "image": {
         const imgConfig = column.imageConfig || {};
         const sizeClasses =
-          imgConfig.size === 'xs' ? 'w-6 h-6' :
-          imgConfig.size === 'sm' ? 'w-8 h-8' :
-          imgConfig.size === 'lg' ? 'w-16 h-16' : 'w-10 h-10';
-        const altText = imgConfig.altText ? imgConfig.altText(item) : 'Table image';
+          imgConfig.size === "xs"
+            ? "w-6 h-6"
+            : imgConfig.size === "sm"
+              ? "w-8 h-8"
+              : imgConfig.size === "lg"
+                ? "w-16 h-16"
+                : "w-10 h-10";
+        const altText = imgConfig.altText
+          ? imgConfig.altText(item)
+          : "Table image";
         const imageElement = (
           <div className="flex items-center justify-start py-0.5">
             <img
               src={value}
               alt={altText}
-              className={`rounded-full object-cover ${sizeClasses} ${imgConfig.className || ''}`}
+              className={`rounded-full object-cover ${sizeClasses} ${imgConfig.className || ""}`}
             />
           </div>
         );
@@ -405,7 +554,7 @@ const DataTable: React.FC<DataTableProps> = ({
 
       default:
         return clickableWrapper(
-          <span className={`whitespace-nowrap ${boldClass}`}>{value}</span>
+          <span className={`whitespace-nowrap ${boldClass}`}>{value}</span>,
         );
     }
   };
@@ -414,7 +563,7 @@ const DataTable: React.FC<DataTableProps> = ({
   const renderHeaderCell = (column: ColumnDef) => {
     if (column.sortable) {
       return (
-        <_SortableHeader
+        <SortableHeader
           label={column.header}
           field={column.sortField ?? column.header}
           sort={internalSort}
@@ -425,29 +574,9 @@ const DataTable: React.FC<DataTableProps> = ({
     return column.header;
   };
 
-  // ── SVG paths for action icons ─────────────────────────────────────────────
-  const actionIconPath = (icon: string) => {
-    switch (icon) {
-      case 'edit':
-        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />;
-      case 'delete':
-        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />;
-      case 'view':
-        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />;
-      case 'copy':
-        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />;
-      case 'add':
-        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />;
-      case 'remove':
-        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />;
-      default:
-        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />;
-    }
-  };
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="bg-card shadow-sm overflow-hidden">
+    <div className="w-full bg-card shadow-sm overflow-hidden">
       {showSearchFeature && (
         <SearchFilter
           placeholder={placeholder}
@@ -465,19 +594,20 @@ const DataTable: React.FC<DataTableProps> = ({
         />
       )}
 
-      <div className="overflow-x-auto mt-2">
-        <table className="min-w-full text-sm text-left text-text">
+      {/* overflow-x-auto removed from this wrapper so fixed dropdowns aren't clipped */}
+      <div className="w-full mt-2">
+        <table className="w-full text-sm text-left text-text">
           <thead className="bg-card text-xs uppercase text-text border-b border-border">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.header}
                   className={`px-4 py-3.5 font-semibold text-text ${
-                    column.align === 'right'
-                      ? 'text-right'
-                      : column.align === 'center'
-                      ? 'text-center'
-                      : 'text-left'
+                    column.align === "right"
+                      ? "text-right"
+                      : column.align === "center"
+                        ? "text-center"
+                        : "text-left"
                   }`}
                 >
                   {renderHeaderCell(column)}
@@ -491,7 +621,7 @@ const DataTable: React.FC<DataTableProps> = ({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y">
             {/* 1. SKELETON LOADER */}
             {loading && (
               <TableSkeletonLoader
@@ -512,9 +642,7 @@ const DataTable: React.FC<DataTableProps> = ({
                     <div className="text-text-light">{noDataMessage}</div>
                     {showAddButtonFeature && (
                       <Button onClick={onAdd}>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
+                        <Plus size={16} className="mr-1" />
                         {addButtonText}
                       </Button>
                     )}
@@ -525,27 +653,29 @@ const DataTable: React.FC<DataTableProps> = ({
 
             {/* 3. DATA ROWS */}
             {!loading &&
-              data?.map((item) => {
+              data?.map((item, index) => {
                 const rowCustomActions: any[] =
-                  typeof customActions === 'function'
+                  typeof customActions === "function"
                     ? customActions(item)
                     : customActions;
                 const showActionsForThisRow = rowCustomActions.length > 0;
 
                 return (
                   <tr
-                    key={item.id}
-                    className={`${isDark ? 'hover:bg-gray-900' : 'hover:bg-gray-50'} transition-colors`}
+                    key={item.id || index}
+                    className={`${"border-t border-border"} ${
+                      isDark ? "hover:bg-gray-900" : "hover:bg-gray-50"
+                    } transition-colors`}
                   >
                     {columns.map((column) => (
                       <td
                         key={column.header}
                         className={`px-4 py-3 align-middle ${
-                          column.align === 'right'
-                            ? 'text-right'
-                            : column.align === 'center'
-                            ? 'text-center'
-                            : 'text-left'
+                          column.align === "right"
+                            ? "text-right"
+                            : column.align === "center"
+                              ? "text-center"
+                              : "text-left"
                         }`}
                       >
                         {renderCellContent(item, column)}
@@ -555,69 +685,14 @@ const DataTable: React.FC<DataTableProps> = ({
                     {showActionsColumn && (
                       <td className="px-4 py-3 align-middle">
                         {showActionsForThisRow && (
-                          <div className="flex justify-end items-center space-x-1">
-                            {!useActionDropdowns && (
-                              <div className="flex items-center space-x-1">
-                                {rowCustomActions.map((action) => (
-                                  <button
-                                    key={action.title}
-                                    onClick={() => action.handler(item)}
-                                    className={`p-1.5 rounded-md hover:bg-primary-10 transition-colors text-text-light hover:text-text ${action.classes || ''}`}
-                                    title={action.title}
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      {actionIconPath(action.icon)}
-                                    </svg>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-
-                            {useActionDropdowns && (
-                              <div
-                                className="relative inline-block text-left"
-                                ref={(el: HTMLDivElement | null) => {
-                                  actionMenuRefs.current[item.id] = el;
-                                }}
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleActionMenu(item.id);
-                                  }}
-                                  className="p-1.5 rounded-md hover:bg-primary-10 transition-colors text-text-light hover:text-text"
-                                >
-                                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                    <circle cx="12" cy="5" r="2" />
-                                    <circle cx="12" cy="12" r="2" />
-                                    <circle cx="12" cy="19" r="2" />
-                                  </svg>
-                                </button>
-
-                                {openedActionMenu === item.id && (
-                                  <div
-                                    className="origin-top-right absolute right-0 mt-1 w-40 bg-card rounded-md shadow-lg border border-border py-1 z-50"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {rowCustomActions.map((action) => (
-                                      <button
-                                        key={action.title}
-                                        onClick={() => {
-                                          action.handler(item);
-                                          closeMenu();
-                                        }}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-primary-5 transition-colors flex items-center gap-2 ${action.classes || ''}`}
-                                      >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          {actionIconPath(action.icon)}
-                                        </svg>
-                                        <span>{action.title}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                          <div className="flex justify-end items-center">
+                            <RowActionButton
+                              item={item}
+                              actions={rowCustomActions}
+                              onAction={(action, it) => {
+                                action.handler(it);
+                              }}
+                            />
                           </div>
                         )}
                       </td>
@@ -630,21 +705,17 @@ const DataTable: React.FC<DataTableProps> = ({
       </div>
 
       {showPaginationFeature && (
-        <div className="px-4 py-3 bg-card border-t border-border">
+        <div className="pt-3 bg-card">
           <Pagination
             page={page}
             limit={limit}
             count={count}
-            onPageChange={handlePageChange}
+            onPageChange={(newPage: number) => onPageChange?.(newPage)}
           />
         </div>
       )}
     </div>
   );
-
-  function handlePageChange(newPage: number) {
-    onPageChange?.(newPage);
-  }
 };
 
 export { DataTable };

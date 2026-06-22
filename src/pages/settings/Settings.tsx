@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button, Input } from "../../components/common";
 import {
   Building,
@@ -9,8 +8,6 @@ import {
   MapPin,
   Percent,
   FileText,
-  Calendar,
-  Bell,
   Shield,
   Key,
   EyeOff,
@@ -19,23 +16,16 @@ import {
   Sun,
   Moon,
   Monitor,
-  Layout,
-  Upload,
-  Globe2,
   Database,
   Download,
   RefreshCw,
-  ArrowLeft,
-  SettingsIcon,
   Save,
-  Check,
-  AlertCircle,
-  LucideUploadCloud,
 } from "lucide-react";
 import Switch from "../../components/common/Switch";
 import { useTheme } from "../../core/contexts/ThemeProvider";
-
-// Types
+import { useStore } from "../../core/contexts/StoreProvider";
+import { toast } from "sonner";
+import EntityService from "../../core/services/entity"
 interface CompanySettings {
   name: string;
   email: string;
@@ -44,144 +34,119 @@ interface CompanySettings {
   city: string;
   state: string;
   country: string;
-  zipCode: string;
-  taxId: string;
-  registrationNumber: string;
-  website: string;
+  zip_code: string;
+  tax_id: string;
   currency: string;
-  timezone: string;
-  dateFormat: string;
-  timeFormat: string;
-  fiscalYearStart: string;
+  registration_number: string;
+  website: string;
 }
 
 interface TaxSettings {
-  taxRate: number;
-  nhilRate: number;
-  getfundRate: number;
-  covidLevyRate: number;
-  vatEnabled: boolean;
-  nhilEnabled: boolean;
-  getfundEnabled: boolean;
-  covidLevyEnabled: boolean;
+  tax_rate: number;
+  nhil: number;
+  getfund: number;
+  covid_levy: number;
+  vat_enabled: boolean;
+  nhil_enabled: boolean;
+  getfund_enabled: boolean;
+  covid_levy_enabled: boolean;
 }
 
 interface InvoiceSettings {
   prefix: string;
-  nextNumber: number;
-  dueDays: number;
-  terms: string;
-  footerText: string;
-  showDiscount: boolean;
-  showTaxDetails: boolean;
+  footer_text: string;
   watermark: string;
 }
 
-interface NotificationSettings {
-  email: boolean;
-  sms: boolean;
-  push: boolean;
-  invoiceCreated: boolean;
-  invoicePaid: boolean;
-  invoiceOverdue: boolean;
-  lowStock: boolean;
-  customerUpdate: boolean;
-  systemUpdate: boolean;
-}
-
-interface SecuritySettings {
-  twoFactorAuth: boolean;
-  sessionTimeout: number;
-  passwordExpiry: number;
-  loginAttempts: number;
-  ipWhitelist: string[];
-  allowedIPs: string;
-}
-
 const SettingsPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { theme, setTheme, resolvedTheme, isDark } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { entity, setEntity } = useStore();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("company");
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Company Settings
   const [company, setCompany] = useState<CompanySettings>({
-    name: "MIVA-CRIMP JV",
-    email: "info@mivacrimp.com",
-    phone: "+233 20 123 4567",
-    address: "123 Industrial Area",
-    city: "Accra",
-    state: "Greater Accra",
-    country: "Ghana",
-    zipCode: "GA-123-4567",
-    taxId: "TIN-123456789",
-    registrationNumber: "RC-2024-001",
-    website: "www.mivacrimp.com",
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    zip_code: "",
+    tax_id: "",
     currency: "GHS",
-    timezone: "Africa/Accra",
-    dateFormat: "DD/MM/YYYY",
-    timeFormat: "12h",
-    fiscalYearStart: "2024-01-01",
+    registration_number: "",
+    website: "",
   });
 
   // Tax Settings
   const [taxSettings, setTaxSettings] = useState<TaxSettings>({
-    taxRate: 12.5,
-    nhilRate: 2.5,
-    getfundRate: 2.5,
-    covidLevyRate: 1.0,
-    vatEnabled: true,
-    nhilEnabled: true,
-    getfundEnabled: true,
-    covidLevyEnabled: true,
+    tax_rate: 12.5,
+    nhil: 2.5,
+    getfund: 2.5,
+    covid_levy: 1.0,
+    vat_enabled: true,
+    nhil_enabled: true,
+    getfund_enabled: true,
+    covid_levy_enabled: true,
   });
 
   // Invoice Settings
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({
     prefix: "INV",
-    nextNumber: 1001,
-    dueDays: 30,
-    terms: "Net 30",
-    footerText: "Thank you for your business!",
-    showDiscount: true,
-    showTaxDetails: true,
+    footer_text: "Thank you for your business!",
     watermark: "PAID",
-  });
-
-  // Notification Settings
-  const [notificationSettings, setNotificationSettings] =
-    useState<NotificationSettings>({
-      email: true,
-      sms: false,
-      push: true,
-      invoiceCreated: true,
-      invoicePaid: true,
-      invoiceOverdue: true,
-      lowStock: true,
-      customerUpdate: false,
-      systemUpdate: true,
-    });
-
-  // Security Settings
-  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>({
-    twoFactorAuth: false,
-    sessionTimeout: 30,
-    passwordExpiry: 90,
-    loginAttempts: 5,
-    ipWhitelist: [],
-    allowedIPs: "",
   });
 
   // Password Change
   const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
+    current_password: "",
     new_password: "",
     confirm_password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+
+  // Load entity data
+  useEffect(() => {
+    if (entity) {
+      setCompany({
+        name: entity.name || "",
+        email: entity.email || "",
+        phone: entity.phone || "",
+        address: entity.address || "",
+        city: entity.city || "",
+        state: entity.state || "",
+        country: entity.country || "",
+        zip_code: entity.zip_code || "",
+        tax_id: entity.tax_id || "",
+        currency: entity.currency || "GHS",
+        registration_number: entity.registration_number || "",
+        website: entity.website || "",
+      });
+
+      // Load settings from metadata if available
+      if (entity.metadata) {
+        const meta = entity.metadata;
+        setTaxSettings({
+          tax_rate: meta.tax_rate || 0,
+          nhil: meta.nhil || 0,
+          getfund: meta.getfund || 0,
+          covid_levy: meta.covid_levy || 0,
+          vat_enabled: meta.vat_enabled !== false,
+          nhil_enabled: meta.nhil_enabled !== false,
+          getfund_enabled: meta.getfund_enabled !== false,
+          covid_levy_enabled: meta.covid_levy_enabled !== false,
+        });
+        setInvoiceSettings({
+          prefix: meta.invoice_prefix || "",
+          footer_text: meta.invoice_footer_text || "Thank you for your business!",
+          watermark: meta.invoice_watermark || "",
+        });
+      }
+    }
+  }, [entity]);
 
   // Handle company settings change
   const handleCompanyChange = (field: keyof CompanySettings, value: any) => {
@@ -198,47 +163,57 @@ const SettingsPage: React.FC = () => {
     setInvoiceSettings((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Handle notification settings change
-  const handleNotificationChange = (
-    field: keyof NotificationSettings,
-    value: any,
-  ) => {
-    setNotificationSettings((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // Handle security settings change
-  const handleSecurityChange = (field: keyof SecuritySettings, value: any) => {
-    setSecuritySettings((prev) => ({ ...prev, [field]: value }));
-  };
-
   // Save all settings
   const handleSaveAll = async () => {
+    if (!entity?.uuid) {
+      toast.error('Error', { description: 'No entity selected' });
+      return;
+    }
+
     setSaving(true);
-    setSuccessMessage(null);
-    setErrorMessage(null);
+
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const allSettings = {
-        company,
-        taxSettings,
-        invoiceSettings,
-        notificationSettings,
-        securitySettings,
-        theme: theme,
+      // Prepare update data
+      const updateData = {
+        name: company.name,
+        email: company.email,
+        phone: company.phone,
+        address: company.address,
+        city: company.city,
+        state: company.state,
+        country: company.country,
+        zip_code: company.zip_code,
+        tax_id: company.tax_id,
+        currency: company.currency,
+        registration_number: company.registration_number,
+        website: company.website,
+        metadata: {
+          ...taxSettings,
+          ...invoiceSettings,
+          invoice_prefix: invoiceSettings.prefix,
+          invoice_footer_text: invoiceSettings.footer_text,
+          invoice_watermark: invoiceSettings.watermark,
+        },
       };
 
-      console.log("Settings saved:", allSettings);
-      setSuccessMessage("All settings saved successfully!");
+      const response = await EntityService.updateEntity(entity.uuid, updateData);
 
-      setTimeout(() => setSuccessMessage(null), 5000);
-    } catch (error) {
+      if (response.success) {
+        const updatedEntity = response.results?.entity;
+        if (updatedEntity) {
+          // Update store
+          setEntity(updatedEntity);
+        }
+
+        toast.success('Success', { description: 'Settings saved successfully!' });
+      } else {
+        throw new Error(response.message || 'Failed to save settings');
+      }
+    } catch (error: any) {
       console.error("Error saving settings:", error);
-      setErrorMessage("Failed to save settings. Please try again.");
+      toast.error('Error', { description: error.message || 'Failed to save settings' });
 
-      setTimeout(() => setErrorMessage(null), 5000);
     } finally {
       setSaving(false);
     }
@@ -247,29 +222,30 @@ const SettingsPage: React.FC = () => {
   // Handle password change
   const handlePasswordChange = async () => {
     if (passwordData.new_password !== passwordData.confirm_password) {
-      setErrorMessage("Passwords do not match");
+      toast.error('Error', { description: 'Passwords do not match' });
       return;
     }
 
     if (passwordData.new_password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters");
+      toast.error('Error', { description: 'Password must be at least 8 characters' });
       return;
     }
 
     setLoading(true);
     try {
+      // This would call AuthService.changePassword
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Password changed successfully");
-      setSuccessMessage("Password changed successfully!");
+      
+      toast.success('Success', { description: 'Password changed successfully!' });
+      
       setPasswordData({
-        currentPassword: "",
+        current_password: "",
         new_password: "",
         confirm_password: "",
       });
 
-      setTimeout(() => setSuccessMessage(null), 5000);
-    } catch (error) {
-      setErrorMessage("Failed to change password");
+    } catch (error: any) {
+      toast.error('Error', { description: error.message || 'Failed to change password' });
     } finally {
       setLoading(false);
     }
@@ -284,8 +260,6 @@ const SettingsPage: React.FC = () => {
         return renderTaxSettings();
       case "invoice":
         return renderInvoiceSettings();
-      case "notifications":
-        return renderNotificationSettings();
       case "security":
         return renderSecuritySettings();
       case "system":
@@ -303,8 +277,9 @@ const SettingsPage: React.FC = () => {
           <Input
             label="Company Name"
             value={company.name}
-            onChange={(e: any) => handleCompanyChange("name", e)}
+            onChange={(value: any) => handleCompanyChange("name", value)}
             prefixIcon={<Building size={15} />}
+            required
           />
         </div>
         <div>
@@ -312,15 +287,16 @@ const SettingsPage: React.FC = () => {
             label="Email Address"
             type="email"
             value={company.email}
-            onChange={(e: any) => handleCompanyChange("email", e)}
+            onChange={(value: any) => handleCompanyChange("email", value)}
             prefixIcon={<Mail size={15} />}
+            required
           />
         </div>
         <div>
           <Input
             label="Phone Number"
             value={company.phone}
-            onChange={(e: any) => handleCompanyChange("phone", e)}
+            onChange={(value: any) => handleCompanyChange("phone", value)}
             prefixIcon={<Phone size={15} />}
           />
         </div>
@@ -328,7 +304,7 @@ const SettingsPage: React.FC = () => {
           <Input
             label="Website"
             value={company.website}
-            onChange={(e: any) => handleCompanyChange("website", e)}
+            onChange={(value: any) => handleCompanyChange("website", value)}
             prefixIcon={<Globe size={15} />}
           />
         </div>
@@ -336,7 +312,7 @@ const SettingsPage: React.FC = () => {
           <Input
             label="Address"
             value={company.address}
-            onChange={(e: any) => handleCompanyChange("address", e)}
+            onChange={(value: any) => handleCompanyChange("address", value)}
             prefixIcon={<MapPin size={15} />}
           />
         </div>
@@ -344,52 +320,52 @@ const SettingsPage: React.FC = () => {
           <Input
             label="City"
             value={company.city}
-            onChange={(e: any) => handleCompanyChange("city", e)}
+            onChange={(value: any) => handleCompanyChange("city", value)}
           />
         </div>
         <div>
           <Input
             label="State/Region"
             value={company.state}
-            onChange={(e: any) => handleCompanyChange("state", e)}
+            onChange={(value: any) => handleCompanyChange("state", value)}
           />
         </div>
         <div>
           <Input
             label="Country"
             value={company.country}
-            onChange={(e: any) => handleCompanyChange("country", e)}
+            onChange={(value: any) => handleCompanyChange("country", value)}
           />
         </div>
         <div>
           <Input
             label="ZIP/Postal Code"
-            value={company.zipCode}
-            onChange={(e: any) => handleCompanyChange("zipCode", e)}
+            value={company.zip_code}
+            onChange={(value: any) => handleCompanyChange("zip_code", value)}
           />
         </div>
         <div>
           <Input
             label="Tax ID"
-            value={company.taxId}
-            onChange={(e: any) => handleCompanyChange("taxId", e)}
+            value={company.tax_id}
+            onChange={(value: any) => handleCompanyChange("tax_id", value)}
           />
         </div>
         <div>
           <Input
             label="Registration Number"
-            value={company.registrationNumber}
-            onChange={(e: any) => handleCompanyChange("registrationNumber", e)}
+            value={company.registration_number}
+            onChange={(value: any) => handleCompanyChange("registration_number", value)}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-text mb-1">
+          <label className="block text-sm font-medium text-text-light mb-1">
             Currency
           </label>
           <select
             value={company.currency}
             onChange={(e) => handleCompanyChange("currency", e.target.value)}
-            className="w-full p-2.5 bg-card border border-border  focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text"
+            className="w-full p-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text"
           >
             <option value="GHS">Ghana Cedi (GHS)</option>
             <option value="USD">US Dollar (USD)</option>
@@ -397,58 +373,6 @@ const SettingsPage: React.FC = () => {
             <option value="GBP">British Pound (GBP)</option>
             <option value="NGN">Nigerian Naira (NGN)</option>
           </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text mb-1">
-            Timezone
-          </label>
-          <select
-            value={company.timezone}
-            onChange={(e) => handleCompanyChange("timezone", e.target.value)}
-            className="w-full p-2.5 bg-card border border-border  focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text"
-          >
-            <option value="Africa/Accra">Africa/Accra (GMT+0)</option>
-            <option value="Africa/Lagos">Africa/Lagos (GMT+1)</option>
-            <option value="Africa/Nairobi">Africa/Nairobi (GMT+3)</option>
-            <option value="Europe/London">Europe/London (GMT+0)</option>
-            <option value="America/New_York">America/New_York (GMT-5)</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text mb-1">
-            Date Format
-          </label>
-          <select
-            value={company.dateFormat}
-            onChange={(e) => handleCompanyChange("dateFormat", e.target.value)}
-            className="w-full p-2.5 bg-card border border-border  focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text"
-          >
-            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-            <option value="DD-MM-YYYY">DD-MM-YYYY</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text mb-1">
-            Time Format
-          </label>
-          <select
-            value={company.timeFormat}
-            onChange={(e) => handleCompanyChange("timeFormat", e.target.value)}
-            className="w-full p-2.5 bg-card border border-border  focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text"
-          >
-            <option value="12h">12-hour (hh:mm AM/PM)</option>
-            <option value="24h">24-hour (hh:mm)</option>
-          </select>
-        </div>
-        <div>
-          <Input
-            label="Fiscal Year Start"
-            type="date"
-            value={company.fiscalYearStart}
-            onChange={(e: any) => handleCompanyChange("fiscalYearStart", e)}
-          />
         </div>
       </div>
     </div>
@@ -462,9 +386,9 @@ const SettingsPage: React.FC = () => {
           <Input
             label="VAT Rate (%)"
             type="number"
-            value={taxSettings.taxRate}
-            onChange={(e: any) =>
-              handleTaxChange("taxRate", parseFloat(e) || 0)
+            value={taxSettings.tax_rate}
+            onChange={(value: any) =>
+              handleTaxChange("tax_rate", parseFloat(value) || 0)
             }
             prefixIcon={<Percent size={15} />}
             min={0}
@@ -476,9 +400,9 @@ const SettingsPage: React.FC = () => {
           <Input
             label="NHIL Rate (%)"
             type="number"
-            value={taxSettings.nhilRate}
-            onChange={(e: any) =>
-              handleTaxChange("nhilRate", parseFloat(e) || 0)
+            value={taxSettings.nhil}
+            onChange={(value: any) =>
+              handleTaxChange("nhil", parseFloat(value) || 0)
             }
             prefixIcon={<Percent size={15} />}
             min={0}
@@ -490,9 +414,9 @@ const SettingsPage: React.FC = () => {
           <Input
             label="GETFund Rate (%)"
             type="number"
-            value={taxSettings.getfundRate}
-            onChange={(e: any) =>
-              handleTaxChange("getfundRate", parseFloat(e) || 0)
+            value={taxSettings.getfund}
+            onChange={(value: any) =>
+              handleTaxChange("getfund", parseFloat(value) || 0)
             }
             prefixIcon={<Percent size={15} />}
             min={0}
@@ -504,9 +428,9 @@ const SettingsPage: React.FC = () => {
           <Input
             label="COVID-19 Levy Rate (%)"
             type="number"
-            value={taxSettings.covidLevyRate}
-            onChange={(e: any) =>
-              handleTaxChange("covidLevyRate", parseFloat(e) || 0)
+            value={taxSettings.covid_levy}
+            onChange={(value: any) =>
+              handleTaxChange("covid_levy", parseFloat(value) || 0)
             }
             prefixIcon={<Percent size={15} />}
             min={0}
@@ -516,42 +440,42 @@ const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-card p-4 border border-border ">
+      <div className="bg-card p-4 border border-border rounded-lg">
         <h4 className="font-semibold text-text mb-3">Tax Settings</h4>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-text">Enable VAT</span>
             <Switch
-              checked={taxSettings.vatEnabled}
+              checked={taxSettings.vat_enabled}
               onChange={(checked: boolean) =>
-                handleTaxChange("vatEnabled", checked)
+                handleTaxChange("vat_enabled", checked)
               }
             />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-text">Enable NHIL</span>
             <Switch
-              checked={taxSettings.nhilEnabled}
+              checked={taxSettings.nhil_enabled}
               onChange={(checked: boolean) =>
-                handleTaxChange("nhilEnabled", checked)
+                handleTaxChange("nhil_enabled", checked)
               }
             />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-text">Enable GETFund</span>
             <Switch
-              checked={taxSettings.getfundEnabled}
+              checked={taxSettings.getfund_enabled}
               onChange={(checked: boolean) =>
-                handleTaxChange("getfundEnabled", checked)
+                handleTaxChange("getfund_enabled", checked)
               }
             />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-text">Enable COVID-19 Levy</span>
             <Switch
-              checked={taxSettings.covidLevyEnabled}
+              checked={taxSettings.covid_levy_enabled}
               onChange={(checked: boolean) =>
-                handleTaxChange("covidLevyEnabled", checked)
+                handleTaxChange("covid_levy_enabled", checked)
               }
             />
           </div>
@@ -568,197 +492,28 @@ const SettingsPage: React.FC = () => {
           <Input
             label="Invoice Prefix"
             value={invoiceSettings.prefix}
-            onChange={(e: any) => handleInvoiceChange("prefix", e)}
+            onChange={(value: any) => handleInvoiceChange("prefix", value)}
             prefixIcon={<FileText size={15} />}
             placeholder="e.g. INV"
           />
         </div>
         <div>
           <Input
-            label="Next Invoice Number"
-            type="number"
-            value={invoiceSettings.nextNumber}
-            onChange={(e: any) =>
-              handleInvoiceChange("nextNumber", parseInt(e) || 1001)
-            }
-            min={1}
+            label="Watermark Text"
+            value={invoiceSettings.watermark}
+            onChange={(value: any) => handleInvoiceChange("watermark", value)}
+            placeholder="e.g. PAID, DRAFT, COPY"
           />
-        </div>
-        <div>
-          <Input
-            label="Default Due Days"
-            type="number"
-            value={invoiceSettings.dueDays}
-            onChange={(e: any) =>
-              handleInvoiceChange("dueDays", parseInt(e) || 30)
-            }
-            min={0}
-            prefixIcon={<Calendar size={15} />}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text mb-1">
-            Default Terms
-          </label>
-          <select
-            value={invoiceSettings.terms}
-            onChange={(e) => handleInvoiceChange("terms", e.target.value)}
-            className="w-full p-2.5 bg-card border border-border  focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text"
-          >
-            <option value="Due on Receipt">Due on Receipt</option>
-            <option value="Net 15">Net 15</option>
-            <option value="Net 30">Net 30</option>
-            <option value="Net 45">Net 45</option>
-            <option value="Net 60">Net 60</option>
-          </select>
         </div>
         <div className="md:col-span-2">
           <Input
             label="Footer Text"
             type="textarea"
-            value={invoiceSettings.footerText}
-            onChange={(e: any) => handleInvoiceChange("footerText", e)}
+            value={invoiceSettings.footer_text}
+            onChange={(value: any) => handleInvoiceChange("footer_text", value)}
             rows={2}
             placeholder="Thank you for your business!"
           />
-        </div>
-      </div>
-
-      <div className="bg-card p-4 border border-border ">
-        <h4 className="font-semibold text-text mb-3">
-          Invoice Display Options
-        </h4>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-text">Show Discount Column</span>
-            <Switch
-              checked={invoiceSettings.showDiscount}
-              onChange={(checked: boolean) =>
-                handleInvoiceChange("showDiscount", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">Show Tax Details</span>
-            <Switch
-              checked={invoiceSettings.showTaxDetails}
-              onChange={(checked: boolean) =>
-                handleInvoiceChange("showTaxDetails", checked)
-              }
-            />
-          </div>
-        </div>
-        <div className="mt-3">
-          <Input
-            label="Watermark Text"
-            value={invoiceSettings.watermark}
-            onChange={(e: any) => handleInvoiceChange("watermark", e)}
-            placeholder="e.g. PAID, DRAFT, COPY"
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  // Notification Settings Tab
-  const renderNotificationSettings = () => (
-    <div className="space-y-6">
-      <div className="bg-card p-4 border border-border ">
-        <h4 className="font-semibold text-text mb-3 flex items-center gap-2">
-          <Bell className="w-4 h-4 text-primary" />
-          Notification Channels
-        </h4>
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <span className="text-text">Email Notifications</span>
-            <Switch
-              checked={notificationSettings.email}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("email", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">SMS Notifications</span>
-            <Switch
-              checked={notificationSettings.sms}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("sms", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">Push Notifications</span>
-            <Switch
-              checked={notificationSettings.push}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("push", checked)
-              }
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card p-4 border border-border ">
-        <h4 className="font-semibold text-text mb-3 flex items-center gap-2">
-          <Bell className="w-4 h-4 text-primary" />
-          Notification Events
-        </h4>
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <span className="text-text">Invoice Created</span>
-            <Switch
-              checked={notificationSettings.invoiceCreated}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("invoiceCreated", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">Invoice Paid</span>
-            <Switch
-              checked={notificationSettings.invoicePaid}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("invoicePaid", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">Invoice Overdue</span>
-            <Switch
-              checked={notificationSettings.invoiceOverdue}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("invoiceOverdue", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">Low Stock Alert</span>
-            <Switch
-              checked={notificationSettings.lowStock}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("lowStock", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">Customer Updates</span>
-            <Switch
-              checked={notificationSettings.customerUpdate}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("customerUpdate", checked)
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text">System Updates</span>
-            <Switch
-              checked={notificationSettings.systemUpdate}
-              onChange={(checked: boolean) =>
-                handleNotificationChange("systemUpdate", checked)
-              }
-            />
-          </div>
         </div>
       </div>
     </div>
@@ -767,71 +522,7 @@ const SettingsPage: React.FC = () => {
   // Security Settings Tab
   const renderSecuritySettings = () => (
     <div className="space-y-6">
-      <div className="bg-card p-4 border border-border ">
-        <h4 className="font-semibold text-text mb-3 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-primary" />
-          Security Settings
-        </h4>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-text">Two-Factor Authentication</span>
-            <Switch
-              checked={securitySettings.twoFactorAuth}
-              onChange={(checked: boolean) =>
-                handleSecurityChange("twoFactorAuth", checked)
-              }
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-          <div>
-            <Input
-              label="Session Timeout (minutes)"
-              type="number"
-              value={securitySettings.sessionTimeout}
-              onChange={(e: any) =>
-                handleSecurityChange("sessionTimeout", parseInt(e) || 30)
-              }
-              min={5}
-              max={120}
-            />
-          </div>
-          <div>
-            <Input
-              label="Password Expiry (days)"
-              type="number"
-              value={securitySettings.passwordExpiry}
-              onChange={(e: any) =>
-                handleSecurityChange("passwordExpiry", parseInt(e) || 90)
-              }
-              min={30}
-              max={365}
-            />
-          </div>
-          <div>
-            <Input
-              label="Max Login Attempts"
-              type="number"
-              value={securitySettings.loginAttempts}
-              onChange={(e: any) =>
-                handleSecurityChange("loginAttempts", parseInt(e) || 5)
-              }
-              min={3}
-              max={10}
-            />
-          </div>
-          <div>
-            <Input
-              label="IP Whitelist (comma separated)"
-              value={securitySettings.allowedIPs}
-              onChange={(e: any) => handleSecurityChange("allowedIPs", e)}
-              placeholder="e.g. 192.168.1.1, 10.0.0.1"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card p-4 border border-border ">
+      <div className="bg-card p-4 border border-border rounded-lg">
         <h4 className="font-semibold text-text mb-3 flex items-center gap-2">
           <Key className="w-4 h-4 text-primary" />
           Change Password
@@ -841,9 +532,9 @@ const SettingsPage: React.FC = () => {
             <Input
               label="Current Password"
               type={showPassword ? "text" : "password"}
-              value={passwordData.currentPassword}
-              onChange={(e: any) =>
-                setPasswordData((prev) => ({ ...prev, currentPassword: e }))
+              value={passwordData.current_password}
+              onChange={(value: any) =>
+                setPasswordData((prev) => ({ ...prev, current_password: value }))
               }
               suffixIcon={
                 <button
@@ -865,8 +556,8 @@ const SettingsPage: React.FC = () => {
               label="New Password"
               type={showPassword ? "text" : "password"}
               value={passwordData.new_password}
-              onChange={(e: any) =>
-                setPasswordData((prev) => ({ ...prev, new_password: e }))
+              onChange={(value: any) =>
+                setPasswordData((prev) => ({ ...prev, new_password: value }))
               }
             />
           </div>
@@ -875,8 +566,8 @@ const SettingsPage: React.FC = () => {
               label="Confirm Password"
               type={showPassword ? "text" : "password"}
               value={passwordData.confirm_password}
-              onChange={(e: any) =>
-                setPasswordData((prev) => ({ ...prev, confirm_password: e }))
+              onChange={(value: any) =>
+                setPasswordData((prev) => ({ ...prev, confirm_password: value }))
               }
             />
           </div>
@@ -895,7 +586,7 @@ const SettingsPage: React.FC = () => {
   const renderSystemSettings = () => (
     <div className="space-y-6">
       {/* Theme Settings */}
-      <div className="bg-card border border-border  overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-5 py-4 border-b border-border bg-background">
           <h4 className="font-semibold text-text flex items-center gap-2">
             <Palette className="w-4 h-4 text-primary" />
@@ -909,7 +600,7 @@ const SettingsPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
               onClick={() => setTheme("light")}
-              className={`group relative p-4  border-2 transition-all duration-200 ${
+              className={`group relative p-4 rounded-lg border-2 transition-all duration-200 ${
                 theme === "light"
                   ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
                   : "border-border hover:border-primary/50 hover:bg-background"
@@ -944,7 +635,7 @@ const SettingsPage: React.FC = () => {
 
             <button
               onClick={() => setTheme("dark")}
-              className={`group relative p-4  border-2 transition-all duration-200 ${
+              className={`group relative p-4 rounded-lg border-2 transition-all duration-200 ${
                 theme === "dark"
                   ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
                   : "border-border hover:border-primary/50 hover:bg-background"
@@ -979,7 +670,7 @@ const SettingsPage: React.FC = () => {
 
             <button
               onClick={() => setTheme("system")}
-              className={`group relative p-4  border-2 transition-all duration-200 ${
+              className={`group relative p-4 rounded-lg border-2 transition-all duration-200 ${
                 theme === "system"
                   ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
                   : "border-border hover:border-primary/50 hover:bg-background"
@@ -1014,7 +705,7 @@ const SettingsPage: React.FC = () => {
           </div>
           
           {/* Current theme indicator */}
-          <div className="mt-4 p-3 bg-background  border border-border">
+          <div className="mt-4 p-3 bg-background rounded-lg border border-border">
             <div className="flex items-center justify-between">
               <span className="text-sm text-text-light">Current Theme</span>
               <span className="text-sm font-medium text-text capitalize">
@@ -1026,7 +717,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Data Management */}
-      <div className="bg-card border border-border  overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-5 py-4 border-b border-border bg-background">
           <h4 className="font-semibold text-text flex items-center gap-2">
             <Database className="w-4 h-4 text-primary" />
@@ -1041,37 +732,37 @@ const SettingsPage: React.FC = () => {
             <Button
               onClick={() => console.log("Export data")}
               variant="outline"
-              className="group px-4 py-2.5 bg-card border border-border hover:border-primary hover:bg-primary/5  transition-all duration-200 flex items-center gap-2 text-text"
+              className="flex items-center gap-2"
             >
-              <Download className="w-4 h-4 group-hover:text-primary transition-colors" />
-              <span>Export Data</span>
+              <Download className="w-4 h-4" />
+              Export Data
             </Button>
             
             <Button
               onClick={() => console.log("Import data")}
               variant="outline"
-              className="group px-4 py-2.5 bg-card border border-border hover:border-primary hover:bg-primary/5  transition-all duration-200 flex items-center gap-2 text-text"
+              className="flex items-center gap-2"
             >
-              <Upload className="w-4 h-4 group-hover:text-primary transition-colors" />
-              <span>Import Data</span>
+              <RefreshCw className="w-4 h-4" />
+              Import Data
             </Button>
             
             <Button
               onClick={() => console.log("Backup")}
               variant="outline"
-              className="group px-4 py-2.5 bg-card border border-border hover:border-primary hover:bg-primary/5  transition-all duration-200 flex items-center gap-2 text-text"
+              className="flex items-center gap-2"
             >
-              <Database className="w-4 h-4 group-hover:text-primary transition-colors" />
-              <span>Backup Database</span>
+              <Database className="w-4 h-4" />
+              Backup Database
             </Button>
             
             <Button
               onClick={() => console.log("Clear cache")}
               variant="outline"
-              className="group px-4 py-2.5 bg-card border border-border hover:border-danger hover:bg-danger/5  transition-all duration-200 flex items-center gap-2 text-text"
+              className="flex items-center gap-2 text-danger hover:text-danger"
             >
-              <RefreshCw className="w-4 h-4 group-hover:text-danger transition-colors" />
-              <span>Clear Cache</span>
+              <RefreshCw className="w-4 h-4" />
+              Clear Cache
             </Button>
           </div>
         </div>
@@ -1084,63 +775,57 @@ const SettingsPage: React.FC = () => {
     { id: "company", label: "Company", icon: <Building className="w-4 h-4" /> },
     { id: "tax", label: "Tax Settings", icon: <Percent className="w-4 h-4" /> },
     { id: "invoice", label: "Invoices", icon: <FileText className="w-4 h-4" /> },
-    { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "security", label: "Security", icon: <Shield className="w-4 h-4" /> },
     { id: "system", label: "System", icon: <Database className="w-4 h-4" /> },
   ];
 
   return (
-    <div className="">
-      <div className="">
+    <div className="p-6">
+      <div className="max-w-6xl mx-auto">
         {/* Page Header */}
-        <div className="bg-card  border border-border shadow-sm">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4  mb-6">
-            <div className="flex items-center gap-4">
-              
-              <div>
-                <h1 className="text-2xl font-bold text-text flex items-center gap-2">
-                  Settings
-                </h1>
-                <p className="text-text-light text-sm">
-                  Configure your system preferences and settings
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button 
-                onClick={handleSaveAll} 
-                disabled={saving}
-                className="shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200"
-              >
-                {saving ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save Settings
-                  </>
-                )}
-              </Button>
-            </div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-text flex items-center gap-2">
+              Settings
+            </h1>
+            <p className="text-text-light text-sm">
+              Configure your system preferences and settings
+            </p>
           </div>
-
-          {/* Success/Error Messages */}
-          {successMessage && (
-            <div className="mt-4 p-3 bg-success/10 border border-success/20  flex items-center gap-2 text-success">
-              <Check className="w-4 h-4" />
-              <span>{successMessage}</span>
-            </div>
-          )}
-          {errorMessage && (
-            <div className="mt-4 p-3 bg-danger/10 border border-danger/20  flex items-center gap-2 text-danger">
-              <AlertCircle className="w-4 h-4" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleSaveAll} 
+              disabled={saving}
+              className="shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200"
+            >
+              {saving ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Settings
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
+        {/* Success/Error Messages */}
+        {/* {successMessage && (
+          <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-lg flex items-center gap-2 text-success">
+            <Check className="w-4 h-4" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+        {errorMessage && (
+          <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-lg flex items-center gap-2 text-danger">
+            <AlertCircle className="w-4 h-4" />
+            <span>{errorMessage}</span>
+          </div>
+        )} */}
+
         {/* Settings Tabs */}
-        <div className="bg-card  border border-border shadow-sm overflow-hidden">
+        <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
           <div className="border-b border-border bg-background/50 p-2">
             <div className="flex overflow-x-auto gap-2">
               {tabs.map((tab) => {
@@ -1150,7 +835,7 @@ const SettingsPage: React.FC = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      flex items-center gap-2 px-4 py-2.5  text-sm font-medium transition-all duration-200 whitespace-nowrap
+                      flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
                       ${isActive 
                         ? 'bg-primary text-white shadow-lg shadow-primary/20' 
                         : 'text-text-light hover:text-text hover:bg-background'

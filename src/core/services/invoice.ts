@@ -333,4 +333,5 @@ class InvoiceService {
   }
 }
 
-export default new InvoiceService();
+const  invoiceServiceInstance = new InvoiceService();
+export default invoiceServiceInstance;

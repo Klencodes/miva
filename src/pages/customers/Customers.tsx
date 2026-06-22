@@ -1,60 +1,112 @@
-// features/customers/Customers.tsx
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Plus,
-  User,
   Mail,
   Phone,
   MapPin,
-  CreditCard,
-  Building,
 } from "lucide-react";
 import { Button, DataTable } from "../../components/common";
-import { Customer } from "../../core/types";
-import { useNavigate } from "react-router-dom";
+import { ICustomer } from "../../core/types";
 import { useModal } from "../../core/hooks/useModal";
+import { eventService } from "../../core/services/events";
+import CustomerService from "../../core/services/customer";
 import AddEditCustomer from "./AddEditCustomer";
 import CustomerDetail from "./CustomerDetails";
+import { toast } from "sonner";
 
 const Customers = () => {
-  const navigate = useNavigate();
+  const { openModal } = useModal();
 
   // State management
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    try {
-      const stored = localStorage.getItem("CUSTOMERS");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed.map((c: any) => ({
-          ...c,
-          created_at: new Date(c.created_at),
-          updatedAt: new Date(c.updatedAt),
-        }));
-      }
-    } catch (error) {
-      console.error("Error loading customers:", error);
-    }
-  });
-
+  const [customers, setCustomers] = useState<ICustomer[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [count, setCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedSort, setSelectedSort] = useState("name_asc");
-  const [showForm, setShowForm] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const { openModal } = useModal();
-
-  // Save to localStorage
-  useEffect(() => {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const limit = 10;
+  // Fetch customers from API
+  const fetchCustomers = useCallback(async () => {
     try {
-      localStorage.setItem("CUSTOMERS", JSON.stringify(customers));
-    } catch (error) {
-      console.error("Error saving customers:", error);
+      setLoading(true);
+      
+      // Build query params
+      const params: any = {
+        page,
+        limit,
+      };
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (selectedFilter === "active") {
+        params.is_active = true;
+      } else if (selectedFilter === "inactive") {
+        params.is_active = false;
+      }
+
+      // Apply sorting
+      switch (selectedSort) {
+        case "name_asc":
+          params.sort = "name_asc";
+          break;
+        case "name_desc":
+          params.sort = "name_desc";
+          break;
+        case "balance_desc":
+          params.sort = "balance_desc";
+          break;
+        case "balance_asc":
+          params.sort = "balance_asc";
+          break;
+        case "newest":
+          params.sort = "created_at_desc";
+          break;
+        case "oldest":
+          params.sort = "created_at_asc";
+          break;
+        default:
+          params.sort = "name_asc";
+      }
+
+      const response = await CustomerService.getCustomers(params);
+      
+      if (response.success) {
+        const customerData = response.results?.customers || [];
+        setCustomers(customerData);
+        setCount(response.results?.pagination?.total || 0);
+      } else {
+        toast.error('Error', { description: response.message || 'Failed to load customers' });
+      }
+    } catch (error: any) {
+      console.error('Error fetching customers:', error);
+      toast.error('Error', { description: error.message || 'Failed to load customers' });
+    } finally {
+      setLoading(false);
     }
-  }, [customers]);
+  }, [page, limit, searchTerm, selectedFilter, selectedSort]);
+
+  // Listen for refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      setRefreshKey(prev => prev + 1);
+      fetchCustomers();
+    };
+
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, [fetchCustomers]);
+
+  // Load data on mount and when dependencies change
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers, refreshKey]);
 
   // Filter options
   const filterOptions = [
@@ -72,76 +124,9 @@ const Customers = () => {
     { value: "oldest", label: "Oldest First" },
   ];
 
-  // Filter and search customers
-  const filteredCustomers = useMemo(() => {
-    let result = [...customers];
-
-    // Apply status filter
-    if (selectedFilter === "active") {
-      result = result.filter((c) => c.is_active !== false);
-    } else if (selectedFilter === "inactive") {
-      result = result.filter((c) => c.is_active === false);
-    }
-
-    // Apply search
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.name.toLowerCase().includes(search) ||
-          c.email?.toLowerCase().includes(search) ||
-          c.phone?.includes(search) ||
-          c.uuid?.toLowerCase().includes(search),
-      );
-    }
-
-    return result;
-  }, [customers, selectedFilter, searchTerm]);
-
-  // Sort customers
-  const sortedCustomers = useMemo(() => {
-    const result = [...filteredCustomers];
-
-    switch (selectedSort) {
-      case "name_asc":
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "name_desc":
-        result.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case "balance_desc":
-        result.sort((a, b) => (b.balance || 0) - (a.balance || 0));
-        break;
-      case "balance_asc":
-        result.sort((a, b) => (a.balance || 0) - (b.balance || 0));
-        break;
-      case "newest":
-        result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime());
-        break;
-      case "oldest":
-        result.sort((a, b) => new Date(a.created_at || "").getTime() - new Date(b.created_at || "").getTime());
-        break;
-      default:
-        break;
-    }
-
-    return result;
-  }, [filteredCustomers, selectedSort]);
-
-  // Update count
-  useEffect(() => {
-    setCount(sortedCustomers.length);
-  }, [sortedCustomers.length]);
-
-  // Get paginated data
-  const paginatedData = useMemo(() => {
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    return sortedCustomers.slice(start, end);
-  }, [sortedCustomers, page, limit]);
-
-
-  const addEditCustomer = async (customer?: Customer) => {
+  // Handler functions
+  //eslint-disable-next-line
+  const handleAddCustomer = async (customer?: ICustomer) => {
     const result = await openModal(AddEditCustomer, {
       data: { customer },
       size: "xl",
@@ -149,11 +134,11 @@ const Customers = () => {
     });
 
     if (result?.success) {
-      setCustomers((prev) => [...prev, result?.customer]);
+      fetchCustomers();
     }
   };
-
-  const handleViewCustomer = async (customer: Customer) => {
+  //eslint-disable-next-line
+  const handleViewCustomer = async (customer: ICustomer) => {
     const result = await openModal(CustomerDetail, {
       data: { customer },
       size: "xl",
@@ -161,33 +146,48 @@ const Customers = () => {
     });
 
     if (result?.action === "edit") {
-      addEditCustomer(result?.customer)
+      handleAddCustomer(result?.customer);
     }
   };
 
-  const handleDeleteCustomer = useCallback((customerId: string) => {
+  const handleDeleteCustomer = useCallback(async (customerId: string) => {
     if (
       window.confirm(
         "Are you sure you want to delete this customer? This action cannot be undone.",
       )
     ) {
-      setCustomers((prev) => prev.filter((c) => c.uuid !== customerId));
+      try {
+        const response = await CustomerService.deleteCustomer(customerId);
+        if (response.success) {
+          toast.success('Success', { description: response.message || 'Customer deleted successfully' });
+          fetchCustomers();
+        }
+      } catch (error: any) {
+        console.error('Error deleting customer:', error);
+        toast.error('Error', { description: error.message || 'Failed to delete customer' });
+      }
     }
-  }, []);
+  }, [fetchCustomers]);
 
-  const handleToggleActive = useCallback((customerId: string) => {
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.uuid === customerId
-          ? {
-              ...c,
-              is_active: c.is_active === false ? true : false,
-              updatedAt: new Date(),
-            }
-          : c,
-      ),
-    );
-  }, []);
+  const handleToggleActive = useCallback(async (customerId: string) => {
+    const customer = customers.find(c => c.uuid === customerId);
+    if (!customer) return;
+
+    try {
+      const newStatus = customer.is_active === false ? true : false;
+      const response = await CustomerService.toggleCustomerActive(customerId, newStatus);
+      
+      if (response.success) {
+        toast.success('Success', { 
+          description: `Customer ${newStatus ? 'activated' : 'deactivated'} successfully` 
+        });
+        fetchCustomers();
+      }
+    } catch (error: any) {
+      console.error('Error toggling customer status:', error);
+      toast.error('Error', { description: error.message || 'Failed to update customer status' });
+    }
+  }, [customers, fetchCustomers]);
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
@@ -212,7 +212,7 @@ const Customers = () => {
   const columns = [
     {
       header: "Customer",
-      value: (item: Customer) => (
+      value: (item: ICustomer) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold">
             {item?.name?.charAt(0).toUpperCase()}
@@ -221,7 +221,7 @@ const Customers = () => {
             <div className="font-medium text-text">{item.name}</div>
             <div className="text-xs text-text-light flex items-center gap-2">
               <Mail className="w-3 h-3" />
-              {item.email}
+              {item.email || 'No email'}
             </div>
           </div>
         </div>
@@ -230,36 +230,47 @@ const Customers = () => {
       sortable: true,
       sortField: "name",
       bold: true,
-      onClick: (item: Customer) => handleViewCustomer(item),
+      onClick: (item: ICustomer) => handleViewCustomer(item),
     },
     {
       header: "Phone",
-      value: (item: Customer) => (
+      value: (item: ICustomer) => (
         <div className="flex items-center gap-2">
           <Phone className="w-4 h-4 text-text-light" />
-          {item.phone}
+          {item.phone || '-'}
+        </div>
+      ),
+      type: "column" as const,
+    },
+    {
+      header: "Balance",
+      value: (item: ICustomer) => (
+        <div className="font-medium">
+          <span className={item.balance > 0 ? 'text-amber-600' : 'text-emerald-600'}>
+            GHS {item.balance?.toFixed(2) || '0.00'}
+          </span>
         </div>
       ),
       type: "column" as const,
     },
     {
       header: "Address",
-      value: (item: Customer) => (
+      value: (item: ICustomer) => (
         <div className="flex items-start gap-2">
           <MapPin className="w-4 h-4 text-text-light mt-0.5" />
-          <span className="text-sm">{item.address}</span>
+          <span className="text-sm">{item.address || '-'}</span>
         </div>
       ),
       type: "column" as const,
     },
     {
       header: "Tax ID",
-      value: (item: Customer) => item.tax_id || "-",
+      value: (item: ICustomer) => item.tax_id || "-",
       type: "column" as const,
     },
     {
       header: "Status",
-      value: (item: Customer) => (
+      value: (item: ICustomer) => (
         <span
           className={`px-2 py-1 rounded-full text-xs font-medium ${
             item.is_active !== false
@@ -276,7 +287,7 @@ const Customers = () => {
 
   // Custom actions
   const getCustomActions = useCallback(
-    (item: Customer) => {
+    (item: ICustomer) => {
       const actions = [];
 
       actions.push({
@@ -288,7 +299,7 @@ const Customers = () => {
       actions.push({
         title: "Edit",
         icon: "edit",
-        handler: () => addEditCustomer(item),
+        handler: () => handleAddCustomer(item),
       });
 
       actions.push({
@@ -310,7 +321,7 @@ const Customers = () => {
     },
     [
       handleViewCustomer,
-      addEditCustomer,
+      handleAddCustomer,
       handleToggleActive,
       handleDeleteCustomer,
     ],
@@ -318,25 +329,15 @@ const Customers = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold text-text">Customers</h2>
           <p className="text-text-light text-sm">
             Manage your customer database
           </p>
-          <div className="flex gap-4 mt-2 text-sm flex-wrap">
-            <span>Total: {sortedCustomers.length}</span>
-            <span className="text-emerald-600">
-              Active:{" "}
-              {sortedCustomers.filter((c) => c.is_active !== false).length}
-            </span>
-            <span className="text-amber-600">
-              With Balance:{" "}
-              {sortedCustomers.filter((c) => (c.balance || 0) > 0).length}
-            </span>
-          </div>
+
         </div>
-        <Button onClick={() => addEditCustomer()} className="flex items-center gap-2">
+        <Button onClick={() => handleAddCustomer()} className="flex items-center gap-2">
           <Plus className="w-5 h-5" />
           Add Customer
         </Button>
@@ -344,7 +345,7 @@ const Customers = () => {
 
       <DataTable
         columns={columns}
-        data={paginatedData}
+        data={customers}
         loading={loading}
         placeholder="Search customers by name, email, or phone..."
         searchLabel="Search Customers"
@@ -364,7 +365,7 @@ const Customers = () => {
         onFilter={handleFilter}
         onSort={handleSort}
         onPageChange={handlePageChange}
-        onAdd={addEditCustomer}
+        onAdd={() => handleAddCustomer()}
       />
     </div>
   );

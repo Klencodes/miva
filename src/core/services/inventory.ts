@@ -391,4 +391,5 @@ class InventoryService {
   }
 }
 
-export default new InventoryService();
+const  inventoryServiceInstance = new InventoryService();
+export default inventoryServiceInstance;

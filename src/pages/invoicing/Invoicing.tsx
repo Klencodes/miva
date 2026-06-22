@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { DiscountType, InvItemType, InvItemUnitType, Invoice, InvStatus } from '../../core/types';
 import InvoiceService from "../../core/services/invoice";
-import { defaultSystemSettings } from '../../data/sampleData';
+import { eventService } from '../../core/services/events';
 
 const Invoicing = () => {
   const navigate = useNavigate();
@@ -15,12 +15,28 @@ const Invoicing = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [count, setCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedSort, setSelectedSort] = useState('date_desc');
   const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
+  const limit = 10;
+  // Helper function to safely get payment method
+  const getPaymentMethod = (invoice: Invoice): string => {
+    if (!invoice) return 'Cash';
+    if (invoice.payments && Array.isArray(invoice.payments) && invoice.payments.length > 0) {
+      return invoice.payments[0].method || 'Cash';
+    }
+    return 'Cash';
+  };
+
+  // Helper function to safely get payment status
+  const getPaymentStatus = (invoice: Invoice): string => {
+    if (!invoice) return 'Unpaid';
+    if (invoice.remaining_balance <= 0) return 'Paid';
+    if (invoice.amount_paid > 0) return 'Partial';
+    return 'Unpaid';
+  };
 
   // Fetch invoices from API
   const fetchInvoices = useCallback(async () => {
@@ -71,6 +87,19 @@ const Invoicing = () => {
     fetchInvoices();
   }, [fetchInvoices]);
 
+  // Listen for refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchInvoices();
+    };
+
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, [fetchInvoices]);
+
   // Filter options
   const statusOptions: SelectOption[] = [
     { value: 'all', label: 'All Statuses' },
@@ -79,7 +108,7 @@ const Invoicing = () => {
     { value: 'draft', label: 'Draft' },
     { value: 'cancelled', label: 'Cancelled' },
     { value: 'paid', label: 'Paid' },
-    { value: 'partially_paid', label: 'Partially Paid' },
+    { value: 'partially', label: 'Partially Paid' },
     { value: 'overdue', label: 'Overdue' },
   ];
 
@@ -111,7 +140,7 @@ const Invoicing = () => {
       draft: 'bg-slate-100 text-slate-700',
       cancelled: 'bg-red-100 text-red-700',
       paid: 'bg-emerald-100 text-emerald-700',
-      partially_paid: 'bg-amber-100 text-amber-700',
+      partially: 'bg-amber-100 text-amber-700',
       overdue: 'bg-red-100 text-red-700',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
@@ -136,12 +165,11 @@ const Invoicing = () => {
     return icons[method] || '💰';
   };
 
-  // Sort function - similar to Inventory component's approach
+  // Sort function
   const handleSort = useCallback((sortValue: string) => {
     if (!sortValue) return;
     setSelectedSort(sortValue);
     setPage(1);
-    console.log('Sorting by:', sortValue);
   }, []);
 
   // Filter and search invoices (frontend filtering)
@@ -160,7 +188,7 @@ const Invoicing = () => {
       const search = searchTerm.toLowerCase();
       result = result.filter(inv =>
         inv.number.toLowerCase().includes(search) ||
-        inv.customer?.name.toLowerCase().includes(search) ||
+        inv.customer?.name?.toLowerCase().includes(search) ||
         inv.customer?.email?.toLowerCase().includes(search) ||
         inv.number.toLowerCase().includes(search)
       );
@@ -194,7 +222,7 @@ const Invoicing = () => {
           cmp = a.number.localeCompare(b.number);
           break;
         case 'customer':
-          cmp = a.customer?.name.localeCompare(b.customer?.name);
+          cmp = (a.customer?.name || '').localeCompare(b.customer?.name || '');
           break;
         case 'date':
           cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -205,9 +233,18 @@ const Invoicing = () => {
         case 'status':
           cmp = a.status.localeCompare(b.status);
           break;
-        case 'paymentMethod':
-          cmp = a.payments[0].method.localeCompare(b.payments[0].method);
+        case 'paymentMethod': {
+          const methodA = getPaymentMethod(a);
+          const methodB = getPaymentMethod(b);
+          cmp = methodA.localeCompare(methodB);
           break;
+        }
+        case 'paymentStatus': {
+          const statusA = getPaymentStatus(a);
+          const statusB = getPaymentStatus(b);
+          cmp = statusA.localeCompare(statusB);
+          break;
+        }
         default:
           cmp = 0;
       }
@@ -267,7 +304,7 @@ const Invoicing = () => {
         },
         items: invoice.items.map(item => ({
           id: item.id,
-          name: item.description || '',
+          name: item.description || item.name || '',
           quantity: item.quantity,
           price: item.price,
           cost: 0,
@@ -277,12 +314,12 @@ const Invoicing = () => {
         date: new Date().toISOString(),
         discount_type: 'percentage' as DiscountType,
         discount_rate: 0,
-        vat_rate: defaultSystemSettings.taxRate,
-        notes: `Duplicate of ${invoice.number} - ${invoice.notes || ''}`,
+        vat_rate: invoice.vat_rate || 12.5,
+        notes: `Duplicate of ${invoice.number}${invoice.notes ? ` - ${invoice.notes}` : ''}`,
         terms: invoice.terms || 'Due on Receipt',
         currency: 'GHS',
         status: 'draft' as InvStatus,
-        payment_pethod: invoice.payments[0].method || 'Cash',
+        payment_method: getPaymentMethod(invoice),
       };
 
       const response = await InvoiceService.createInvoice(copyData);
@@ -371,13 +408,11 @@ const Invoicing = () => {
 
   const onPageChange = useCallback((newPage: number) => {
     setPage(newPage);
-    console.log('Page changed to:', newPage);
   }, []);
 
   const onDateRangeChange = useCallback((start?: Date, end?: Date) => {
     setDateRange({ start, end });
     setPage(1);
-    console.log('Date range changed:', { start, end });
   }, []);
 
   // Table columns definition
@@ -447,7 +482,10 @@ const Invoicing = () => {
       header: 'Payment',
       sortable: true,
       sortField: "paymentMethod",
-      value: (item: Invoice) => `${getPaymentMethodIcon(item.payments[0].method)} ${item.payments[0].method}`,
+      value: (item: Invoice) => {
+        const method = getPaymentMethod(item);
+        return `${getPaymentMethodIcon(method)} ${method}`;
+      },
       type: 'column' as const,
     },
     {
@@ -462,15 +500,16 @@ const Invoicing = () => {
       header: 'Payment Status',
       sortable: true,
       sortField: "paymentStatus",
-      value: (item: Invoice) => item.payments[0].method,
+      value: (item: Invoice) => getPaymentStatus(item),
       type: 'status' as const,
-      statusClasses: (item: Invoice) => getPaymentStatusColor(item.payments[0].method),
+      statusClasses: (item: Invoice) => getPaymentStatusColor(getPaymentStatus(item)),
     },
   ];
 
   // Custom actions for each invoice row
   const getCustomActions = useCallback((item: Invoice) => {
     const actions = [];
+    const paymentStatus = getPaymentStatus(item);
 
     // View action
     actions.push({
@@ -503,7 +542,7 @@ const Invoicing = () => {
     });
 
     // Mark as paid (only for invoiced and not paid)
-    if ((item.status === 'invoiced' || item.payment_status === 'partially') && item.payment_status !== 'paid') {
+    if ((item.status === 'invoiced' || paymentStatus === 'Partial') && paymentStatus !== 'Paid') {
       actions.push({
         title: 'Mark as Paid',
         icon: 'check',
@@ -541,22 +580,8 @@ const Invoicing = () => {
         <div>
           <h2 className="text-2xl font-bold text-text">Invoices</h2>
           <p className="text-text-light text-sm">Manage and track all your invoices</p>
-          <div className="flex gap-4 mt-2 text-sm flex-wrap">
-            <span>Total: {sortedInvoices.length}</span>
-            <span className="text-emerald-600">
-              Paid: {sortedInvoices.filter(inv => inv.payment_status === 'paid').length}
-            </span>
-            <span className="text-amber-600">
-              Partial: {sortedInvoices.filter(inv => inv.payment_status === 'partially').length}
-            </span>
-            <span className="text-red-600">
-              Unpaid: {sortedInvoices.filter(inv => inv.payment_status === 'unpaid').length}
-            </span>
-          </div>
         </div>
-        <Button
-          onClick={onNewInvoice}
-        >
+        <Button onClick={onNewInvoice}>
           <Plus className="w-5 h-5" />
           New Invoice
         </Button>

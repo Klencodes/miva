@@ -66,6 +66,7 @@ const AddEditUser = () => {
         is_active: user.is_active !== undefined ? user.is_active : true,
       });
     }
+    //eslint-disable-next-line
   }, [user]);
 
   const validate = (): boolean => {
@@ -214,30 +215,31 @@ const AddEditUser = () => {
   ];
 
   return (
-    <div className="">
-      <div className="max-h-[90vh] overflow-y-auto">
+    <div className="flex flex-col h-full">
+      {/* Header - Fixed at top */}
+      <div className="flex-shrink-0 border-b border-border px-6 py-4 flex justify-between items-center bg-card">
         {/* Header */}
-        <div className="sticky top-0 border-b border-border px-6 py-4 flex justify-between items-center z-10">
-          <div>
-            <h3 className="text-lg font-semibold text-text">
-              {editing ? "Edit User" : "Add New User"}
-            </h3>
-            <p className="text-sm text-text-light">
-              {editing
-                ? "Update user information and permissions"
-                : "Enter user details and set permissions"}
-            </p>
-          </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
-            <X className="w-5 h-5 text-text-light" />
-          </button>
+        <div>
+          <h3 className="text-lg font-semibold text-text">
+            {editing ? "Edit User" : "Add New User"}
+          </h3>
+          <p className="text-sm text-text-light">
+            {editing
+              ? "Update user information and permissions"
+              : "Enter user details and set permissions"}
+          </p>
         </div>
+        <button
+          onClick={handleClose}
+          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          disabled={isSubmitting}
+        >
+          <X className="w-5 h-5 text-text-light" />
+        </button>
+      </div>
 
-        {/* Form */}
+      {/* Form */}
+      <div className="flex-1 overflow-y-auto space-y-6 pb-4">
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
@@ -392,31 +394,26 @@ const AddEditUser = () => {
               ))}
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="flex items-center gap-2"
-              disabled={isSubmitting}
-            >
-              <Save className="w-4 h-4" />
-              {isSubmitting
-                ? "Saving..."
-                : editing
-                  ? "Update User"
-                  : "Create User"}
-            </Button>
-          </div>
         </form>
+      </div>
+      {/* Actions */}
+      <div className="flex justify-end gap-3 border-t border-border p-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleClose}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="flex items-center gap-2"
+          disabled={isSubmitting}
+        >
+          <Save className="w-4 h-4" />
+          {isSubmitting ? "Saving..." : editing ? "Update User" : "Create User"}
+        </Button>
       </div>
     </div>
   );

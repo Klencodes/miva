@@ -5,7 +5,7 @@ import { Mail, Lock, User, Phone, MapPin } from "lucide-react";
 import AuthService from "../../core/services/auth";
 import { useStore } from "../../core/contexts/StoreProvider";
 import { setStoredItem, USER_KEY } from "../../core/hooks/useStore";
-import { UserRole } from "../../core/constants/permissions";
+import { UserPermissions, UserRole } from "../../core/types";
 
 interface CreateAdminForm {
   first_name: string;
@@ -118,7 +118,7 @@ const CreateAdmin: React.FC = () => {
           ...userData,
           role: userData.role as UserRole,
           last_login: userData?.last_login || "",
-          permissions: userData?.permissions as any,
+          permissions: userData?.permissions as UserPermissions,
           name: `${userData?.first_name} ${userData?.last_name}`
         };
 

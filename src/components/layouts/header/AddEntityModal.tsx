@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useModal } from "../../../core/hooks/useModal";
 import { Button, Input } from "../../common";
 import { toast } from "sonner";
@@ -47,7 +47,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
   const [form, setForm] = useState<OrganisationProfileForm>(initialFormState);
   const [errors, setErrors] = useState<Partial<OrganisationProfileForm>>({});
   const [loading, setLoading] = useState(false);
-  const [supportedCountries, setSupportedCountries] = useState<any[]>([{value: "", label: "Choose Country"}, {value: "Ghana", label: "Ghana"}, {value: "Nigeria", label: "Nigeria"}]);
+  const supportedCountries =[{value: "", label: "Choose Country"}, {value: "Ghana", label: "Ghana"}, {value: "Nigeria", label: "Nigeria"}];
   
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);

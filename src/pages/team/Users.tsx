@@ -12,14 +12,13 @@ const Users = () => {
   const [users, setUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [count, setCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedSort, setSelectedSort] = useState("name_asc");
   const [refreshKey, setRefreshKey] = useState(0);
   const { openModal } = useModal();
-
+  const limit = 10;
   // Fetch users from API
   const fetchUsers = useCallback(async () => {
     try {
@@ -173,80 +172,83 @@ const Users = () => {
     return labels[role] || role;
   };
 
-  // Handler functions
-  const handleAddUser = async (userData?: IUser) => {
-    const result = await openModal(AddEditUser, {
-      data: { user: userData },
-      size: "xl",
-      side: "right",
-    });
 
-    if (result?.action === "add" || result?.action === "edit") {
-      fetchUsers(); 
+
+  // ── Handler functions ────────────────────────────────────────────────────
+const handleAddUser = useCallback(async (userData?: IUser) => {
+  const result = await openModal(AddEditUser, {
+    data: { user: userData },
+    size: "xl",
+    side: "right",
+  });
+
+  if (result?.action === "add" || result?.action === "edit") {
+    fetchUsers(); 
+  }
+}, [fetchUsers, openModal]);
+
+const handleViewUser = useCallback(async (userData: IUser) => {
+  const result = await openModal(UserDetail, {
+    data: { user: userData },
+    size: "xl",
+    side: "right",
+  });
+
+  if (result?.action === "edit") {
+    handleAddUser(result?.user);
+  }
+}, [openModal, handleAddUser]);
+
+const handleDeleteUser = useCallback(async (userId: string) => {
+  if (
+    window.confirm(
+      "Are you sure you want to delete this user? This action cannot be undone.",
+    )
+  ) {
+    try {
+      // const response = await UserService.deleteUser(userId);
+      // if (response.success) {
+        fetchUsers();
+      // }
+    } catch (error) {
+      console.error("Error deleting user:", error);
     }
-  };
+  }
+}, [fetchUsers]);
 
-  const handleViewUser = async (userData: IUser) => {
-    const result = await openModal(UserDetail, {
-      data: { user: userData },
-      size: "xl",
-      side: "right",
-    });
+const handleSearch = useCallback((term: string) => {
+  setSearchTerm(term);
+  setPage(1);
+}, []);
 
-    if (result?.action === "edit") {
-      handleAddUser(result?.user);
-    }
-  };
+const handleFilter = useCallback((filter: string) => {
+  setSelectedFilter(filter);
+  setPage(1);
+}, []);
 
-  const handleDeleteUser = useCallback(async (userId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this user? This action cannot be undone.",
-      )
-    ) {
-      try {
-        // const response = await UserService.deleteUser(userId);
-        // if (response.success) {
-          fetchUsers();
-        // }
-      } catch (error) {
-        console.error("Error deleting user:", error);
-      }
-    }
-  }, [fetchUsers]);
+const handleSort = useCallback((sort: string) => {
+  setSelectedSort(sort);
+  setPage(1);
+}, []);
+
+const handlePageChange = useCallback((newPage: number) => {
+  setPage(newPage);
+}, []);
 
   const handleToggleActive = useCallback(async (userId: string) => {
     try {
-      // const user = users.find(u => u.uuid === userId);
-      // if (user) {
-      //   const response = await UserService.toggleUserActive(userId, !user.is_active);
-      //   if (response.success) {
+      const user = users.find(u => u.uuid === userId);
+      if (user) {
+        const response = await UserService.toggleUserActive(userId, !user.is_active);
+        if (response.success) {
           fetchUsers();
-      //   }
-      // }
+        }
+      }
     } catch (error) {
       console.error("Error toggling user status:", error);
     }
   }, [users, fetchUsers]);
 
-  const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term);
-    setPage(1);
-  }, []);
-
-  const handleFilter = useCallback((filter: string) => {
-    setSelectedFilter(filter);
-    setPage(1);
-  }, []);
-
-  const handleSort = useCallback((sort: string) => {
-    setSelectedSort(sort);
-    setPage(1);
-  }, []);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
 
   // Table columns
   const columns = [
@@ -377,19 +379,7 @@ const Users = () => {
           <p className="text-text-light text-sm">
             Manage system users and permissions
           </p>
-          <div className="flex gap-4 mt-2 text-sm flex-wrap">
-            <span>Total: {count}</span>
-            <span className="text-emerald-600">
-              Active: {users.filter((u) => u.is_active !== false).length}
-            </span>
-            <span className="text-purple-600">
-              Super Admin:{" "}
-              {users.filter((u) => u.role === Roles.SUPER_ADMIN).length}
-            </span>
-            <span className="text-blue-600">
-              Admin: {users.filter((u) => u.role === Roles.ADMIN).length}
-            </span>
-          </div>
+          
         </div>
         <div className="flex items-center gap-3">
           <Button

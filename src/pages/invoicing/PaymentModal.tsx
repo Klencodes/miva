@@ -13,7 +13,7 @@ const PaymentModal = () => {
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "MoMo" | "Bank" | "Credit">("Cash");
   const [reference, setReference] = useState("");
   const [bankName, setBankName] = useState("");
-  const [notes, setNotes] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const { modalData, modalRef } = useModal();
   const invoice = modalData?.invoice as Invoice;
@@ -48,7 +48,7 @@ const PaymentModal = () => {
         method: paymentMethod,
         reference: reference || undefined,
         date: new Date().toISOString(),
-        notes: notes || undefined,
+        bank_branch: bankBranch || undefined,
       };
 
       // Call API to add payment
@@ -196,8 +196,8 @@ const PaymentModal = () => {
             label="Notes (Optional)"
             labelType="default"
             placeholder="Add any notes about this payment..."
-            value={notes}
-            onChange={(value: string) => setNotes(value)}
+            value={bankBranch}
+            onChange={(value: string) => setBankBranch(value)}
             rows={2}
           />
         </div>

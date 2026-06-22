@@ -89,6 +89,7 @@ const EntitySwitcher: React.FC = () => {
   const [switching, setSwitching] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { openModal } = useModal()
+  
   // Close on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -109,7 +110,13 @@ const EntitySwitcher: React.FC = () => {
     try {
       const res = await UserService.getMyEntities();
       const entities: Entity[] = res?.results?.entities || [];
-      setStoreEntities(entities);
+      
+      // Filter out the "ALL_ENTITIES" entity
+      const filteredEntities = entities.filter(
+        (e: Entity) => e.uuid !== "ALL_ENTITIES"
+      );
+      
+      setStoreEntities(filteredEntities);
     } catch (err) {
       console.error("Failed to load entities:", err);
     } finally {
@@ -151,10 +158,15 @@ const EntitySwitcher: React.FC = () => {
       eventService.triggerRefresh();
     }
   }
+  
   // Display values
   const entityName = entity?.name || "Select Organisation";
   const entityInitial = entityName.charAt(0).toUpperCase();
 
+  // Filter entities for display (also filter out ALL_ENTITIES from storeEntities)
+  const displayEntities = storeEntities.filter(
+    (e: Entity) => e.uuid !== "ALL_ENTITIES"
+  );
 
   return (
     <div ref={dropdownRef} className="relative">
@@ -216,13 +228,13 @@ const EntitySwitcher: React.FC = () => {
                 <Loader2 size={14} className="animate-spin" />
                 <span className="text-[12px]">Loading...</span>
               </div>
-            ) : storeEntities.length === 0 ? (
+            ) : displayEntities.length === 0 ? (
               <div className="flex flex-col items-center gap-1.5 py-5 px-3 text-center">
                 <Building2 size={18} className="text-text-light opacity-50" />
                 <p className="text-[12px] text-text-light">No organisations found</p>
               </div>
             ) : (
-              storeEntities?.map((e: Entity) => {
+              displayEntities.map((e: Entity) => {
                 const isActive = e.uuid === entity?.uuid;
                 const isSwitching = switching === e.uuid;
 
@@ -279,7 +291,6 @@ const EntitySwitcher: React.FC = () => {
           {/* Footer action */}
           <div className="border-t border-border p-1.5">
             <button
-             
               onClick={() => handleAddEntity()}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-lg
                 text-[12px] text-text-light hover:bg-white/[0.05]

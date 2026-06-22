@@ -137,34 +137,38 @@ const Verify = () => {
 
     try {
       const response = await AuthService.verifyOTP(email, code);
-          console.log(response.message, "MESSSAGGGEG")
-          console.log(response.results, "RES>>>>>>")
 
-        // If login flow, get user data
-        if (response.success) {
-            setSuccess(response.message);
+      // If login flow, get user data
+      if (response.success) {
+        setSuccess(response.message);
 
-          const userData = response.results;
-          setStoredItem(USER_KEY, userData);
-          setUser(userData);
-          await checkAdminExists(true);
+        const userData = response.results;
+        setStoredItem(USER_KEY, userData);
+        setUser(userData);
+        await checkAdminExists(true);
 
-          // Navigate based on user role
-          const userRole = userData.role;
-          const hasEntities = userData.entities && userData.entities.length > 0;
+        const userRole = userData.role;
+        const hasEntities = userData.entities && userData.entities.length > 0;
+        const isVerified = userData.verified;
 
-          let path = "/dashboard";
+        // Not verified yet — stay on verify
+        if (!isVerified) {
+          setError("Account not verified. Please contact support.");
+          return;
+        }
 
-          if (userRole === "super_admin") {
-            path = "/dashboard";
-          } else if (userRole === "admin") {
-            hasEntities ? navigate("/dashboard", { replace: true }) : window.location.href = "/account/create-organisation";
+        // No entities — must create organisation first, for ALL roles
+        if (!hasEntities) {
+          if (userRole === "admin" || userRole === "super_admin") {
+            window.location.href = "/account/create-organisation";
           } else {
-            path = hasEntities ? "/dashboard" : "/contact-admin";
+            navigate("/contact-admin", { replace: true });
           }
+          return;
+        }
 
-          navigate(path, { replace: true });
-        
+        // Has entities — go to dashboard
+        navigate("/dashboard", { replace: true });
       } else {
         setError(
           response.message || "Invalid verification code. Please try again.",
@@ -321,7 +325,7 @@ const Verify = () => {
                 className={`
                   w-12 h-14 text-center text-xl font-semibold
                   bg-background border
-                  focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+                  focus:outline-none focus:ring-primary focus:border-transparent
                   transition-all duration-200
                   ${error ? "border-danger-50" : "border-border"}
                   ${digit ? "border-primary bg-primary-5" : ""}
@@ -371,10 +375,12 @@ const Verify = () => {
                   flex items-center gap-1 inline-flex
                 `}
               >
-                {isResending && <RefreshCw
-                  size={14}
-                  className={isResending ? "animate-spin" : ""}
-                />}
+                {isResending && (
+                  <RefreshCw
+                    size={14}
+                    className={isResending ? "animate-spin" : ""}
+                  />
+                )}
                 {isResending ? "Sending..." : "Resend Code"}
               </button>
             ) : (

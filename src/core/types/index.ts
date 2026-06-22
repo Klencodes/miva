@@ -1,4 +1,3 @@
-import { UserRole } from "../constants/permissions";
 export interface IResponse {
   message: string;
   code: string;
@@ -10,7 +9,6 @@ export interface IResponse {
  * INVENTORY INTERFACE
  * ==========================================================================================
  */
-// types/index.ts
 export type InvItemType = 'hose' | 'fitting' | 'ferrule' | 'assembly' | 'adapter' | 'coupling' | 'other';
 export type InvItemUnitType = 'meters' | 'feet' | 'pieces';
 export type InvItemThreadType = 'BSP' | 'JIC' | 'NPT' | 'ORFS' | 'SAE' | 'Komatsu' | 'Metric';
@@ -19,32 +17,24 @@ export interface InventoryItem {
   uuid: string;
   entity_id: string;
   name: string;
+  part_number?: string;
   type: InvItemType;
   unit: InvItemUnitType;
   quantity: number;
-  specs: {
-    sae?: string;
-    pressure?: number;
-    thread_type?: InvItemThreadType;
-    diameter?: number;
-    material?: string;
-    part_number?: string;
-    angle?: number;
-    working_temp?: string;
-    assembly_length?: number;
-  };
   reorder_threshold: number;
   cost: number;
   price: number;
-  description?: string;
   supplier?: string;
   image?: string;
-  stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock';
-  total_value?: number;
+  metadata?: Record<string, any>; // Flexible - can hold anything
+  created_by?: string;
+  updated_by?: string;
   created_at: string;
   updated_at: string;
+  stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock';
+  total_value?: number;
+  total_price_value?: number;
 }
-
 export interface InventoryFilterParams {
   page?: number;
   limit?: number;
@@ -77,8 +67,11 @@ export interface Invoice {
   vat: number;
   vat_rate: number;
   nhil: number;
+  nhil_rate: number;
   getfund: number;
+  getfund_rate: number;
   covid_levy: number;
+  covid_levy_rate: number;
   total: number;
   amount_paid: number;
   remaining_balance: number;
@@ -96,11 +89,7 @@ export interface Invoice {
 
 export type InvoicePaymentStatus = "unpaid" | "paid" | "overdue" | "partially"
 export type DiscountType = "percentage" | "fixed";
-export type InvStatus =
-  | "draft"
-  | "quoted"
-  | "invoiced"
-  | "cancelled"
+export type InvStatus = "draft" | "quoted" | "invoiced" | "cancelled"
 
 export interface InvoiceItem {
   id: string;
@@ -132,7 +121,6 @@ export interface InvoicePayment {
   reference?: string;
   bank_branch?: string;
   date?: string;
-  notes?: string;
 }
 export type PaymentType = "Cash" | "MoMo" | "Bank" | "Credit";
 export interface InvoiceFilterParams {
@@ -205,6 +193,9 @@ export interface IUser {
   auth_token?: string;
   entities?: Entity[];
 }
+
+export type UserRole = "super_admin" | "admin" | "sales" | "technician" | "viewer"
+
 export interface UserPermissions {
   can_edit_inventory: boolean;
   can_delete_inventory: boolean;
@@ -282,8 +273,8 @@ export interface Entity {
   zip_code: string;
   registration_number: string;
   tax_id: string;
+  currency?: string;
   is_active: boolean;
-  settings?: Record<string, any>;
   metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
@@ -351,7 +342,7 @@ export interface IUserEntityAssignment {
  * ==========================================================================================
  */
 export interface Supplier {
-  id: string;
+  uuid: string;
   name: string;
   address: string;
   email: string;
@@ -494,9 +485,70 @@ export interface DashboardStats {
     draft: { count: number; amount: number };
     quoted: { count: number; amount: number };
     invoiced: { count: number; amount: number };
-    partially_paid: { count: number; amount: number };
+    partially: { count: number; amount: number };
     paid: { count: number; amount: number };
     cancelled: { count: number; amount: number };
     overdue: { count: number; amount: number };
   };
+}
+
+
+
+/** ==========================================================================================
+ * CUSTOMER INTERFACE
+ * ==========================================================================================
+ */
+export interface ICustomer {
+  uuid: string;
+  entity_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  tax_id?: string;
+  balance: number;
+  notes?: string;
+  is_active: boolean;
+  total_invoices?: number;
+  total_spent?: number;
+  total_paid?: number;
+  total_balance?: number;
+  recent_invoices?: Array<{
+    uuid: string;
+    number: string;
+    total: number;
+    status: string;
+    created_at: string;
+  }>;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ICustomerFilterParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  email?: string;
+  phone?: string;
+  is_active?: boolean | string;
+  min_balance?: number;
+  max_balance?: number;
+}
+
+export interface ICustomerStats {
+  totals: {
+    total_customers: number;
+    active_customers: number;
+    inactive_customers: number;
+    total_balance: number;
+  };
+  top_customers: Array<{
+    uuid: string;
+    name: string;
+    balance: number;
+    email?: string;
+    phone?: string;
+  }>;
 }

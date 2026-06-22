@@ -1,5 +1,5 @@
 // features/suppliers/SupplierDetails.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
   Edit,
@@ -21,35 +21,14 @@ import {
   Download,
   RefreshCw,
   Loader,
+  Globe,
 } from "lucide-react";
 import { Button } from "../../components/common";
 import { useModal } from "../../core/hooks/useModal";
+import { toast } from "sonner";
+import SupplierService from "../../core/services/supplier";
 
-// Types
-interface Supplier {
-  id: string;
-  name: string;
-  address: string;
-  email: string;
-  phone_number: string;
-  secondary_number: string;
-  phone_code: string;
-  secondary_code: string;
-  created_at?: string | Date;
-  updated_at?: string | Date;
-  total_orders?: number;
-  total_spent?: number;
-  status?: "active" | "inactive";
-}
-
-interface SupplierDetailsProps {
-  supplier: Supplier;
-  onClose?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-}
-
-// Mock order history data
+// Order interface
 interface Order {
   id: string;
   order_number: string;
@@ -59,55 +38,51 @@ interface Order {
   items: number;
 }
 
-const mockOrders: Order[] = [
-  {
-    id: "ORD-001",
-    order_number: "PO-2024-001",
-    date: "2024-12-15",
-    total: 1250.0,
-    status: "completed",
-    items: 5,
-  },
-  {
-    id: "ORD-002",
-    order_number: "PO-2024-002",
-    date: "2024-12-10",
-    total: 850.5,
-    status: "processing",
-    items: 3,
-  },
-  {
-    id: "ORD-003",
-    order_number: "PO-2024-003",
-    date: "2024-12-05",
-    total: 2100.0,
-    status: "pending",
-    items: 8,
-  },
-  {
-    id: "ORD-004",
-    order_number: "PO-2024-004",
-    date: "2024-11-28",
-    total: 450.75,
-    status: "completed",
-    items: 2,
-  },
-  {
-    id: "ORD-005",
-    order_number: "PO-2024-005",
-    date: "2024-11-20",
-    total: 3200.0,
-    status: "cancelled",
-    items: 10,
-  },
-];
-
 const SupplierDetails = () => {
   const { modalRef, modalData } = useModal();
   const [activeTab, setActiveTab] = useState("overview");
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [supplierStats, setSupplierStats] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  
   const supplier = modalData?.supplier;
+
+  // Fetch supplier orders and stats
+  const fetchSupplierData = useCallback(async () => {
+    if (!supplier?.uuid) return;
+
+    setOrderLoading(true);
+    try {
+      // Fetch orders
+      const ordersResponse = await SupplierService.getSupplierOrders(supplier.uuid, {
+        limit: 50,
+      });
+      
+      if (ordersResponse.success) {
+        setOrders(ordersResponse.results?.orders || []);
+      }
+
+      // Fetch stats
+      const statsResponse = await SupplierService.getSupplierStats(supplier.uuid);
+      if (statsResponse.success) {
+        setSupplierStats(statsResponse.results);
+      }
+    } catch (error: any) {
+      console.error("Error fetching supplier data:", error);
+      toast.error("Error", {
+        description: error.message || "Failed to load supplier data",
+      });
+    } finally {
+      setOrderLoading(false);
+    }
+  }, [supplier?.uuid]);
+
+  // Load data on mount
+  useEffect(() => {
+    fetchSupplierData();
+  }, [fetchSupplierData]);
+
   // Helper functions
   const formatDate = (date?: string | Date) => {
     if (!date) return "-";
@@ -190,18 +165,60 @@ const SupplierDetails = () => {
     modalRef?.close({ action: "edit", supplier });
   };
 
-  const handleDelete = () => {};
-
-  const handleRefreshOrders = () => {
-    setOrderLoading(true);
-    setTimeout(() => {
-      setOrderLoading(false);
-    }, 1000);
+  const handleDelete = async () => {
+    if (!supplier?.uuid) return;
+    
+    if (window.confirm(`Are you sure you want to delete "${supplier.name}"?`)) {
+      setLoading(true);
+      try {
+        const response = await SupplierService.deleteSupplier(supplier.uuid);
+        if (response.success) {
+          toast.success("Success", {
+            description: "Supplier deleted successfully",
+          });
+          modalRef?.close({ action: "delete", success: true });
+        }
+      } catch (error: any) {
+        toast.error("Error", {
+          description: error.message || "Failed to delete supplier",
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
-  const handleExportOrders = () => {
-    // TODO: Implement export functionality
-    console.log("Exporting orders...");
+  const handleRefreshOrders = () => {
+    fetchSupplierData();
+  };
+
+  const handleExportOrders = async () => {
+    if (!supplier?.uuid) return;
+    
+    try {
+      const blob = await SupplierService.exportSuppliers({
+        format: 'excel',
+        date_from: new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString(),
+        date_to: new Date().toISOString(),
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `supplier-orders-${supplier.name}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success("Success", {
+        description: "Orders exported successfully",
+      });
+    } catch (error: any) {
+      toast.error("Error", {
+        description: error.message || "Failed to export orders",
+      });
+    }
   };
 
   // Stats cards
@@ -237,18 +254,34 @@ const SupplierDetails = () => {
     </div>
   );
 
+  if (!supplier) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <p className="text-text-light">No supplier data available</p>
+      </div>
+    );
+  }
+
+  // Use stats from API or fallback to supplier data
+  const stats = supplierStats || {
+    total_orders: supplier.total_orders || 0,
+    total_spent: supplier.total_spent || 0,
+  };
+
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-border bg-background/50">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xl">
-            {supplier.name.charAt(0).toUpperCase()}
+            {supplier.name?.charAt(0).toUpperCase() || "?"}
           </div>
           <div>
             <h2 className="text-xl font-bold text-text">{supplier.name}</h2>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-text-light">{supplier.id}</span>
+              <span className="text-sm text-text-light">
+                {supplier.id || supplier.uuid?.slice(0, 8)}
+              </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(
                   supplier.status,
@@ -264,12 +297,12 @@ const SupplierDetails = () => {
             <Edit className="w-4 h-4 mr-1" />
             Edit
           </Button>
-          <Button variant="danger" size="sm" onClick={handleDelete}>
+          <Button variant="danger" size="sm" onClick={handleDelete} disabled={loading}>
             <Trash2 className="w-4 h-4 mr-1" />
             Delete
           </Button>
           <button
-            onClick={() => modalRef?.close({ action: "delete" })}
+            onClick={() => modalRef?.close()}
             className="p-2 hover:bg-background rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-text-light" />
@@ -284,13 +317,13 @@ const SupplierDetails = () => {
           <StatCard
             icon={<ShoppingBag className="w-5 h-5" />}
             label="Total Orders"
-            value={supplier.total_orders || 0}
+            value={stats.total_orders || 0}
             color="bg-blue-100 text-blue-600"
           />
           <StatCard
             icon={<CreditCard className="w-5 h-5" />}
             label="Total Spent"
-            value={formatCurrency(supplier.total_spent)}
+            value={formatCurrency(stats.total_spent)}
             color="bg-emerald-100 text-emerald-600"
           />
           <StatCard
@@ -303,8 +336,8 @@ const SupplierDetails = () => {
             icon={<FileText className="w-5 h-5" />}
             label="Avg. Order Value"
             value={
-              supplier.total_orders && supplier.total_spent
-                ? formatCurrency(supplier.total_spent / supplier.total_orders)
+              stats.total_orders && stats.total_spent
+                ? formatCurrency(stats.total_spent / stats.total_orders)
                 : "$0.00"
             }
             color="bg-amber-100 text-amber-600"
@@ -366,7 +399,7 @@ const SupplierDetails = () => {
                           href={`mailto:${supplier.email}`}
                           className="text-primary hover:underline"
                         >
-                          {supplier.email}
+                          {supplier.email || "N/A"}
                         </a>
                       }
                     />
@@ -374,12 +407,16 @@ const SupplierDetails = () => {
                       icon={<Phone className="w-5 h-5" />}
                       label="Primary Phone"
                       value={
-                        <a
-                          href={`tel:${supplier.phone_code}${supplier.phone_number}`}
-                          className="text-primary hover:underline"
-                        >
-                          {supplier.phone_code} {supplier.phone_number}
-                        </a>
+                        supplier.phone_number ? (
+                          <a
+                            href={`tel:${supplier.phone_code || ""}${supplier.phone_number}`}
+                            className="text-primary hover:underline"
+                          >
+                            {supplier.phone_code || ""} {supplier.phone_number}
+                          </a>
+                        ) : (
+                          "N/A"
+                        )
                       }
                     />
                     {supplier.secondary_number && (
@@ -388,10 +425,10 @@ const SupplierDetails = () => {
                         label="Secondary Phone"
                         value={
                           <a
-                            href={`tel:${supplier.secondary_code}${supplier.secondary_number}`}
+                            href={`tel:${supplier.secondary_code || ""}${supplier.secondary_number}`}
                             className="text-primary hover:underline"
                           >
-                            {supplier.secondary_code}{" "}
+                            {supplier.secondary_code || ""}{" "}
                             {supplier.secondary_number}
                           </a>
                         }
@@ -400,7 +437,7 @@ const SupplierDetails = () => {
                     <InfoRow
                       icon={<MapPin className="w-5 h-5" />}
                       label="Address"
-                      value={supplier.address}
+                      value={supplier.address || "N/A"}
                     />
                   </div>
                 </div>
@@ -414,7 +451,7 @@ const SupplierDetails = () => {
                     <InfoRow
                       icon={<Building className="w-5 h-5" />}
                       label="Supplier ID"
-                      value={supplier.id}
+                      value={supplier.id || supplier.uuid?.slice(0, 8) || "N/A"}
                     />
                     <InfoRow
                       icon={<Calendar className="w-5 h-5" />}
@@ -431,13 +468,50 @@ const SupplierDetails = () => {
                     <InfoRow
                       icon={<Package className="w-5 h-5" />}
                       label="Total Orders"
-                      value={supplier.total_orders || 0}
+                      value={stats.total_orders || 0}
                     />
                     <InfoRow
                       icon={<DollarSign className="w-5 h-5" />}
                       label="Total Spent"
-                      value={formatCurrency(supplier.total_spent)}
+                      value={formatCurrency(stats.total_spent)}
                     />
+                    {supplier.website && (
+                      <InfoRow
+                        icon={<Globe className="w-5 h-5" />}
+                        label="Website"
+                        value={
+                          <a
+                            href={supplier.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {supplier.website}
+                          </a>
+                        }
+                      />
+                    )}
+                    {supplier.tax_id && (
+                      <InfoRow
+                        icon={<FileText className="w-5 h-5" />}
+                        label="Tax ID"
+                        value={supplier.tax_id}
+                      />
+                    )}
+                    {supplier.registration_number && (
+                      <InfoRow
+                        icon={<FileText className="w-5 h-5" />}
+                        label="Registration Number"
+                        value={supplier.registration_number}
+                      />
+                    )}
+                    {supplier.notes && (
+                      <InfoRow
+                        icon={<FileText className="w-5 h-5" />}
+                        label="Notes"
+                        value={supplier.notes}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -480,7 +554,7 @@ const SupplierDetails = () => {
 
                 {orderLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader />
+                    <Loader className="animate-spin w-6 h-6 text-primary" />
                     <span className="ml-3 text-text-light">
                       Loading orders...
                     </span>
@@ -596,9 +670,9 @@ const SupplierDetails = () => {
                       Average Order Value
                     </p>
                     <p className="text-2xl font-bold text-text mt-1">
-                      {supplier.total_orders && supplier.total_spent
+                      {stats.total_orders && stats.total_spent
                         ? formatCurrency(
-                            supplier.total_spent / supplier.total_orders,
+                            stats.total_spent / stats.total_orders,
                           )
                         : "$0.00"}
                     </p>

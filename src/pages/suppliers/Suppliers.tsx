@@ -1,161 +1,126 @@
-// features/suppliers/ListSuppliers.tsx
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Plus,
   Mail,
   Phone,
   Building,
-  MapPin,
   Calendar,
-  DollarSign,
   Package,
-  Check,
-  X,
+  RefreshCw,
 } from "lucide-react";
 import { Button, DataTable } from "../../components/common";
 import { useModal } from "../../core/hooks/useModal";
-
-import { generateSampleSuppliers } from "../../data/sampleData";
 import { Supplier } from "../../core/types";
 import AddEditSupplier from "./AddEditSupplier";
 import SupplierDetails from "./SupplierDetails";
+import SupplierService from "../../core/services/supplier";
+import { toast } from "sonner";
 
 const ListSuppliers: React.FC = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
-    try {
-      const stored = localStorage.getItem("SUPPLIERS");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed.map((s: any) => ({
-          ...s,
-          created_at: s.created_at ? new Date(s.created_at) : undefined,
-          updated_at: s.updated_at ? new Date(s.updated_at) : undefined,
-        }));
-      }
-    } catch (error) {
-      console.error("Error loading suppliers:", error);
-    }
-    return generateSampleSuppliers();
-  });
-
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [count, setCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedSort, setSelectedSort] = useState("name_asc");
   const { openModal } = useModal();
+  const limit = 10;
 
-  // Save to localStorage
-  useEffect(() => {
+  // ── Fetch suppliers from API ─────────────────────────────────────────────
+  const fetchSuppliers = useCallback(async () => {
     try {
-      localStorage.setItem("SUPPLIERS", JSON.stringify(suppliers));
-    } catch (error) {
-      console.error("Error saving suppliers:", error);
+      setLoading(true);
+      
+      // Build query params
+      const params: any = {
+        page,
+        limit,
+      };
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (selectedFilter !== "all") {
+        params.status = selectedFilter;
+      }
+
+      // Handle sorting
+      switch (selectedSort) {
+        case "name_asc":
+          params.sort_by = "name";
+          params.sort_order = "asc";
+          break;
+        case "name_desc":
+          params.sort_by = "name";
+          params.sort_order = "desc";
+          break;
+        case "newest":
+          params.sort_by = "created_at";
+          params.sort_order = "desc";
+          break;
+        case "oldest":
+          params.sort_by = "created_at";
+          params.sort_order = "asc";
+          break;
+        case "orders_desc":
+          params.sort_by = "total_orders";
+          params.sort_order = "desc";
+          break;
+        case "orders_asc":
+          params.sort_by = "total_orders";
+          params.sort_order = "asc";
+          break;
+        case "spent_desc":
+          params.sort_by = "total_spent";
+          params.sort_order = "desc";
+          break;
+        case "spent_asc":
+          params.sort_by = "total_spent";
+          params.sort_order = "asc";
+          break;
+        default:
+          params.sort_by = "name";
+          params.sort_order = "asc";
+      }
+
+      const response = await SupplierService.getSuppliers(params);
+      
+      if (response.success) {
+        const suppliersData = response.results?.suppliers || [];
+        setSuppliers(suppliersData);
+        setTotalCount(response.results?.pagination?.total || 0);
+      } else {
+        toast.error("Error", {
+          description: response.message || "Failed to load suppliers",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error fetching suppliers:", error);
+      toast.error("Error", {
+        description: error.message || "Failed to load suppliers",
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [suppliers]);
+  }, [page, limit, searchTerm, selectedFilter, selectedSort]);
 
-  // Filter options
-  const filterOptions = [
-    { value: "all", label: "All Suppliers" },
-    { value: "active", label: "Active" },
-    { value: "inactive", label: "Inactive" },
-  ];
-
-  const sortOptions = [
-    { value: "name_asc", label: "Name A-Z" },
-    { value: "name_desc", label: "Name Z-A" },
-    { value: "newest", label: "Newest First" },
-    { value: "oldest", label: "Oldest First" },
-    { value: "orders_desc", label: "Most Orders" },
-    { value: "orders_asc", label: "Least Orders" },
-    { value: "spent_desc", label: "Highest Spent" },
-    { value: "spent_asc", label: "Lowest Spent" },
-  ];
-
-  // Filter and search suppliers
-  const filteredSuppliers = useMemo(() => {
-    let result = [...suppliers];
-
-    if (selectedFilter === "active") {
-      result = result.filter((s) => s.status === "active");
-    } else if (selectedFilter === "inactive") {
-      result = result.filter((s) => s.status === "inactive");
-    }
-
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      result = result.filter(
-        (s) =>
-          s.name.toLowerCase().includes(search) ||
-          s.email.toLowerCase().includes(search) ||
-          s.phone_number.includes(search) ||
-          s.address.toLowerCase().includes(search) ||
-          s.id.toLowerCase().includes(search),
-      );
-    }
-
-    return result;
-  }, [suppliers, selectedFilter, searchTerm]);
-
-  // Sort suppliers
-  const sortedSuppliers = useMemo(() => {
-    const result = [...filteredSuppliers];
-
-    switch (selectedSort) {
-      case "name_asc":
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "name_desc":
-        result.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case "newest":
-        result.sort(
-          (a, b) =>
-            (b.created_at ? new Date(b.created_at).getTime() : 0) -
-            (a.created_at ? new Date(a.created_at).getTime() : 0),
-        );
-        break;
-      case "oldest":
-        result.sort(
-          (a, b) =>
-            (a.created_at ? new Date(a.created_at).getTime() : 0) -
-            (b.created_at ? new Date(b.created_at).getTime() : 0),
-        );
-        break;
-      case "orders_desc":
-        result.sort((a, b) => (b.total_orders || 0) - (a.total_orders || 0));
-        break;
-      case "orders_asc":
-        result.sort((a, b) => (a.total_orders || 0) - (b.total_orders || 0));
-        break;
-      case "spent_desc":
-        result.sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0));
-        break;
-      case "spent_asc":
-        result.sort((a, b) => (a.total_spent || 0) - (b.total_spent || 0));
-        break;
-      default:
-        break;
-    }
-
-    return result;
-  }, [filteredSuppliers, selectedSort]);
-
-  // Update count
+  // ── Load data on mount and when dependencies change ─────────────────────
   useEffect(() => {
-    setCount(sortedSuppliers.length);
-  }, [sortedSuppliers.length]);
+    fetchSuppliers();
+  }, [fetchSuppliers]);
 
-  // Get paginated data
-  const paginatedData = useMemo(() => {
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    return sortedSuppliers.slice(start, end);
-  }, [sortedSuppliers, page, limit]);
+  // ── Refresh handler ──────────────────────────────────────────────────────
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchSuppliers();
+    toast.success("Success", { description: "Suppliers refreshed" });
+  };
 
-  // Helper functions
+  // ── Helper functions ─────────────────────────────────────────────────────
   const getStatusColor = (status?: string) => {
     const colors: Record<string, string> = {
       active: "bg-emerald-100 text-emerald-700",
@@ -187,110 +152,138 @@ const ListSuppliers: React.FC = () => {
     return `GHC${amount.toLocaleString()}`;
   };
 
-  // Handler functions
-  const handleAddSupplier = async (supplier?: Supplier) => {
-    const result = await openModal(AddEditSupplier, {
-      data: { supplier },
-      size: "xl",
-      side: "right",
+  // ── Filter options ────────────────────────────────────────────────────────
+  const filterOptions = [
+    { value: "all", label: "All Suppliers" },
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
+  ];
+
+  const sortOptions = [
+    { value: "name_asc", label: "Name A-Z" },
+    { value: "name_desc", label: "Name Z-A" },
+    { value: "newest", label: "Newest First" },
+    { value: "oldest", label: "Oldest First" },
+    { value: "orders_desc", label: "Most Orders" },
+    { value: "orders_asc", label: "Least Orders" },
+    { value: "spent_desc", label: "Highest Spent" },
+    { value: "spent_asc", label: "Lowest Spent" },
+  ];
+
+  // ── Handler functions ────────────────────────────────────────────────────
+  // ── Handler functions ────────────────────────────────────────────────────
+const handleAddSupplier = useCallback(async (supplier?: Supplier) => {
+  const result = await openModal(AddEditSupplier, {
+    data: { supplier },
+    size: "xl",
+    side: "right",
+  });
+
+  if (result?.action === "add" && result?.supplier) {
+    // Refresh the list to get the newly created supplier
+    fetchSuppliers();
+    toast.success("Success", {
+      description: "Supplier created successfully",
     });
-
-    if (result?.action === "add" && result?.supplier) {
-      const newSupplier: Supplier = {
-        ...result.supplier,
-        id:
-          result.supplier.id ||
-          `SUP-${String(suppliers.length + 1).padStart(3, "0")}`,
-        created_at: new Date(),
-        total_orders: 0,
-        total_spent: 0,
-        status: result.supplier.status || "active",
-      };
-      setSuppliers((prev) => [...prev, newSupplier]);
-    } else if (result?.action === "edit" && result?.supplier) {
-      setSuppliers((prev) =>
-        prev.map((s) =>
-          s.id === supplier?.id
-            ? {
-                ...s,
-                ...result.supplier,
-                updated_at: new Date(),
-              }
-            : s,
-        ),
-      );
-    }
-  };
-
-  const handleViewSupplier = async (supplier: Supplier) => {
-    const result = await openModal(SupplierDetails, {
-      data: { supplier },
-      size: "xl",
-      side: "right",
+  } else if (result?.action === "edit" && result?.supplier) {
+    // Refresh the list to get the updated supplier
+    fetchSuppliers();
+    toast.success("Success", {
+      description: "Supplier updated successfully",
     });
+  }
+}, [fetchSuppliers, openModal]);
 
-    if (result?.action === "edit") {
-      handleAddSupplier(result?.supplier);
+const handleViewSupplier = useCallback(async (supplier: Supplier) => {
+  const result = await openModal(SupplierDetails, {
+    data: { supplier },
+    size: "xl",
+    side: "right",
+  });
+
+  if (result?.action === "edit") {
+    handleAddSupplier(result?.supplier);
+  }
+  
+  if (result?.action === "delete" && result?.success) {
+    fetchSuppliers();
+  }
+}, [openModal, handleAddSupplier, fetchSuppliers]);
+
+const handleDeleteSupplier = useCallback(async (supplierId: string) => {
+  if (
+    window.confirm(
+      "Are you sure you want to delete this supplier? This action cannot be undone.",
+    )
+  ) {
+    try {
+      const response = await SupplierService.deleteSupplier(supplierId);
+      if (response.success) {
+        toast.success("Success", {
+          description: "Supplier deleted successfully",
+        });
+        fetchSuppliers();
+      }
+    } catch (error: any) {
+      toast.error("Error", {
+        description: error.message || "Failed to delete supplier",
+      });
     }
-  };
+  }
+}, [fetchSuppliers]);
 
-  const handleDeleteSupplier = useCallback((supplierId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this supplier? This action cannot be undone.",
-      )
-    ) {
-      setSuppliers((prev) => prev.filter((s) => s.id !== supplierId));
+const handleToggleStatus = useCallback(async (supplier: Supplier) => {
+  try {
+    const newStatus = supplier.status === "active" ? "inactive" : "active";
+    const response = await SupplierService.updateSupplier(supplier.uuid, {
+      status: newStatus,
+    });
+    
+    if (response.success) {
+      toast.success("Success", {
+        description: `Supplier ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
+      });
+      fetchSuppliers();
     }
-  }, []);
+  } catch (error: any) {
+    toast.error("Error", {
+      description: error.message || "Failed to update supplier status",
+    });
+  }
+}, [fetchSuppliers]);
 
-  const handleToggleStatus = useCallback((supplierId: string) => {
-    setSuppliers((prev) =>
-      prev.map((s) =>
-        s.id === supplierId
-          ? {
-              ...s,
-              status: s.status === "active" ? "inactive" : "active",
-              updated_at: new Date(),
-            }
-          : s,
-      ),
-    );
-  }, []);
+const handleSearch = useCallback((term: string) => {
+  setSearchTerm(term);
+  setPage(1);
+}, []);
 
-  const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term);
-    setPage(1);
-  }, []);
+const handleFilter = useCallback((filter: string) => {
+  setSelectedFilter(filter);
+  setPage(1);
+}, []);
 
-  const handleFilter = useCallback((filter: string) => {
-    setSelectedFilter(filter);
-    setPage(1);
-  }, []);
+const handleSort = useCallback((sort: string) => {
+  setSelectedSort(sort);
+  setPage(1);
+}, []);
 
-  const handleSort = useCallback((sort: string) => {
-    setSelectedSort(sort);
-    setPage(1);
-  }, []);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
-
-  // Table columns
+const handlePageChange = useCallback((newPage: number) => {
+  setPage(newPage);
+}, []);
+  // ── Table columns ──────────────────────────────────────────────────────────
   const columns = [
     {
       header: "SUPPLIER",
       value: (item: Supplier) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold">
-            {item.name.charAt(0).toUpperCase()}
+            {item.name?.charAt(0).toUpperCase() || "?"}
           </div>
           <div>
             <div className="font-medium text-text">{item.name}</div>
             <div className="text-xs text-text-light flex items-center gap-2">
               <Building className="w-3 h-3" />
-              {item.address}
+              {item.address || "No address"}
             </div>
           </div>
         </div>
@@ -307,14 +300,14 @@ const ListSuppliers: React.FC = () => {
         <div className="flex flex-col gap-1">
           <div className="text-sm text-text flex items-center gap-1">
             <Mail className="w-3 h-3 text-text-light" />
-            {item.email}
+            {item.email || "N/A"}
           </div>
           <div className="text-sm text-text flex items-center gap-1">
             <Phone className="w-3 h-3 text-text-light" />
-            {item.phone_code} {item.phone_number}
+            {item.phone_code || ""} {item.phone_number || "N/A"}
             {item.secondary_number && (
               <span className="text-text-light text-xs ml-1">
-                (Alt: {item.secondary_code} {item.secondary_number})
+                (Alt: {item.secondary_code || ""} {item.secondary_number})
               </span>
             )}
           </div>
@@ -378,7 +371,7 @@ const ListSuppliers: React.FC = () => {
     },
   ];
 
-  // Custom actions
+  // ── Custom actions ────────────────────────────────────────────────────────
   const getCustomActions = useCallback(
     (item: Supplier) => {
       const actions = [];
@@ -398,7 +391,7 @@ const ListSuppliers: React.FC = () => {
       actions.push({
         title: item.status === "active" ? "Deactivate" : "Activate",
         icon: "check",
-        handler: () => handleToggleStatus(item.id),
+        handler: () => handleToggleStatus(item),
         classes:
           item.status === "active" ? "text-amber-600" : "text-emerald-600",
       });
@@ -406,7 +399,7 @@ const ListSuppliers: React.FC = () => {
       actions.push({
         title: "Delete",
         icon: "delete",
-        handler: () => handleDeleteSupplier(item.id),
+        handler: () => handleDeleteSupplier(item.uuid),
         classes: "text-danger",
       });
 
@@ -428,46 +421,29 @@ const ListSuppliers: React.FC = () => {
           <p className="text-text-light text-sm">
             Manage your suppliers and their information
           </p>
-          <div className="flex gap-4 mt-2 text-sm flex-wrap">
-            <span>Total: {sortedSuppliers.length}</span>
-            <span className="text-emerald-600">
-              Active:{" "}
-              {sortedSuppliers.filter((s) => s.status === "active").length}
-            </span>
-            <span className="text-red-600">
-              Inactive:{" "}
-              {sortedSuppliers.filter((s) => s.status === "inactive").length}
-            </span>
-            <span className="text-blue-600">
-              Total Orders:{" "}
-              {sortedSuppliers.reduce(
-                (sum, s) => sum + (s.total_orders || 0),
-                0,
-              )}
-            </span>
-            <span className="text-purple-600">
-              Total Spent:{" "}
-              {formatCurrency(
-                sortedSuppliers.reduce(
-                  (sum, s) => sum + (s.total_spent || 0),
-                  0,
-                ),
-              )}
-            </span>
-          </div>
         </div>
-        <Button
-          onClick={() => handleAddSupplier()}
-          className="flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Supplier
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Button
+            onClick={() => handleAddSupplier()}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add Supplier
+          </Button>
+        </div>
       </div>
 
       <DataTable
         columns={columns}
-        data={paginatedData}
+        data={suppliers}
         loading={loading}
         placeholder="Search suppliers by name, email, phone, or address..."
         searchLabel="Search Suppliers"
@@ -479,7 +455,7 @@ const ListSuppliers: React.FC = () => {
         addButtonText="Add Supplier"
         page={page}
         limit={limit}
-        count={count}
+        count={totalCount}
         sortOptions={sortOptions}
         filterOptions={filterOptions}
         customActions={getCustomActions}
@@ -487,7 +463,7 @@ const ListSuppliers: React.FC = () => {
         onFilter={handleFilter}
         onSort={handleSort}
         onPageChange={handlePageChange}
-        onAdd={handleAddSupplier}
+        onAdd={() => handleAddSupplier()}
       />
     </div>
   );

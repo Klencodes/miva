@@ -301,4 +301,5 @@ class EntityService {
   }
 }
 
-export default new EntityService();
+const entityServiceInstance = new EntityService();
+export default entityServiceInstance;

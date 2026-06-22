@@ -1,4 +1,4 @@
-import { Bell, InfoIcon, Menu, Moon, SunDimIcon, X } from "lucide-react";
+import { Bell, InfoIcon, Menu, Moon, SunDimIcon } from "lucide-react";
 import React from "react";
 import { useTheme } from "../../../core/contexts/ThemeProvider";
 
@@ -43,7 +43,8 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
         aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
         aria-expanded={sidebarOpen}
       >
-        {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+        {/* {sidebarOpen ? <X size={18} /> : <Menu size={18} />} */}
+        {<Menu size={20} />}
       </button>
 
       {/* ── Right actions ── */}

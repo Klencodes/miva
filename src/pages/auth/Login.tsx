@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthService from "../../core/services/auth";
-import { UserRole } from "../../core/constants/permissions";
 import { Button, Input } from "../../components/common";
 import { Lock, Mail } from "lucide-react";
 import { useStore } from "../../core/contexts/StoreProvider";
 import { setStoredItem, USER_KEY } from "../../core/hooks/useStore";
+import { UserRole } from "../../core/types";
 
 interface LoginForm {
   email: string;

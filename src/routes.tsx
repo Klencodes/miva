@@ -1,5 +1,5 @@
 // src/IRoutes.tsx
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense } from "react";
 import {
   Routes,
   Route,
@@ -39,13 +39,13 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
 
 // ─── ProtectedRoute ────────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { userRef, isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, } = useStore();
+  const {
+    isAuthenticated, // ← derived state
+    initializationComplete,
+    adminExists,
+    checkingAdmin,
+  } = useStore();
   const location = useLocation();
-
-  // ✅ All hooks before any early return
-  const requiredRoute = useMemo(() => {
-    if (!initializationComplete) return null;
-  }, [initializationComplete]);
 
   if (checkingAdmin || !initializationComplete) return <ScreenLoader />;
 
@@ -53,12 +53,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/account/create-admin" replace />;
   }
 
-  if (!userRef.current && !isAuthenticatedRef.current) {
+  if (!isAuthenticated) {
     return <Navigate to="/account/login" state={{ from: location }} replace />;
-  }
-  
-  if (requiredRoute && requiredRoute !== location.pathname) {
-    return <Navigate to={requiredRoute} replace />;
   }
 
   return <CommonLayout>{children}</CommonLayout>;
@@ -66,16 +62,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // ─── PublicRoute ──────────────────────────────────────────────────────────────
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticatedRef, initializationComplete, adminExists, checkingAdmin, userRef, } = useStore();
+  const {
+    user,           // ← state, not ref
+    isAuthenticated, // ← derived state, not ref
+    initializationComplete,
+    adminExists,
+    checkingAdmin,
+  } = useStore();
   const location = useLocation();
-
-  const requiredRoute = useMemo(() => {
-    if (!initializationComplete) return null;
-  }, [initializationComplete]);
-
-  const currentAuthState = isAuthenticatedRef.current;
-  const verified = userRef.current?.verified;
-  const hasNoEntities = (userRef.current?.entities?.length ?? 0) <= 0;
 
   if (!initializationComplete || checkingAdmin) return <ScreenLoader />;
 
@@ -83,20 +77,23 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/account/create-admin" replace />;
   }
 
-  if (currentAuthState) {
+  if (isAuthenticated) {
+    const verified = user?.verified;
+    const hasNoEntities = (user?.entities?.length ?? 0) === 0;
+
     // Step 1: Must verify first
     if (!verified && location.pathname !== "/account/verify") {
       return <Navigate to="/account/verify" replace />;
     }
 
-    // Step 2: Verified but no entities — create organisation
+    // Step 2: Verified but no entities
     if (verified && hasNoEntities && location.pathname !== "/account/create-organisation") {
       return <Navigate to="/account/create-organisation" replace />;
     }
 
-    // Step 3: Fully set up — go to required route
-    if (verified && !hasNoEntities && requiredRoute && requiredRoute !== location.pathname) {
-      return <Navigate to={requiredRoute} replace />;
+    // Step 3: Fully set up — redirect away from public routes
+    if (verified && !hasNoEntities) {
+      return <Navigate to="/dashboard" replace />;
     }
   }
 

@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from "react";
 import {
   X,
-  Save,
   User,
   Mail,
   Phone,
   MapPin,
-  CreditCard,
   Building,
 } from "lucide-react";
 import { Customer } from "../../core/types";
 import Input from "../../components/common/Input";
 import { Button } from "../../components/common";
 import { useModal } from "../../core/hooks/useModal";
-
+import { toast } from "sonner";
+import CustomerService from "../../core/services/customer"
 const AddEditCustomer = () => {
   const { modalRef, modalData } = useModal();
   const customer = modalData?.customer as Customer;
@@ -65,13 +64,31 @@ const AddEditCustomer = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
       setIsSubmitting(true);
-      try {
-        const saveData = { ...formData };
-        modalRef?.close({success: true, customer: saveData});
+       try {
+      let response: any;
+      
+      if (editing && customer?.uuid) {
+                const saveData = { ...customer, ...formData };
+
+        // Update existing entity
+        response = await CustomerService.updateCustomer(modalData?.uuid, saveData );
+      } else {
+        // Create new entity
+        response = await CustomerService.createCustomer(formData);
+      }
+    
+      
+      toast.success(
+        "Success", 
+        {description: response.message || `Customer profile ${editing ? 'update' : 'create'} successfully!`}
+      );
+      
+      // Close the modal upon success
+      modalRef!.close({ success: true }); 
       } catch (error) {
         console.error("Error saving customer:", error);
         alert("An error occurred while saving the customer. Please try again.");
@@ -96,31 +113,32 @@ const AddEditCustomer = () => {
   };
 
   return (
-    <div className="">
-      <div className="max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-          <div>
-            <h3 className="text-lg font-semibold text-text">
-              {editing ? "Edit Customer" : "Add New Customer"}
-            </h3>
-            <p className="text-sm text-text-light">
-              {editing
-                ? "Update customer information"
-                : "Enter customer details"}
-            </p>
-          </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
-            <X className="w-5 h-5 text-text-light" />
-          </button>
+    <div className="flex flex-col h-full">
+      {/* Header - Fixed at top */}
+      <div className="flex-shrink-0 border-b border-border px-6 py-4 flex justify-between items-center bg-card">
+        <div>
+          <h3 className="text-lg font-semibold text-text">
+            {editing ? "Edit Customer" : "Add New Customer"}
+          </h3>
+          <p className="text-sm text-text-light">
+            {editing
+              ? "Update customer information"
+              : "Enter customer details"}
+          </p>
         </div>
+        <button
+          onClick={handleClose}
+          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          disabled={isSubmitting}
+        >
+          <X className="w-5 h-5 text-text-light" />
+        </button>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      {/* Scrollable Form Body */}
+      <div className="flex-1 overflow-y-auto space-y-6 pb-4 px-6">
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-text-light flex items-center gap-2">
@@ -132,7 +150,7 @@ const AddEditCustomer = () => {
               <Input
                 label="Customer Name"
                 value={formData.name || ""}
-                onChange={(e) => handleInputChange("name", e.target.value)}
+                onChange={(value: string) => handleInputChange("name", value)}
                 placeholder="Enter full name"
                 error={errors.name}
                 prefixIcon={<User className="w-4 h-4" />}
@@ -144,7 +162,7 @@ const AddEditCustomer = () => {
                 label="Email Address"
                 type="email"
                 value={formData.email || ""}
-                onChange={(e) => handleInputChange("email", e.target.value)}
+                onChange={(value: string) => handleInputChange("email", value)}
                 placeholder="customer@email.com"
                 error={errors.email}
                 prefixIcon={<Mail className="w-4 h-4" />}
@@ -157,7 +175,7 @@ const AddEditCustomer = () => {
               <Input
                 label="Phone Number"
                 value={formData.phone || ""}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
+                onChange={(value: string) => handleInputChange("phone", value)}
                 placeholder="024-123-4567"
                 error={errors.phone}
                 prefixIcon={<Phone className="w-4 h-4" />}
@@ -168,7 +186,7 @@ const AddEditCustomer = () => {
               <Input
                 label="Tax ID"
                 value={formData.tax_id || ""}
-                onChange={(e) => handleInputChange("tax_id", e.target.value)}
+                onChange={(value: string) => handleInputChange("tax_id", value)}
                 placeholder="C-12345"
                 prefixIcon={<Building className="w-4 h-4" />}
                 disabled={isSubmitting}
@@ -178,7 +196,7 @@ const AddEditCustomer = () => {
             <Input
               label="Address"
               value={formData.address || ""}
-              onChange={(e) => handleInputChange("address", e.target.value)}
+              onChange={(value: string) => handleInputChange("address", value)}
               placeholder="123 Street Name, City"
               error={errors.address}
               prefixIcon={<MapPin className="w-4 h-4" />}
@@ -187,65 +205,46 @@ const AddEditCustomer = () => {
             />
           </div>
 
-          {/* Credit & Status */}
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="text-sm font-medium text-text-light flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              Credit & Status
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* ✅ FIXED CHECKBOX SECTION */}
-              <div className="flex items-center h-full">
-                <Input
-                  type="checkbox"
-                  label="Active Customer"
-                  checked={formData.is_active !== false}
-                  onChange={(checked: boolean) => handleInputChange("is_active", checked)}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Notes */}
-          <div className="space-y-2 border-t pt-4">
+          <div className="space-y-2 border-t border-border pt-4">
             <Input
               type="textarea"
               label="Notes"
               value={formData.notes || ""}
-              onChange={(e) => handleInputChange("notes", e.target.value)}
+              onChange={(value: string) => handleInputChange("notes", value)}
               rows={3}
               placeholder="Additional notes about the customer..."
               disabled={isSubmitting}
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 border-t pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="flex items-center gap-2"
-              disabled={isSubmitting}
-            >
-              <Save className="w-4 h-4" />
-              {isSubmitting
-                ? "Saving..."
-                : editing
-                  ? "Update Customer"
-                  : "Create Customer"}
-            </Button>
-          </div>
+          {/* Spacer to push content up */}
+          <div className="h-4" />
         </form>
+      </div>
+
+      {/* Actions - Fixed at bottom */}
+        <div className="flex justify-end items-center p-4 border-t border-border mt-auto sticky bottom-0 z-10 bg-card">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleClose}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          onClick={handleSubmit}
+          className="flex items-center gap-2"
+          disabled={isSubmitting}
+        >
+          {isSubmitting
+            ? "Saving..."
+            : editing
+              ? "Update Customer"
+              : "Create Customer"}
+        </Button>
       </div>
     </div>
   );

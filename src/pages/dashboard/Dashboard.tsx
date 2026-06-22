@@ -12,7 +12,11 @@ import {
   RefreshCw,
   ArrowUp,
   ArrowDown,
-  Filter,
+  XCircle,
+  CheckCircle,
+  Clock,
+  Activity,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -29,8 +33,9 @@ import {
 } from "recharts";
 import { useStore } from "../../core/contexts/StoreProvider";
 import { eventService } from "../../core/services/events";
-import { DashboardStats } from "../../core/types";
+import { DashboardStats, Entity } from "../../core/types";
 import { Input } from "../../components/common";
+import UserService from "../../core/services/user";
 
 // ─── Color Palette ──────────────────────────────────────────────────────────
 const COLORS = {
@@ -44,6 +49,11 @@ const COLORS = {
   orange: "#F97316",
   teal: "#14B8A6",
   indigo: "#6366F1",
+  emerald: "#10B981",
+  amber: "#F59E0B",
+  rose: "#EF4444",
+  slate: "#64748B",
+  blue: "#3B82F6",
 };
 
 const CHART_COLORS = [
@@ -56,6 +66,19 @@ const CHART_COLORS = [
   COLORS.pink,
   COLORS.orange,
 ];
+
+// ─── Empty State Component ──────────────────────────────────────────────────
+const EmptyState: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}> = ({ icon, title, description }) => (
+  <div className="flex flex-col items-center justify-center py-8 text-center">
+    <div className="p-3 bg-slate-50 rounded-full mb-3">{icon}</div>
+    <p className="text-sm font-medium text-text">{title}</p>
+    <p className="text-[11px] text-text-light mt-0.5">{description}</p>
+  </div>
+);
 
 // ─── Stat Card Component ──────────────────────────────────────────────────
 interface StatCardProps {
@@ -79,27 +102,27 @@ export const StatCard: React.FC<StatCardProps> = ({
   color = COLORS.primary,
 }) => {
   return (
-    <div className="bg-card border border-border p-6 hover:shadow-md transition-shadow">
+    <div className="bg-card border border-border p-6 shadow-sm hover:shadow-md transition-all duration-300">
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-text-light">{title}</p>
-          <p className="text-2xl font-bold text-text mt-1">{value}</p>
+          <p className="text-2xl font-bold text-text mt-1 truncate">{value}</p>
           {subtitle && (
-            <p className="text-xs text-text-light mt-1">{subtitle}</p>
+            <p className="text-xs text-text-light mt-1 truncate">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center gap-1 mt-2">
               {trend.direction === "up" ? (
                 <ArrowUp className="w-4 h-4 text-emerald-500" />
               ) : trend.direction === "down" ? (
-                <ArrowDown className="w-4 h-4 text-red-500" />
+                <ArrowDown className="w-4 h-4 text-rose-500" />
               ) : null}
               <span
                 className={`text-xs font-medium ${
                   trend.direction === "up"
                     ? "text-emerald-500"
                     : trend.direction === "down"
-                      ? "text-red-500"
+                      ? "text-rose-500"
                       : "text-text-light"
                 }`}
               >
@@ -111,7 +134,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}
         </div>
         <div
-          className="p-3 rounded-lg"
+          className="p-3 rounded-xl flex-shrink-0 ml-3"
           style={{ backgroundColor: `${color}15` }}
         >
           <div style={{ color }}>{icon}</div>
@@ -127,12 +150,16 @@ const Dashboard: React.FC = () => {
   const { user, entity } = useStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [selectedEntityId, setSelectedEntityId] = useState<string>("");
+  const [loadingEntities, setLoadingEntities] = useState(false);
+  
   const [dateRange, setDateRange] = useState<{
-    start: Date | null;
-    end: Date | null;
+    start_date: Date | null;
+    end_date: Date | null;
   }>({
-    start: null,
-    end: null,
+    start_date: null,
+    end_date: null,
   });
   const [stats, setStats] = useState<DashboardStats>({
     inventory: {
@@ -162,12 +189,40 @@ const Dashboard: React.FC = () => {
       draft: { count: 0, amount: 0 },
       quoted: { count: 0, amount: 0 },
       invoiced: { count: 0, amount: 0 },
-      partially_paid: { count: 0, amount: 0 },
+      partially: { count: 0, amount: 0 },
       paid: { count: 0, amount: 0 },
       cancelled: { count: 0, amount: 0 },
       overdue: { count: 0, amount: 0 },
     },
   });
+
+  // ── Fetch Entities ────────────────────────────────────────────────────────
+  const fetchEntities = useCallback(async () => {
+    setLoadingEntities(true);
+    try {
+      const res = await UserService.getMyEntities();
+      const entityList: Entity[] = res?.results?.entities || [];
+      
+      // Filter out ALL_ENTITIES
+      // const filteredEntities = entityList.filter(
+      //   (e: Entity) => e.uuid !== "ALL_ENTITIES"
+      // );
+      
+      setEntities(entityList);
+      
+      // Set selected entity to current entity or first one
+      if (entity && entityList.some(e => e.uuid === entity.uuid)) {
+        setSelectedEntityId(entity.uuid);
+      } else if (entityList.length > 0) {
+        setSelectedEntityId(entityList[0].uuid);
+      }
+    } catch (err) {
+      console.error("Failed to load entities:", err);
+      toast.error("Error", { description: "Failed to load entities" });
+    } finally {
+      setLoadingEntities(false);
+    }
+  }, [entity]);
 
   // ── Fetch Dashboard Data ──────────────────────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
@@ -175,14 +230,23 @@ const Dashboard: React.FC = () => {
       setLoading(true);
 
       const params: any = {};
-      if (dateRange.start) {
-        params.date_from = dateRange.start.toISOString();
+      if (dateRange.start_date) {
+        params.date_from = dateRange.start_date.toISOString();
       }
-      if (dateRange.end) {
-        params.date_to = dateRange.end.toISOString();
+      if (dateRange.end_date) {
+        params.date_to = dateRange.end_date.toISOString();
+      }
+      
+      // Add entity filter
+      if (selectedEntityId) {
+        params.entity_id = selectedEntityId;
       }
 
-      const response = await DashboardService.getDashboardStats(params);
+      const response = await DashboardService.getDashboardStats(
+        params.date_from,
+        params.date_to,
+        params.entity_id
+      );
 
       if (response.success) {
         setStats(response.results);
@@ -200,12 +264,19 @@ const Dashboard: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [dateRange]);
+  }, [dateRange, selectedEntityId]);
 
-  // Load data on mount
+  // ── Load data on mount ────────────────────────────────────────────────────
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    fetchEntities();
+  }, [fetchEntities]);
+
+  // ── Fetch dashboard data when entity changes ────────────────────────────
+  useEffect(() => {
+    if (selectedEntityId) {
+      fetchDashboardData();
+    }
+  }, [fetchDashboardData, selectedEntityId]);
 
   // Listen for refresh events
   useEffect(() => {
@@ -227,19 +298,22 @@ const Dashboard: React.FC = () => {
     toast.success("Success", { description: "Dashboard refreshed" });
   };
 
-  // ── Helper to get status label ──────────────────────────────────────────
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      draft: "Draft",
-      quoted: "Quoted",
-      invoiced: "Invoiced",
-      partially_paid: "Partially Paid",
-      paid: "Paid",
-      cancelled: "Cancelled",
-      overdue: "Overdue",
-    };
-    return labels[status] || status;
+  // ── Entity Change Handler ────────────────────────────────────────────────
+  const handleEntityChange = (value: string) => {
+    setSelectedEntityId(value);
+    // const selectedEntity = entities.find(e => e.uuid === value);
+    // if (selectedEntity) {
+    //   setEntity(selectedEntity);
+    // }
   };
+
+  // ── Entity Options ───────────────────────────────────────────────────────
+  const entityOptions = [
+    ...entities.map((e: Entity) => ({
+      value: e.uuid,
+      label: e.name,
+    })),
+  ];
 
   // ── Loading State ────────────────────────────────────────────────────────
   if (loading) {
@@ -257,46 +331,124 @@ const Dashboard: React.FC = () => {
   const invoiceStats = stats.invoices;
   const lowStock = stats.low_stock_count;
 
+  // ── Status Configuration ──────────────────────────────────────────────────
+  const statusConfig: Record<
+    string,
+    {
+      label: string;
+      icon: any;
+      color: string;
+      bg: string;
+      bar: string;
+    }
+  > = {
+    paid: {
+      label: "Paid",
+      icon: CheckCircle,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      bar: "bg-emerald-500",
+    },
+    invoiced: {
+      label: "Invoiced",
+      icon: FileText,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      bar: "bg-blue-500",
+    },
+    partially: {
+      label: "Partially Paid",
+      icon: Clock,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      bar: "bg-amber-500",
+    },
+    overdue: {
+      label: "Overdue",
+      icon: AlertCircle,
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      bar: "bg-rose-500",
+    },
+    draft: {
+      label: "Draft",
+      icon: FileText,
+      color: "text-slate-600",
+      bg: "bg-slate-50",
+      bar: "bg-slate-400",
+    },
+    quoted: {
+      label: "Quoted",
+      icon: FileText,
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      bar: "bg-purple-500",
+    },
+    cancelled: {
+      label: "Cancelled",
+      icon: XCircle,
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      bar: "bg-rose-400",
+    },
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text">Dashboard</h1>
           <p className="text-text-light text-sm">
             Welcome back, {user?.name || "User"}! Here's your business overview.
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex-1 min-w-[200px]">
+        <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+          {/* Entity Filter */}
+          <div className="flex-1 sm:flex-initial min-w-[180px]">
             <Input
-              type="date-range"
+              type="select"
+              label="Entity"
+              value={selectedEntityId}
+              onChange={handleEntityChange}
+              selectOptions={entityOptions}
+              selectPlaceholder={loadingEntities ? "Loading..." : "Select entity"}
+              prefixIcon={<Building2 size={14} />}
+            />
+          </div>
+          
+          <div className="flex-1 sm:flex-initial min-w-[200px]">
+            <Input
               label="Date Range"
+              type="date-range"
               value={dateRange}
               onChange={setDateRange}
               placeholder="Select date range"
             />
           </div>
-
+          
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 hover:bg-background rounded-lg transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-background rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+            aria-label="Refresh dashboard"
           >
             <RefreshCw
-              className={`w-5 h-5 text-text-light ${refreshing ? "animate-spin" : ""}`}
+              className={`w-5 h-5 text-text-light ${
+                refreshing ? "animate-spin" : ""
+              }`}
             />
           </button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Inventory Value"
           value={`GHS ${inventoryStats.total_value.toFixed(2)}`}
           icon={<Package className="w-6 h-6" />}
-          trend={{ value: 12, direction: "up" }}
           subtitle={`${inventoryStats.total_items} items · ${inventoryStats.total_quantity} units`}
           color={COLORS.primary}
         />
@@ -304,7 +456,6 @@ const Dashboard: React.FC = () => {
           title="Total Revenue"
           value={`GHS ${invoiceStats.total_amount.toFixed(2)}`}
           icon={<DollarSign className="w-6 h-6" />}
-          trend={{ value: 8, direction: "up" }}
           subtitle={`${invoiceStats.total_invoices} invoices`}
           color={COLORS.success}
         />
@@ -312,7 +463,6 @@ const Dashboard: React.FC = () => {
           title="Outstanding Balance"
           value={`GHS ${invoiceStats.total_remaining.toFixed(2)}`}
           icon={<AlertCircle className="w-6 h-6" />}
-          trend={{ value: 5, direction: "down" }}
           subtitle={`${stats.invoice_status_breakdown.overdue.count} overdue`}
           color={COLORS.warning}
         />
@@ -320,7 +470,6 @@ const Dashboard: React.FC = () => {
           title="Low Stock Items"
           value={lowStock.total}
           icon={<TrendingDown className="w-6 h-6" />}
-          trend={{ value: lowStock.total > 0 ? 15 : 0, direction: "down" }}
           subtitle={`${lowStock.out_of_stock} out of stock`}
           color={lowStock.total > 0 ? COLORS.danger : COLORS.success}
         />
@@ -329,22 +478,21 @@ const Dashboard: React.FC = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Weekly Sales Chart */}
-        <div className="bg-card border border-border rounded-lg p-6">
+        <div className="bg-card border border-border  p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-text">Weekly Sales</h3>
-            <span className="text-xs text-text-light">Last 7 days</span>
+            <div>
+              <h3 className="text-sm font-semibold text-text">Weekly Sales</h3>
+              <p className="text-[11px] text-text-light">Last 7 days performance</p>
+            </div>
+            <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full">
+              {stats.weekly_sales.length} days
+            </span>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.weekly_sales}>
                 <defs>
-                  <linearGradient
-                    id="salesGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
+                  <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop
                       offset="5%"
                       stopColor={COLORS.primary}
@@ -358,14 +506,16 @@ const Dashboard: React.FC = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="day" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
+                <XAxis dataKey="day" stroke="#9CA3AF" fontSize={11} />
+                <YAxis stroke="#9CA3AF" fontSize={11} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "white",
                     border: "1px solid #E5E7EB",
+                    borderRadius: "8px",
+                    fontSize: "12px",
                   }}
-                  formatter={(value: any) => [`GHS ${value}`, "Revenue"]}
+                  formatter={(value: any) => [`${entity?.currency ?? "GHC"} ${value.toFixed(2)}`, "Revenue"]}
                 />
                 <Area
                   type="monotone"
@@ -380,13 +530,14 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Inventory by Type */}
-        <div className="bg-card border border-border rounded-lg p-6">
+        <div className="bg-card border border-border  p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-text">
-              Inventory by Type
-            </h3>
-            <span className="text-xs text-text-light">
-              Total: {inventoryStats.total_items} items
+            <div>
+              <h3 className="text-sm font-semibold text-text">Inventory by Type</h3>
+              <p className="text-[11px] text-text-light">Distribution across categories</p>
+            </div>
+            <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full">
+              {inventoryStats.total_items} items
             </span>
           </div>
           <div className="h-64">
@@ -400,8 +551,11 @@ const Dashboard: React.FC = () => {
                   cy="50%"
                   outerRadius={80}
                   label={({ name, percent }: any) =>
-                    name ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+                    name && percent > 0.05
+                      ? `${name} ${(percent * 100).toFixed(0)}%`
+                      : ""
                   }
+                  labelLine={false}
                 >
                   {stats.inventory_by_type.map((entry, index) => (
                     <Cell
@@ -414,6 +568,8 @@ const Dashboard: React.FC = () => {
                   contentStyle={{
                     backgroundColor: "white",
                     border: "1px solid #E5E7EB",
+                    borderRadius: "8px",
+                    fontSize: "12px",
                   }}
                   formatter={(value: any) => [`${value} units`, "Quantity"]}
                 />
@@ -423,121 +579,254 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Invoice Status & Top Selling */}
+      {/* Invoice Status & Top Selling Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Invoice Status */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-text mb-4">
-            Invoice Status
-          </h3>
-          <div className="space-y-3">
-            {Object.entries(stats.invoice_status_breakdown).map(
-              ([status, data]) => {
-                const colors: Record<string, string> = {
-                  paid: "text-emerald-600",
-                  invoiced: "text-blue-600",
-                  partially_paid: "text-amber-600",
-                  overdue: "text-red-600",
-                  draft: "text-gray-600",
-                  quoted: "text-purple-600",
-                  cancelled: "text-red-600",
-                };
+        {/* Invoice Status Card */}
+        <div className="lg:col-span-1 bg-card border border-border  overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+          {/* Card Header */}
+          <div className="px-5 py-4 border-b border-border bg-gradient-to-br from-primary-5/15 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-10 rounded-xl">
+                  <FileText className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-text">
+                    Invoice Status
+                  </h3>
+                  <p className="text-[11px] text-text-light">
+                    Real-time breakdown
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full">
+                {invoiceStats.total_invoices || 0} total
+              </span>
+            </div>
+          </div>
+
+          {/* Card Body */}
+          <div className="p-4 space-y-3">
+            {Object.keys(stats.invoice_status_breakdown).filter(
+              (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
+            ).length === 0 ? (
+              <EmptyState
+                icon={<FileText className="w-6 h-6 text-text-light/40" />}
+                title="No invoice data"
+                description="Create your first invoice to get started"
+              />
+            ) : (
+              Object.entries(stats.invoice_status_breakdown).map(([status, data]) => {
                 const total = invoiceStats.total_invoices || 1;
                 const percentage = ((data.count / total) * 100).toFixed(0);
+                const config = statusConfig[status] || statusConfig.draft;
+                const Icon = config.icon;
 
                 return (
-                  <div key={status}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-text-light">
-                        {getStatusLabel(status)}
-                      </span>
-                      <span
-                        className={`font-medium ${colors[status] || "text-text"}`}
-                      >
-                        {data.count} ({percentage}%)
-                      </span>
+                  <div key={status} className="group">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1 rounded-lg ${config.bg}`}>
+                          <Icon className={`w-3.5 h-3.5 ${config.color}`} />
+                        </div>
+                        <span className="text-sm font-medium text-text">
+                          {config.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-semibold text-text">
+                          {data.count}
+                        </span>
+                        <span className={`text-xs font-medium ${config.color}`}>
+                          {percentage}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-2 rounded-full ${
-                          status === "paid"
-                            ? "bg-emerald-500"
-                            : status === "invoiced"
-                              ? "bg-blue-500"
-                              : status === "partially_paid"
-                                ? "bg-amber-500"
-                                : status === "overdue"
-                                  ? "bg-red-500"
-                                  : status === "quoted"
-                                    ? "bg-purple-500"
-                                    : "bg-gray-400"
-                        }`}
-                        style={{ width: `${percentage}%` }}
+                        className={`h-full rounded-full transition-all duration-700 ease-out ${config.bar}`}
+                        style={{
+                          width: `${Math.min(parseFloat(percentage), 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
                 );
-              },
+              })
             )}
           </div>
+
+          {/* Card Footer */}
+          {Object.keys(stats.invoice_status_breakdown).filter(
+            (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
+          ).length > 0 && (
+            <div className="px-4 py-3 border-t border-border bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-[11px] text-text-light">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Paid
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Pending
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  Overdue
+                </span>
+              </div>
+              <button
+                onClick={() => navigate("/invoices")}
+                className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                View all →
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Top Selling Items */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-text mb-4">
-            Top Selling Items
-          </h3>
-          <div className="space-y-3">
+        {/* Top Selling Items Card */}
+        <div className="lg:col-span-1 bg-card border border-border  overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+          {/* Card Header */}
+          <div className="px-5 py-4 border-b border-border bg-gradient-to-br from-emerald-5/15 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-10 rounded-xl">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-text">
+                    Top Selling
+                  </h3>
+                  <p className="text-[11px] text-text-light">
+                    Best performing items
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card Body */}
+          <div className="p-4 space-y-2.5">
             {stats.top_selling_items.length === 0 ? (
-              <p className="text-sm text-text-light text-center py-4">
-                No sales data available
-              </p>
+              <EmptyState
+                icon={<Package className="w-6 h-6 text-text-light/40" />}
+                title="No sales data"
+                description="Start selling to see your top items"
+              />
             ) : (
-              stats.top_selling_items.map((item, index) => (
-                <div
-                  key={item.id || index}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-primary-10 text-primary text-xs font-medium flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium text-text">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-text-light">
-                        {item.quantity} units sold
-                      </p>
+              stats.top_selling_items.slice(0, 5).map((item, index) => {
+                const maxRevenue = stats.top_selling_items[0]?.revenue || 1;
+                const progress = (item.revenue / maxRevenue) * 100;
+
+                const rankStyles = [
+                  "bg-amber-100 text-amber-700",
+                  "bg-slate-200 text-slate-700",
+                  "bg-amber-50/80 text-amber-600",
+                  "bg-blue-50 text-blue-600",
+                  "bg-slate-50 text-slate-500",
+                ];
+                const barColors = [
+                  "bg-amber-500",
+                  "bg-slate-400",
+                  "bg-amber-400",
+                  "bg-blue-500",
+                  "bg-slate-300",
+                ];
+
+                return (
+                  <div key={item.id || index} className="group">
+                    <div className="flex items-center gap-3">
+                      {/* Rank Badge */}
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          rankStyles[index] || rankStyles[4]
+                        }`}
+                      >
+                        {index + 1}
+                      </div>
+
+                      {/* Item Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-text truncate">
+                            {item.name}
+                          </span>
+                          <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap">
+                            GHS {item.revenue.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-[11px] text-text-light">
+                            {item.quantity} units
+                          </span>
+                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                barColors[index] || barColors[4]
+                              }`}
+                              style={{ width: `${Math.min(progress, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <span className="text-sm font-semibold text-emerald-600">
-                    GHS {item.revenue.toFixed(2)}
-                  </span>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
+
+          {/* Card Footer */}
+          {stats.top_selling_items.length > 0 && (
+            <div className="px-4 py-3 border-t border-border bg-slate-50/50">
+              <button
+                onClick={() => navigate("/reports/sales")}
+                className="w-full text-[11px] font-medium text-primary hover:text-primary/80 transition-colors text-center"
+              >
+                View sales report →
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-text mb-4">
-            Recent Activity
-          </h3>
-          <div className="space-y-3">
+        {/* Recent Activity Card */}
+        <div className="lg:col-span-1 bg-card border border-border  overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+          {/* Card Header */}
+          <div className="px-5 py-4 border-b border-border bg-gradient-to-br from-indigo-5/15 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-10 rounded-xl">
+                  <Activity className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-text">
+                    Recent Activity
+                  </h3>
+                  <p className="text-[11px] text-text-light">
+                    Latest transactions
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card Body */}
+          <div className="p-4 space-y-3">
             {stats.recent_transactions.length === 0 ? (
-              <p className="text-sm text-text-light text-center py-4">
-                No recent activity
-              </p>
+              <EmptyState
+                icon={<Activity className="w-6 h-6 text-text-light/40" />}
+                title="No recent activity"
+                description="Transactions will appear here"
+              />
             ) : (
-              stats.recent_transactions.map((transaction) => (
+              stats.recent_transactions.slice(0, 4).map((transaction, idx) => (
                 <div
-                  key={transaction.id}
-                  className="flex items-start gap-3 pb-3 border-b border-border last:border-0"
+                  key={transaction.id || idx}
+                  className="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0"
                 >
                   <div
-                    className={`p-2 rounded-lg ${
+                    className={`p-2 rounded-xl ${
                       transaction.type === "invoice"
                         ? "bg-blue-50"
                         : "bg-emerald-50"
@@ -545,35 +834,45 @@ const Dashboard: React.FC = () => {
                   >
                     {transaction.type === "invoice" ? (
                       <FileText
-                        className={`w-4 h-4 ${transaction.status === "paid" ? "text-emerald-600" : "text-blue-600"}`}
+                        className={`w-4 h-4 ${
+                          transaction.status === "paid"
+                            ? "text-emerald-600"
+                            : "text-blue-600"
+                        }`}
                       />
                     ) : (
                       <DollarSign className="w-4 h-4 text-emerald-600" />
                     )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-text">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text truncate">
                       {transaction.description}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                           transaction.status === "paid" ||
                           transaction.status === "completed"
                             ? "bg-emerald-50 text-emerald-700"
                             : transaction.status === "pending"
                               ? "bg-amber-50 text-amber-700"
-                              : "bg-red-50 text-red-700"
+                              : "bg-rose-50 text-rose-700"
                         }`}
                       >
                         {transaction.status}
                       </span>
-                      <span className="text-xs text-text-light">
-                        {new Date(transaction.date).toLocaleDateString()}
+                      <span className="text-[10px] text-text-light">
+                        {new Date(transaction.date).toLocaleDateString(
+                          undefined,
+                          {
+                            month: "short",
+                            day: "numeric",
+                          }
+                        )}
                       </span>
                       {transaction.amount > 0 && (
-                        <span className="text-xs font-medium text-emerald-600 ml-auto">
-                          +GHS {transaction.amount.toFixed(2)}
+                        <span className="text-[10px] font-medium text-emerald-600 ml-auto">
+                          +{entity?.currency || "GHC"} {transaction.amount.toFixed(2)}
                         </span>
                       )}
                     </div>
@@ -582,36 +881,52 @@ const Dashboard: React.FC = () => {
               ))
             )}
           </div>
-          <button
-            onClick={() => navigate("/transactions")}
-            className="mt-4 text-sm text-primary hover:underline w-full text-center"
-          >
-            View All Activity →
-          </button>
+
+          {/* Card Footer */}
+          {stats.recent_transactions.length > 0 && (
+            <div className="px-4 py-3 border-t border-border bg-slate-50/50">
+              <button
+                onClick={() => navigate("/transactions")}
+                className="w-full text-[11px] font-medium text-primary hover:text-primary/80 transition-colors text-center"
+              >
+                View all activity →
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-text mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="bg-card border border-border  p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-primary-10 rounded-xl">
+            <TrendingUp className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-text">Quick Actions</h3>
+            <p className="text-[11px] text-text-light">
+              Common tasks to keep your business moving
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={() => navigate("/invoices/create")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-lg transition-colors"
+            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
           >
             <FileText className="w-6 h-6 text-primary" />
             <span className="text-sm font-medium text-text">New Invoice</span>
           </button>
           <button
             onClick={() => navigate("/inventory/add")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-lg transition-colors"
+            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
           >
             <Package className="w-6 h-6 text-primary" />
             <span className="text-sm font-medium text-text">Add Inventory</span>
           </button>
           <button
             onClick={() => navigate("/customers")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-lg transition-colors"
+            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
           >
             <Users className="w-6 h-6 text-primary" />
             <span className="text-sm font-medium text-text">
@@ -620,7 +935,7 @@ const Dashboard: React.FC = () => {
           </button>
           <button
             onClick={() => navigate("/reports")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-lg transition-colors"
+            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
           >
             <TrendingUp className="w-6 h-6 text-primary" />
             <span className="text-sm font-medium text-text">View Reports</span>
