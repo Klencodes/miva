@@ -215,7 +215,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
   return (
     <div className="flex flex-col h-full w-full mx-auto px-2">
       {/* Header (Modal Style) */}
-      <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 z-10 bg-card">
+      <div className="flex flex-row justify-between items-start mb-6 border-b border-border p-4 sticky top-0 z-10 bg-card">
         <div className="flex flex-col">
           <h2 className="text-2xl text-text font-bold">
             {isEditMode ? 'Edit Entity' : 'Add New Entity'}
@@ -241,7 +241,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         <form onSubmit={onSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Column 1: Core Details */}
-            <div className="space-y-4 border border-border rounded-sm p-4">
+            <div className="space-y-4 border-r border-border rounded-sm p-4">
               <div className="flex items-center mb-4">
                 <i className="ri-information-line text-primary text-lg mr-2"></i>
                 <h3 className="font-semibold text-text">Core Information</h3>
@@ -333,7 +333,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
             </div>
 
             {/* Column 2: Address */}
-            <div className="space-y-4 border border-border rounded-sm p-4">
+            <div className="space-y-4   p-4">
               <div className="flex items-center mb-4">
                 <i className="ri-map-pin-line text-primary text-lg mr-2"></i>
                 <h3 className="font-semibold text-text">Address</h3>
@@ -407,7 +407,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
       </div>
 
       {/* Footer (Modal Style) */}
-      <div className="flex justify-end items-center pt-4 h-14 border-t border-border mt-auto sticky bottom-0 z-10 bg-card">
+      <div className="flex justify-end items-center p-4 h-14 border-t border-border mt-auto sticky bottom-0 z-10 bg-card">
         <Button
           type="submit"
           onClick={onSubmit}

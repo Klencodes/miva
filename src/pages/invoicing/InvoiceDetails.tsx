@@ -615,7 +615,8 @@ const InvoiceDetails = () => {
               </div>
 
               {/* Company, Customer & Payment Info - Side by Side */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 py-6 border-b border-border">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 py-6 border-b border-border print:grid-cols-3 print:gap-8">
+                {" "}
                 {/* Company Info - Left Column */}
                 <div>
                   <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -654,7 +655,6 @@ const InvoiceDetails = () => {
                     </div>
                   </div>
                 </div>
-
                 {/* Bill To - Middle Column */}
                 <div>
                   <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -692,7 +692,6 @@ const InvoiceDetails = () => {
                     </div>
                   </div>
                 </div>
-
                 {/* Payment Details - Right Column */}
                 <div>
                   <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -746,7 +745,7 @@ const InvoiceDetails = () => {
                       </div>
                       <span className="text-text-light">Amount Paid</span>
                       <span className="text-right font-medium text-success">
-                         {invoice.currency} {invoice.amount_paid.toFixed(2)}
+                        {invoice.currency} {invoice.amount_paid.toFixed(2)}
                       </span>
                       {invoice.remaining_balance > 0 && (
                         <>
@@ -754,7 +753,8 @@ const InvoiceDetails = () => {
                           <span
                             className={`text-right font-medium ${invoice.remaining_balance <= 0 ? "text-success" : "text-amber-600"}`}
                           >
-                            {invoice.currency} {invoice.remaining_balance.toFixed(2)}
+                            {invoice.currency}{" "}
+                            {invoice.remaining_balance.toFixed(2)}
                           </span>
                         </>
                       )}
@@ -948,7 +948,10 @@ const InvoiceDetails = () => {
               {/* Footer */}
               <div className="mt-8 pt-6 border-t border-border">
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-text-light">
-                  <p>{entity?.metadata?.footer_text || "Thank you for your business!"}</p>
+                  <p>
+                    {entity?.metadata?.footer_text ||
+                      "Thank you for your business!"}
+                  </p>
                   <div className="flex items-center gap-2">
                     <span>Powered by Shine Tech Solutions</span>
                   </div>

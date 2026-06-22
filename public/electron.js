@@ -37,7 +37,7 @@ function showErrorPage(message) {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Error - Hydraulic Management System</title>
+      <title>Error - MIVA - HMS</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {

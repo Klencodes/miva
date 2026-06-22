@@ -7,7 +7,7 @@ import { Loader } from "./components/common";
 import { toast, Toaster } from "sonner";
 
 function App() {
-  const appTitle = "Hydraulic Management System";
+  const appTitle = "MIVA - HMS";
   const location = useLocation();
   const { initializeTheme, isThemeReady } = useTheme();
   const { checkAuthStatus, initializationComplete } = useStore();

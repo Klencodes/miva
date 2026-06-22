@@ -68,7 +68,7 @@ const CommonLayout: React.FC<CommonLayoutProps> = ({ children }) => {
         >
           {/* Page content */}
           <main
-            className="flex-1 bg-background"
+            className="flex-1 p-6 bg-background"
             id="main-content"
           >
             {children}

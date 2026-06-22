@@ -370,7 +370,7 @@ const AddEditSupplier = () => {
   return (
     <div className="flex flex-col h-full w-full mx-auto px-2">
       {/* Header */}
-      <div className="flex flex-row justify-between items-start mb-6 border-b border-border pb-4 sticky top-0 z-10 bg-card">
+      <div className="flex flex-row justify-between items-start mb-6 border-b border-border p-4 sticky top-0 z-10 bg-card">
         <div className="flex flex-col">
           <h2 className="text-2xl text-text font-bold">
             {isAdd ? "Add New Supplier" : "Edit Supplier Details"}
@@ -392,7 +392,7 @@ const AddEditSupplier = () => {
 
       <div className="flex-1 overflow-y-auto space-y-6 pb-4">
         {/* Company Information Section */}
-        <div className="border border-border rounded-sm p-4">
+        <div className=" rounded-sm p-4">
           <div className="flex items-center mb-4">
             <Building className="w-5 h-5 text-primary mr-2" />
             <h3 className="font-semibold text-text">Company Information</h3>
@@ -424,7 +424,7 @@ const AddEditSupplier = () => {
         </div>
 
         {/* Contact Information */}
-        <div className="border border-border rounded-sm p-4">
+        <div className="border-t border-border rounded-sm p-4">
           <div className="flex items-center mb-4">
             <Users className="w-5 h-5 text-primary mr-2" />
             <h3 className="font-semibold text-text">Contact Information</h3>
@@ -510,7 +510,7 @@ const AddEditSupplier = () => {
         </div>
 
         {/* Additional Information */}
-        <div className="border border-border rounded-sm p-4">
+        <div className="border-t border-border rounded-sm p-4">
           <div className="flex items-center mb-4">
             <Building className="w-5 h-5 text-primary mr-2" />
             <h3 className="font-semibold text-text">Additional Information</h3>

@@ -328,7 +328,7 @@ const Customers = () => {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-6 sm:p-2">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold text-text">Customers</h2>

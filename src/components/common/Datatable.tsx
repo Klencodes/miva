@@ -65,7 +65,7 @@ const SortableHeader: React.FC<{
   <button
     type="button"
     onClick={() => onSort(field)}
-    className="inline-flex items-center gap-0.5 font-semibold text-text hover:text-amber-700 transition-colors cursor-pointer select-none whitespace-nowrap"
+    className="uppercase inline-flex items-center gap-0.5 font-semibold text-text hover:text-amber-700 transition-colors cursor-pointer select-none whitespace-nowrap"
   >
     {label}
     <SortIcon field={field} sort={sort} />
@@ -602,7 +602,7 @@ const DataTable: React.FC<DataTableProps> = ({
               {columns.map((column) => (
                 <th
                   key={column.header}
-                  className={`px-4 py-3.5 font-semibold text-text ${
+                  className={`px-4 py-3.5 font-semibold text-text uppercase ${
                     column.align === "right"
                       ? "text-right"
                       : column.align === "center"
