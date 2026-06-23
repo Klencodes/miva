@@ -330,7 +330,7 @@ const NotificationFilters: React.FC<{
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 px-3 py-1.5 border border-border rounded-lg hover:bg-background transition-colors text-sm"
+          className="flex items-center gap-2 px-3 py-1.5 border border-border hover:bg-background transition-colors text-sm"
         >
           <Filter size={14} />
           <span>Filters</span>
@@ -338,7 +338,7 @@ const NotificationFilters: React.FC<{
         </button>
 
         {isOpen && (
-          <div className="absolute top-full left-0 mt-1 w-72 bg-card border border-border rounded-lg shadow-lg p-4 z-50">
+          <div className="absolute top-full left-0 mt-1 w-72 bg-card border border-border shadow-lg p-4 z-50">
             {/* Type filter */}
             <div className="mb-3">
               <label className="text-xs font-medium text-text-light block mb-1.5">
@@ -864,7 +864,7 @@ const Notifications: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-card border border-border rounded-xl p-4 mb-4">
+        <div className="bg-card border border-border  p-4 mb-4">
           <div className="flex flex-col md:flex-row gap-4">
             <NotificationFilters
               filters={filters}
@@ -885,7 +885,7 @@ const Notifications: React.FC = () => {
 
         {/* Bulk Actions */}
         {selectedIds.length > 0 && (
-          <div className="bg-primary-5 border border-primary/20 rounded-xl p-3 mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="bg-primary-5 border border-primary/20  p-3 mb-4 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-text">
               {selectedIds.length} selected
             </span>
@@ -923,7 +923,7 @@ const Notifications: React.FC = () => {
         )}
 
         {/* Notification List */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="bg-card border border-border  overflow-hidden">
           {filteredNotifications.length === 0 ? (
             <EmptyState
               filterApplied={

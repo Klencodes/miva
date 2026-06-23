@@ -322,7 +322,7 @@ const Inventory = () => {
   return (
     <div className="">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-2xl font-bold text-text">Inventory Management</h2>
           <p className="text-text-light text-sm">Manage and track all your hydraulic components</p>
