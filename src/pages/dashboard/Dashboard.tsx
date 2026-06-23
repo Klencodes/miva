@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import DashboardService from "../../core/services/dashboard";
 import {
   Package,
@@ -7,7 +6,6 @@ import {
   TrendingDown,
   AlertCircle,
   DollarSign,
-  Users,
   FileText,
   RefreshCw,
   ArrowUp,
@@ -146,14 +144,13 @@ export const StatCard: React.FC<StatCardProps> = ({
 
 // ─── Main Dashboard Component ─────────────────────────────────────────────
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
   const { user, entity, setEntity } = useStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
   const [loadingEntities, setLoadingEntities] = useState(false);
-  
+
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
     end: Date | null;
@@ -201,16 +198,16 @@ const Dashboard: React.FC = () => {
     try {
       const res = await UserService.getMyEntities();
       const entityList: Entity[] = res?.results?.entities || [];
-      
+
       // Filter out ALL_ENTITIES
       // const filteredEntities = entityList.filter(
       //   (e: Entity) => e.uuid !== "ALL_ENTITIES"
       // );
-      
+
       setEntities(entityList);
-      
+
       // Set selected entity to current entity or first one
-      if (entity && entityList.some(e => e.uuid === entity.uuid)) {
+      if (entity && entityList.some((e) => e.uuid === entity.uuid)) {
         setSelectedEntityId(entity.uuid);
       } else if (entityList.length > 0) {
         setSelectedEntityId(entityList[0].uuid);
@@ -224,88 +221,88 @@ const Dashboard: React.FC = () => {
 
   // ── Fetch Dashboard Data ──────────────────────────────────────────────────
   // ── Fetch Dashboard Data ──────────────────────────────────────────────────
-const fetchDashboardData = useCallback(async () => {
-  if (loadingEntities) return;
-  try {
-    setLoading(true);
+  const fetchDashboardData = useCallback(async () => {
+    if (loadingEntities) return;
+    try {
+      setLoading(true);
 
-    const params: any = {};
-    
-    // Fix: Properly format dates for the API
-    if (dateRange.start) {
-      // Use UTC date to avoid timezone issues
-      const startDate = new Date(dateRange.start);
-      startDate.setUTCHours(0, 0, 0, 0);
-      params.date_from = startDate.toISOString();
-    }
-    if (dateRange.end) {
-      const endDate = new Date(dateRange.end);
-      endDate.setUTCHours(23, 59, 59, 999);
-      params.date_to = endDate.toISOString();
-    }
-    
-    // Add entity filter
-    if (selectedEntityId) {
-      params.entity_id = selectedEntityId;
-    }
+      const params: any = {};
 
-    console.log('📊 Fetching dashboard with params:', params); // Debug log
+      // Fix: Properly format dates for the API
+      if (dateRange.start) {
+        // Use UTC date to avoid timezone issues
+        const startDate = new Date(dateRange.start);
+        startDate.setUTCHours(0, 0, 0, 0);
+        params.date_from = startDate.toISOString();
+      }
+      if (dateRange.end) {
+        const endDate = new Date(dateRange.end);
+        endDate.setUTCHours(23, 59, 59, 999);
+        params.date_to = endDate.toISOString();
+      }
 
-    const response = await DashboardService.getDashboardStats(
-      params.date_from,
-      params.date_to,
-      params.entity_id
-    );
+      // Add entity filter
+      if (selectedEntityId) {
+        params.entity_id = selectedEntityId;
+      }
 
-    if (response.success) {
-      setStats(response.results);
-    } else {
+      console.log("📊 Fetching dashboard with params:", params); // Debug log
+
+      const response = await DashboardService.getDashboardStats(
+        params.date_from,
+        params.date_to,
+        params.entity_id,
+      );
+
+      if (response.success) {
+        setStats(response.results);
+      } else {
+        toast.error("Error", {
+          description: response.message || "Failed to load dashboard data",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error fetching dashboard data:", error);
       toast.error("Error", {
-        description: response.message || "Failed to load dashboard data",
+        description: error.message || "Failed to load dashboard data",
       });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  } catch (error: any) {
-    console.error("Error fetching dashboard data:", error);
-    toast.error("Error", {
-      description: error.message || "Failed to load dashboard data",
+  }, [dateRange, selectedEntityId, loadingEntities]);
+
+  // ── Load data on mount ────────────────────────────────────────────────────
+  useEffect(() => {
+    fetchEntities();
+  }, [fetchEntities]);
+
+  // ── Fetch dashboard data when entity OR date range changes ────────────
+  useEffect(() => {
+    if (selectedEntityId) {
+      fetchDashboardData();
+    }
+  }, [fetchDashboardData, selectedEntityId, dateRange]); // ← Added dateRange
+
+  // ── Listen for refresh events ──────────────────────────────────────────────
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchDashboardData();
+    };
+
+    eventService.onRefresh(handleRefresh);
+
+    return () => {
+      eventService.offRefresh(handleRefresh);
+    };
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
+    console.log("📅 Date range changed:", {
+      start: dateRange.start?.toISOString(),
+      end: dateRange.end?.toISOString(),
     });
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-}, [dateRange, selectedEntityId, loadingEntities]);
-
-// ── Load data on mount ────────────────────────────────────────────────────
-useEffect(() => {
-  fetchEntities();
-}, [fetchEntities]);
-
-// ── Fetch dashboard data when entity OR date range changes ────────────
-useEffect(() => {
-  if (selectedEntityId) {
-    fetchDashboardData();
-  }
-}, [fetchDashboardData, selectedEntityId, dateRange]); // ← Added dateRange
-
-// ── Listen for refresh events ──────────────────────────────────────────────
-useEffect(() => {
-  const handleRefresh = () => {
-    fetchDashboardData();
-  };
-
-  eventService.onRefresh(handleRefresh);
-
-  return () => {
-    eventService.offRefresh(handleRefresh);
-  };
-}, [fetchDashboardData]);
-
-useEffect(() => {
-  console.log('📅 Date range changed:', {
-    start: dateRange.start?.toISOString(),
-    end: dateRange.end?.toISOString()
-  });
-}, [dateRange]);
+  }, [dateRange]);
 
   // ── Refresh Handler ──────────────────────────────────────────────────────
   const handleRefresh = async () => {
@@ -317,8 +314,8 @@ useEffect(() => {
   // ── Entity Change Handler ────────────────────────────────────────────────
   const handleEntityChange = (value: string) => {
     setSelectedEntityId(value);
-    const selectedEntity = entities.find(e => e.uuid === value);
-    if (selectedEntity && selectedEntity.uuid !== "ALL_ENTITIES" ) {
+    const selectedEntity = entities.find((e) => e.uuid === value);
+    if (selectedEntity && selectedEntity.uuid !== "ALL_ENTITIES") {
       setEntity(selectedEntity);
     }
   };
@@ -393,7 +390,7 @@ useEffect(() => {
       bg: "bg-slate-50",
       bar: "bg-slate-400",
     },
-  
+
     cancelled: {
       label: "Cancelled",
       icon: XCircle,
@@ -403,12 +400,12 @@ useEffect(() => {
     },
   };
 
-  if(loadingEntities){
-    return(
+  if (loadingEntities) {
+    return (
       <div className="flex justify-center items-center">
         <Loader />
       </div>
-    )
+    );
   }
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
@@ -430,11 +427,13 @@ useEffect(() => {
               value={selectedEntityId}
               onChange={handleEntityChange}
               selectOptions={entityOptions}
-              selectPlaceholder={loadingEntities ? "Loading..." : "Select entity"}
+              selectPlaceholder={
+                loadingEntities ? "Loading..." : "Select entity"
+              }
               prefixIcon={<Building2 size={14} />}
             />
           </div>
-          
+
           <div className="flex-1 sm:flex-initial min-w-[200px]">
             <Input
               label="Date Range"
@@ -444,7 +443,7 @@ useEffect(() => {
               placeholder="Select date range"
             />
           </div>
-          
+
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -499,7 +498,9 @@ useEffect(() => {
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="text-sm font-semibold text-text">Weekly Sales</h3>
-              <p className="text-[11px] text-text-light">Last 7 days performance</p>
+              <p className="text-[11px] text-text-light">
+                Last 7 days performance
+              </p>
             </div>
             <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full">
               {stats.weekly_sales.length} days
@@ -509,7 +510,13 @@ useEffect(() => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.weekly_sales}>
                 <defs>
-                  <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id="salesGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop
                       offset="5%"
                       stopColor={COLORS.primary}
@@ -532,7 +539,10 @@ useEffect(() => {
                     borderRadius: "8px",
                     fontSize: "12px",
                   }}
-                  formatter={(value: any) => [`${entity?.currency ?? "GHC"} ${value.toFixed(2)}`, "Revenue"]}
+                  formatter={(value: any) => [
+                    `${entity?.currency ?? "GHC"} ${value.toFixed(2)}`,
+                    "Revenue",
+                  ]}
                 />
                 <Area
                   type="monotone"
@@ -550,8 +560,12 @@ useEffect(() => {
         <div className="bg-card border border-border  p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-text">Inventory by Type</h3>
-              <p className="text-[11px] text-text-light">Distribution across categories</p>
+              <h3 className="text-sm font-semibold text-text">
+                Inventory by Type
+              </h3>
+              <p className="text-[11px] text-text-light">
+                Distribution across categories
+              </p>
             </div>
             <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full">
               {inventoryStats.total_items} items
@@ -600,115 +614,103 @@ useEffect(() => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Invoice Status Card */}
         {/* Invoice Status Card */}
-<div className="lg:col-span-1 bg-card border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-  {/* Card Header */}
-  <div className="px-5 py-4 border-b border-border bg-gradient-to-br from-primary-5/15 to-transparent">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary-10 rounded-xl">
-          <FileText className="w-4 h-4 text-primary" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-text">
-            Invoice Status
-          </h3>
-          <p className="text-[11px] text-text-light">
-            Real-time breakdown
-          </p>
-        </div>
-      </div>
-      <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full whitespace-nowrap">
-        {invoiceStats.total_invoices || 0} total
-      </span>
-    </div>
-  </div>
-
-  {/* Card Body */}
-  <div className="p-4 space-y-3">
-    {Object.keys(stats.invoice_status_breakdown).filter(
-      (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
-    ).length === 0 ? (
-      <EmptyState
-        icon={<FileText className="w-6 h-6 text-text-light/40" />}
-        title="No invoice data"
-        description="Create your first invoice to get started"
-      />
-    ) : (
-      Object.entries(stats.invoice_status_breakdown)
-        .filter(([_, data]) => data.count > 0) // Only show statuses with count > 0
-        .sort(([statusA], [statusB]) => {
-          // Custom sort order: paid, invoiced, partially, overdue, draft, cancelled
-          const order = ['paid', 'invoiced', 'partially', 'overdue', 'draft', 'cancelled'];
-          return order.indexOf(statusA) - order.indexOf(statusB);
-        })
-        .map(([status, data]) => {
-          const total = invoiceStats.total_invoices || 1;
-          const percentage = ((data.count / total) * 100);
-          const config = statusConfig[status] || statusConfig.draft;
-          const Icon = config.icon;
-
-          return (
-            <div key={status} className="group">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={`p-1 rounded-full ${config.bg} flex-shrink-0`}>
-                    <Icon className={`w-3.5 h-3.5 ${config.color}`} />
-                  </div>
-                  <span className="text-sm font-medium text-text truncate">
-                    {config.label}
-                  </span>
+        <div className="lg:col-span-1 bg-card border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+          {/* Card Header */}
+          <div className="px-5 py-4 border-b border-border bg-gradient-to-br from-primary-5/15 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-10 rounded-xl">
+                  <FileText className="w-4 h-4 text-primary" />
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="font-semibold text-text text-sm">
-                    {data.count}
-                  </span>
-                  <span className={`text-xs font-medium ${config.color}`}>
-                    {percentage > 0 ? `${Math.round(percentage)}%` : '0%'}
-                  </span>
+                <div>
+                  <h3 className="text-sm font-semibold text-text">
+                    Invoice Status
+                  </h3>
+                  <p className="text-[11px] text-text-light">
+                    Real-time breakdown
+                  </p>
                 </div>
               </div>
-              <div className="w-full h-2 bg-background rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ease-out ${config.bar}`}
-                  style={{
-                    width: `${Math.min(percentage, 100)}%`,
-                  }}
-                />
-              </div>
+              <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full whitespace-nowrap">
+                {invoiceStats.total_invoices || 0} total
+              </span>
             </div>
-          );
-        })
-    )}
-  </div>
+          </div>
 
-  {/* Card Footer */}
-  {Object.keys(stats.invoice_status_breakdown).filter(
-    (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
-  ).length > 0 && (
-    <div className="px-4 py-3 border-t border-border bg-slate-50/50 flex items-center justify-between">
-      <div className="flex items-center gap-3 text-[11px] text-text-light">
-        <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          Paid
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          Pending
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-          Overdue
-        </span>
-      </div>
-      <button
-        onClick={() => navigate("/invoices")}
-        className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
-      >
-        View all →
-      </button>
-    </div>
-  )}
-</div>
+          {/* Card Body */}
+          <div className="p-4 space-y-3">
+            {Object.keys(stats.invoice_status_breakdown).filter(
+              (key) =>
+                stats.invoice_status_breakdown[
+                  key as keyof typeof stats.invoice_status_breakdown
+                ].count > 0,
+            ).length === 0 ? (
+              <EmptyState
+                icon={<FileText className="w-6 h-6 text-text-light/40" />}
+                title="No invoice data"
+                description="Create your first invoice to get started"
+              />
+            ) : (
+              Object.entries(stats.invoice_status_breakdown)
+                .filter(([_, data]) => data.count > 0) // Only show statuses with count > 0
+                .sort(([statusA], [statusB]) => {
+                  // Custom sort order: paid, invoiced, partially, overdue, draft, cancelled
+                  const order = [
+                    "paid",
+                    "invoiced",
+                    "partially",
+                    "overdue",
+                    "draft",
+                    "cancelled",
+                  ];
+                  return order.indexOf(statusA) - order.indexOf(statusB);
+                })
+                .map(([status, data]) => {
+                  const total = invoiceStats.total_invoices || 1;
+                  const percentage = (data.count / total) * 100;
+                  const config = statusConfig[status] || statusConfig.draft;
+                  const Icon = config.icon;
+
+                  return (
+                    <div key={status} className="group">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className={`p-1 rounded-full ${config.bg} flex-shrink-0`}
+                          >
+                            <Icon className={`w-3.5 h-3.5 ${config.color}`} />
+                          </div>
+                          <span className="text-sm font-medium text-text truncate">
+                            {config.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="font-semibold text-text text-sm">
+                            {data.count}
+                          </span>
+                          <span
+                            className={`text-xs font-medium ${config.color}`}
+                          >
+                            {percentage > 0
+                              ? `${Math.round(percentage)}%`
+                              : "0%"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full h-2 bg-background rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ease-out ${config.bar}`}
+                          style={{
+                            width: `${Math.min(percentage, 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
 
         {/* Top Selling Items Card */}
         <div className="lg:col-span-1 bg-card border border-border  overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -801,18 +803,6 @@ useEffect(() => {
               })
             )}
           </div>
-
-          {/* Card Footer */}
-          {stats.top_selling_items.length > 0 && (
-            <div className="px-4 py-3 border-t border-border bg-slate-50/50">
-              <button
-                onClick={() => navigate("/reports/sales")}
-                className="w-full text-[11px] font-medium text-primary hover:text-primary/80 transition-colors text-center"
-              >
-                View sales report →
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Recent Activity Card */}
@@ -892,12 +882,13 @@ useEffect(() => {
                           {
                             month: "short",
                             day: "numeric",
-                          }
+                          },
                         )}
                       </span>
                       {transaction.amount > 0 && (
                         <span className="text-[10px] font-medium text-emerald-600 ml-auto">
-                          +{entity?.currency || "GHC"} {transaction.amount.toFixed(2)}
+                          +{entity?.currency || "GHC"}{" "}
+                          {transaction.amount.toFixed(2)}
                         </span>
                       )}
                     </div>
@@ -906,65 +897,6 @@ useEffect(() => {
               ))
             )}
           </div>
-
-          {/* Card Footer */}
-          {stats.recent_transactions.length > 0 && (
-            <div className="px-4 py-3 border-t border-border bg-slate-50/50">
-              <button
-                onClick={() => navigate("/notifications")}
-                className="w-full text-[11px] font-medium text-primary hover:text-primary/80 transition-colors text-center"
-              >
-                View all activity →
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-card border border-border  p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-primary-10 rounded-xl">
-            <TrendingUp className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-text">Quick Actions</h3>
-            <p className="text-[11px] text-text-light">
-              Common tasks to keep your business moving
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <button
-            onClick={() => navigate("/invoices/create")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
-          >
-            <FileText className="w-6 h-6 text-primary" />
-            <span className="text-sm font-medium text-text">New Invoice</span>
-          </button>
-          <button
-            onClick={() => navigate("/inventory/add")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
-          >
-            <Package className="w-6 h-6 text-primary" />
-            <span className="text-sm font-medium text-text">Add Inventory</span>
-          </button>
-          <button
-            onClick={() => navigate("/customers")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
-          >
-            <Users className="w-6 h-6 text-primary" />
-            <span className="text-sm font-medium text-text">
-              Manage Customers
-            </span>
-          </button>
-          <button
-            onClick={() => navigate("/reports")}
-            className="flex flex-col items-center gap-2 p-4 bg-background hover:bg-primary-5 rounded-xl transition-all duration-200 border border-border hover:border-primary/20"
-          >
-            <TrendingUp className="w-6 h-6 text-primary" />
-            <span className="text-sm font-medium text-text">View Reports</span>
-          </button>
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@ const InvoiceDetails = React.lazy(() => import("./invoicing/InvoiceDetails"));
 const Customers = React.lazy(() => import("./customers/Customers"));
 const Users = React.lazy(() => import("./team/Users"));
 const Notifications = React.lazy(() => import("./notifications/Notifications"));
+const ExpenseTracker = React.lazy(() => import("./expenses/ExpenseTracker"));
 
 export const PagesRoutes: React.FC = () => {
   return (
@@ -31,6 +32,7 @@ export const PagesRoutes: React.FC = () => {
       <Route path="/invoices/:id" element={<InvoiceDetails />} />
       <Route path="/invoices/edit/:id" element={<CreateInvoice />} />
       <Route path="/notifications" element={<Notifications />} />
+      <Route path="/expenses" element={<ExpenseTracker />} />
 
       <Route path="/team" element={<Users />} />
 

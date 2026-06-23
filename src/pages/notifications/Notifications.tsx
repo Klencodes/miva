@@ -644,7 +644,6 @@ const Notifications: React.FC = () => {
           totalPages = response.results.pagination?.totalPages || 0;
         }
 
-        console.log("Logs found:", logs.length);
 
         setPagination((prev) => ({
           ...prev,
@@ -674,7 +673,6 @@ const Notifications: React.FC = () => {
           },
         }));
 
-        console.log("Notifications data:", notificationsData.length);
         setNotifications(notificationsData);
       } else {
         console.log("No results in response");

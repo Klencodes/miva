@@ -1,5 +1,5 @@
 import { Bell, InfoIcon, Menu, Moon, SunDimIcon } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTheme } from "../../core/contexts/ThemeProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -11,6 +11,29 @@ interface HeaderProps {
 // ─── Header Component ─────────────────────────────────────────────────────────
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
   const { toggleTheme, isDark } = useTheme();
+  const [online, setOnline]= useState<boolean>(true);
+
+  useEffect(() => {
+    const handleOnline = () => {
+     setOnline(true);
+    };
+
+    const handleOffline = () => {
+      setOnline(false);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    if (!navigator.onLine) {
+      handleOffline();
+    }
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []); 
 
   return (
     <header
@@ -24,6 +47,8 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
         // Layout
         "flex items-center pr-4 gap-3",
         "bg-card",
+        `${!online ? 'border-b-3 border-b border-danger' : ''}`
+
       ].join(" ")}
     >
       {/* ── Logo ── */}

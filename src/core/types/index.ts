@@ -549,3 +549,62 @@ export interface ICustomerStats {
     phone?: string;
   }>;
 }
+
+
+/** ==========================================================================================
+ * EXPENSE INTERFACE
+ * ==========================================================================================
+ */
+export interface Expense {
+  id: string;
+  uuid: string;
+  title: string;
+  description?: string;
+  amount: number;
+  category: string;
+  sub_category?: string;
+  date: string;
+  payment_method: "cash" | "bank" | "mobile_money" | "credit_card";
+  status: "pending" | "paid";
+  receipt_url?: string;
+  vendor?: string;
+  vendor_contact?: string;
+  created_by: string;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+  approved_by?: string;
+  approved_by_name?: string;
+  approved_at?: string;
+  paid_by?: string;
+  paid_by_name?: string;
+  paid_at?: string;
+  rejected_by?: string;
+  rejected_by_name?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  budget?: number;
+  spent?: number;
+}
+
+export interface ExpenseFormData {
+  title: string;
+  description: string;
+  amount: number;
+  category: string;
+  sub_category: string;
+  date: string;
+  payment_method: string;
+  vendor: string;
+  vendor_contact: string;
+  status: string;
+  receipt?: File | null;
+}

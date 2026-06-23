@@ -88,10 +88,8 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         branch: modalData.branch || "",
       });
     }
-    
-  }, 
-  //es-lint-disable-next-line
-  [modalData]);
+    // eslint-disable-next-line
+  }, []);
 
   const validate = useCallback(
     (data: OrganisationProfileForm): Partial<OrganisationProfileForm> => {

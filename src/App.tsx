@@ -41,34 +41,6 @@ function App() {
     window.scrollTo(0, 0);
   }, [location]);
 
-  useEffect(() => {
-    const handleOnline = () => {
-      toast.success("Connection restored", {
-        description: "You are back online", 
-        duration: 5000,
-      })
-    };
-
-    const handleOffline = () => {
-      toast.error("Connection Error", {
-        description: "No internet connection detected", 
-        duration: 5000,
-      })
-    };
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    if (!navigator.onLine) {
-      handleOffline();
-    }
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []); 
-
   return (
     <>
       <Toaster 

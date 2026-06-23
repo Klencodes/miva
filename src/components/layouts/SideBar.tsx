@@ -11,6 +11,7 @@ import {
   Check,
   Loader2,
   Bell,
+  ContrastIcon,
 } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -45,7 +46,7 @@ interface SidebarProps {
 // ─── Nav Groups Config ────────────────────────────────────────────────────────
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Main",
+    label: "Overview",
     items: [
       {
         id: "dashboard",
@@ -53,7 +54,13 @@ const NAV_GROUPS: NavGroup[] = [
         icon: <LayoutDashboard size={20} />,
         href: "/dashboard",
         badge: null,
-      },
+      }
+    ],
+  },
+
+  {
+    label: "Main",
+    items: [
       {
         id: "invoice",
         label: "Invoicing",
@@ -102,14 +109,25 @@ const NAV_GROUPS: NavGroup[] = [
         badge: null,
       },
       {
-      id: "notifications",
-      label: "Notifications",
-      icon: <Bell size={20} />,
-      href: "/notifications",
-      badge: "3", // Dynamic unread count
-      badgeVariant: "warning",
-    }
-
+        id: "notifications",
+        label: "Notifications",
+        icon: <Bell size={20} />,
+        href: "/notifications",
+        badge: "3", // Dynamic unread count
+        badgeVariant: "warning",
+      },
+    ],
+  },
+  {
+    label: "Expense",
+    items: [
+      {
+        id: "expenses",
+        label: "Expenses",
+        icon: <ContrastIcon size={20} />,
+        href: "/expenses",
+        badge: null,
+      },
     ],
   },
   {
@@ -133,7 +151,6 @@ const badgeStyles: Record<string, string> = {
   success: "bg-emerald-400/15 text-emerald-400",
   warning: "bg-amber-400/15 text-amber-400",
 };
-
 
 // ─── User Footer ──────────────────────────────────────────────────────────────
 const UserFooter: React.FC = () => {
@@ -265,7 +282,7 @@ const EntitySwitcher: React.FC<EntitySwitcherProps> = ({
         setSwitching(null);
       }
     },
-    [entity, onSelectEntity]
+    [entity, onSelectEntity],
   );
 
   const handleAddEntity = async () => {
@@ -321,7 +338,7 @@ const EntitySwitcher: React.FC<EntitySwitcherProps> = ({
         </span>
       </button>
       <div className="border-b border-border mt-4"></div>
-      
+
       {/* Dropdown */}
       {open && (
         <div
@@ -443,30 +460,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { entity, setEntity, setStoreEntities, user } = useStore();
-  
+
   // Local state for entities to use in navigation
   const [localEntities, setLocalEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Check if user has access to dashboard
-  const hasDashboardAccess = user?.role === 'admin' || user?.role === 'super_admin';
+  const hasDashboardAccess =
+    user?.role === "admin" || user?.role === "super_admin";
 
   // Filter navigation groups based on user role
   const getFilteredNavGroups = useCallback(() => {
-    return NAV_GROUPS.map(group => {
-
-        return {
-          ...group,
-          items: group.items.filter(item => {
-            // If item is dashboard, only show for admin/super_admin
-            if (item.id === "dashboard" || item.id === "teams") {
-              return hasDashboardAccess;
-            }
-            return true;
-          })
-        };
-
-    }).filter(group => group.items.length > 0); // Remove empty groups
+    return NAV_GROUPS.map((group) => {
+      return {
+        ...group,
+        items: group.items.filter((item) => {
+          // If item is dashboard, only show for admin/super_admin
+          if (item.id === "dashboard" || item.id === "teams") {
+            return hasDashboardAccess;
+          }
+          return true;
+        }),
+      };
+    }).filter((group) => group.items.length > 0); // Remove empty groups
   }, [hasDashboardAccess]);
 
   // Fetch entities function - stores in local state
@@ -485,10 +501,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
       const filteredEntities = entities.filter(
         (e: Entity) => e.uuid !== "ALL_ENTITIES",
       );
-            
+
       // Store in local state
       setLocalEntities(filteredEntities);
-      
+
       // Also update store if needed
       setStoreEntities(filteredEntities);
 
@@ -514,7 +530,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
       setEntity(selected);
       eventService.triggerRefresh();
     },
-    [entity, setEntity]
+    [entity, setEntity],
   );
 
   // Handle add entity
@@ -527,7 +543,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
   useEffect(() => {
     const isDashboard = location.pathname === "/dashboard";
     const filteredEntities = localEntities.filter(
-      (e: Entity) => e.uuid !== "ALL_ENTITIES"
+      (e: Entity) => e.uuid !== "ALL_ENTITIES",
     );
 
     // If we have entities and no entity is selected
@@ -538,7 +554,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
 
     // If on dashboard with ALL_ENTITIES, switch to first valid entity
     if (isDashboard && entity?.entity_id === "ALL_ENTITIES") {
-      const filtered = localEntities.filter((e: Entity) => e.uuid !== "ALL_ENTITIES");
+      const filtered = localEntities.filter(
+        (e: Entity) => e.uuid !== "ALL_ENTITIES",
+      );
       if (filtered.length > 0) {
         setEntity(filtered[0]);
         eventService.triggerRefresh();
@@ -560,7 +578,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
         const filteredEntities = localEntities.filter(
           (e: Entity) => e.uuid !== "ALL_ENTITIES",
         );
-        
+
         if (filteredEntities.length > 0) {
           // Set to first valid entity before navigating
           setEntity(filteredEntities[0]);
@@ -575,7 +593,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
       // Normal navigation
       navigate(href);
     },
-    [isMobile, onClose, entity, localEntities, setEntity, navigate]
+    [isMobile, onClose, entity, localEntities, setEntity, navigate],
   );
 
   // Handle dashboard access restriction
@@ -591,15 +609,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
     if (localEntities.length === 0) {
       fetchEntities();
     }
-    // eslint-disable-next-line 
+    // eslint-disable-next-line
   }, []);
 
   const isActive = (href: string) =>
-    href === "/" ? location.pathname === "/" : location.pathname.startsWith(href);
+    href === "/"
+      ? location.pathname === "/"
+      : location.pathname.startsWith(href);
 
   // Filter entities for display - use localEntities
   const displayEntities = localEntities.filter(
-    (e: Entity) => e.uuid !== "ALL_ENTITIES"
+    (e: Entity) => e.uuid !== "ALL_ENTITIES",
   );
 
   // Get filtered navigation groups
@@ -711,6 +731,5 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
     </>
   );
 };
-
 
 export default Sidebar;
