@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Footer from "./Footer";
-import Header from "./header/Header";
+import Header from "./Header";
 import Sidebar from "./SideBar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

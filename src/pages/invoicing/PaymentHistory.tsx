@@ -48,19 +48,19 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({
         className="p-4 cursor-pointer hover:bg-background transition-colors flex justify-between items-center"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-text">Payment History</h3>
           </div>
           <div className={`px-3 py-1 rounded-full text-sm font-medium ${status.color} flex items-center gap-1.5`}>
             {status.label}
           </div>
-          <div className="flex items-center gap-4 text-sm text-text-light flex-wrap">
+          {/* <div className="flex items-center gap-4 text-sm text-text-light flex-wrap">
             <span>Paid: <span className="font-semibold text-emerald-600">GHS {totalPaid.toFixed(2)}</span></span>
             <span>Balance: <span className={`font-semibold ${isFullyPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
               GHS {remainingBalance.toFixed(2)}
             </span></span>
-          </div>
+          </div> */}
         </div>
         <div className="text-text-light">
           {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}

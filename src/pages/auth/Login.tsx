@@ -123,6 +123,8 @@ const Login: React.FC = () => {
           if (hasEntities) {
             // Regular user with entities goes to dashboard
             redirectPath = "/dashboard";
+            setEntity(user.entities[0])
+
           } else {
             // Regular user without entities goes to contact admin page
             redirectPath = "/access-denied";

@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useRef, useId, useCallback } from "react";
-import {
-  Eye,
-  EyeOff,
-  ChevronDown,
-  ChevronUp,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Eye, EyeOff, ChevronDown, ChevronUp, Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 export interface SelectOption {
   value: string | number;
@@ -17,22 +9,7 @@ export interface SelectOption {
 
 export type InputSize = "sm" | "md" | "lg";
 export type InputVariant = "default" | "filled" | "outline";
-export type InputType =
-  | "text"
-  | "password"
-  | "email"
-  | "number"
-  | "range"
-  | "date"
-  | "tel"
-  | "url"
-  | "search"
-  | "checkbox"
-  | "select"
-  | "time"
-  | "textarea"
-  | "color"
-  | "date-range";
+export type InputType = "text"| "password"| "email"| "number"| "range"| "date"| "tel"| "url"| "search"| "checkbox"| "select"| "multi-select"| "time"| "textarea"| "color"| "date-range";
 export type InputRadius = "none" | "sm" | "md" | "lg" | "xl" | "full";
 export type LabelType = "default" | "floating";
 
@@ -553,7 +530,7 @@ const DateRangePickerPopup: React.FC<{
 
   return (
     <div
-      className="absolute z-50 top-full left-0 mt-2 shadow-2xl rounded-xl overflow-hidden"
+      className="absolute z-50 top-full left-0 mt-2 shadow-2xl overflow-hidden"
       style={{
         background: "var(--card-color, #fff)",
         border: "1px solid var(--border-color, #e5e7eb)",
@@ -837,6 +814,211 @@ const DateRangePickerPopup: React.FC<{
   );
 };
 
+// ─── Multi-Select Component ────────────────────────────────────────────────────
+
+interface MultiSelectProps {
+  id: string;
+  value: string[];
+  options: SelectOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  readonly?: boolean;
+  onChange?: (value: string[]) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  spacing: any;
+  prefixIcon?: React.ReactNode;
+  iconSize: string;
+  getBaseInputClasses: () => string;
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({
+  id,
+  value,
+  options,
+  placeholder = "Select options...",
+  disabled = false,
+  readonly = false,
+  onChange,
+  onFocus,
+  onBlur,
+  spacing,
+  prefixIcon,
+  iconSize,
+  getBaseInputClasses,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+        onBlur?.();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isOpen, onBlur]);
+
+
+  const toggleOption = (optionValue: string | number) => {
+    if (disabled || readonly) return;
+    const val = String(optionValue);
+    const newValue = value.includes(val)
+      ? value.filter((v) => v !== val)
+      : [...value, val];
+    onChange?.(newValue);
+  };
+
+  const removeOption = (optionValue: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (disabled || readonly) return;
+    const newValue = value.filter((v) => v !== optionValue);
+    onChange?.(newValue);
+  };
+
+  const clearAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (disabled || readonly) return;
+    onChange?.([]);
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div
+        className={`${getBaseInputClasses()} ${spacing.px} ${spacing.py} ${spacing.text} cursor-pointer flex items-center flex-wrap gap-1 min-h-[42px]`}
+        style={{
+          paddingLeft: prefixIcon ? "2.5rem" : spacing.px,
+          paddingRight: "2.5rem",
+        }}
+        onClick={() => {
+          if (!disabled && !readonly) {
+            setIsOpen(!isOpen);
+            onFocus?.();
+          }
+        }}
+      >
+        {prefixIcon && (
+          <div
+            className={`absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center ${iconSize}`}
+          >
+            {prefixIcon}
+          </div>
+        )}
+
+        {value.length > 0 ? (
+          <div className="flex flex-wrap gap-1 w-full">
+            {value.map((v) => {
+              const option = options.find((o) => String(o.value) === v);
+              return (
+                <span
+                  key={v}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-10 text-primary rounded-md text-xs font-medium"
+                >
+                  {option?.label || v}
+                  {!disabled && !readonly && (
+                    <button
+                      type="button"
+                      onClick={(e) => removeOption(v, e)}
+                      className="hover:text-danger transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        ) : (
+          <span className="text-text-light text-sm">{placeholder}</span>
+        )}
+
+        <div
+          className={`absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center ${iconSize}`}
+        >
+          {isOpen ? (
+            <ChevronUp className={iconSize} />
+          ) : (
+            <ChevronDown className={iconSize} />
+          )}
+        </div>
+      </div>
+
+      {isOpen && (
+        <div
+          className="absolute z-50 top-full left-0 mt-1 w-full shadow-2xl rounded-md overflow-hidden"
+          style={{
+            background: "var(--card-color, #fff)",
+            border: "1px solid var(--border-color, #e5e7eb)",
+            maxHeight: 250,
+            overflowY: "auto",
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {value.length > 0 && (
+            <div
+              className="flex items-center justify-between px-3 py-2 border-b border-border"
+              style={{
+                background: "var(--background-color, #f9fafb)",
+              }}
+            >
+              <span className="text-xs text-text-light">
+                {value.length} selected
+              </span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-xs text-danger hover:text-danger/80 transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
+          {options.length === 0 ? (
+            <div className="px-3 py-4 text-center text-sm text-text-light">
+              No options available
+            </div>
+          ) : (
+            options.map((option) => {
+              const isSelected = value.includes(String(option.value));
+              return (
+                <div
+                  key={String(option.value)}
+                  className={`px-3 py-2 cursor-pointer transition-colors flex items-center gap-2 ${
+                    isSelected
+                      ? "bg-primary-10"
+                      : "hover:bg-background-50"
+                  } ${option.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() => {
+                    if (!option.disabled) {
+                      toggleOption(option.value);
+                    }
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    disabled={option.disabled || disabled}
+                    onChange={() => {}}
+                    className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
+                  />
+                  <span className="text-sm text-text">{option.label}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Input Component ─────────────────────────────────────────────────────
 
 const Input: React.FC<CustomInputProps> = ({
@@ -888,21 +1070,23 @@ const Input: React.FC<CustomInputProps> = ({
   const isDateRange = type === "date-range";
   const isDate = type === "date";
   const isSelect = type === "select";
+  const isMultiSelect = type === "multi-select";
   const isTextarea = type === "textarea";
   const isCheckbox = type === "checkbox";
   const isRange = type === "range";
   const isPassword = type === "password";
 
-  const showFloatingLabel = labelType === "floating" && !isCheckbox && !isRange;
+  const showFloatingLabel = labelType === "floating" && !isCheckbox && !isRange && !isMultiSelect;
   const showDefaultLabel =
-    labelType === "default" && label !== "" && !isCheckbox && !isRange;
-  const hasPrefixIcon = !!prefixIcon && !isCheckbox && !isTextarea;
+    labelType === "default" && label !== "" && !isCheckbox && !isRange && !isMultiSelect;
+  const hasPrefixIcon = !!prefixIcon && !isCheckbox && !isTextarea && !isMultiSelect;
   const hasSuffixIcon =
     !!suffixIcon &&
     !isPassword &&
     !isCheckbox &&
     !isRange &&
     !isSelect &&
+    !isMultiSelect &&
     !isTextarea;
   const showPasswordIcon = isPassword;
 
@@ -1180,6 +1364,41 @@ const Input: React.FC<CustomInputProps> = ({
       );
     }
 
+    // For multi-select (with floating label)
+    if (isMultiSelect) {
+      return (
+        <div className="relative w-full">
+          <MultiSelect
+            id={inputId}
+            value={Array.isArray(value) ? value : []}
+            options={selectOptions}
+            placeholder={selectPlaceholder || placeholder || "Select options..."}
+            disabled={disabled}
+            readonly={readonly}
+            onChange={onChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            spacing={spacing}
+            prefixIcon={prefixIcon}
+            iconSize={spacing.icon}
+            getBaseInputClasses={getBaseInputClasses}
+          />
+          
+          {showFloatingLabel && (
+            <label
+              htmlFor={inputId}
+              className={`absolute left-3 pointer-events-none transition-all duration-200 bg-card px-1 z-10 ${spacing.text}
+                ${isFocused || (Array.isArray(value) && value.length > 0) ? "-top-2 scale-75 text-primary" : "top-1/2 -translate-y-1/2 scale-100 text-text-light"}`}
+              onClick={focusInput}
+            >
+              {label}
+              {required && <span className="text-danger ml-0.5">*</span>}
+            </label>
+          )}
+        </div>
+      );
+    }
+
     // For select
     if (isSelect) {
       return (
@@ -1451,6 +1670,27 @@ const Input: React.FC<CustomInputProps> = ({
           singleDate
           autoApply={autoApply}
         />,
+      );
+    }
+
+    // Multi-select
+    if (isMultiSelect) {
+      return (
+        <MultiSelect
+          id={inputId}
+          value={Array.isArray(value) ? value : []}
+          options={selectOptions}
+          placeholder={selectPlaceholder || placeholder || "Select options..."}
+          disabled={disabled}
+          readonly={readonly}
+          onChange={onChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          spacing={spacing}
+          prefixIcon={prefixIcon}
+          iconSize={spacing.icon}
+          getBaseInputClasses={getBaseInputClasses}
+        />
       );
     }
 

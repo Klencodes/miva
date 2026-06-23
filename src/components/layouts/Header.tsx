@@ -1,6 +1,6 @@
 import { Bell, InfoIcon, Menu, Moon, SunDimIcon } from "lucide-react";
 import React from "react";
-import { useTheme } from "../../../core/contexts/ThemeProvider";
+import { useTheme } from "../../core/contexts/ThemeProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface HeaderProps {

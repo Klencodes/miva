@@ -175,6 +175,7 @@ export interface Customer {
 export interface IUser {
   id: string;
   uuid: string;
+  primary_entity_id?: string;
   name: string;
   first_name?: string;
   last_name?: string;
@@ -237,11 +238,7 @@ export interface ICreateUserData {
   role?: string;
   permissions?: Partial<UserPermissions>;
   verified?: boolean;
-  entities?: Array<{
-    entity_id: string;
-    role?: string;
-    is_primary?: boolean;
-  }>;
+  entities?: string[];
 }
 
 export interface IUpdateUserData {
@@ -260,6 +257,7 @@ export interface IUpdateUserData {
  */
 export interface Entity {
   id?: string;
+  entity_id?: string;
   uuid: string;
   name: string;
   branch: string;
@@ -483,7 +481,6 @@ export interface DashboardStats {
   };
   invoice_status_breakdown: {
     draft: { count: number; amount: number };
-    quoted: { count: number; amount: number };
     invoiced: { count: number; amount: number };
     partially: { count: number; amount: number };
     paid: { count: number; amount: number };

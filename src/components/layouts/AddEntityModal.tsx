@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { useModal } from "../../../core/hooks/useModal";
-import { Button, Input } from "../../common";
+import { useModal } from "../../core/hooks/useModal";
+import { Button, Input } from "../common";
 import { toast } from "sonner";
-import EntityService from "../../../core/services/entity"
+import EntityService from "../../core/services/entity"
+import { useStore } from "../../core/contexts/StoreProvider";
 interface OrganisationProfileForm {
   name: string;
   email: string;
@@ -48,12 +49,28 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
   const [errors, setErrors] = useState<Partial<OrganisationProfileForm>>({});
   const [loading, setLoading] = useState(false);
   const supportedCountries =[{value: "", label: "Choose Country"}, {value: "Ghana", label: "Ghana"}, {value: "Nigeria", label: "Nigeria"}];
-  
+  const { entity } = useStore();
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Initialize form with edit data if provided
   useEffect(() => {
+    if(entity){
+      setForm({
+        email: "",
+        phone: "",
+        website: "",
+        address: "",
+        city: "",
+        state: "",
+        branch: "",
+        name: entity.name || "",
+        country: entity.country || "",
+        zip_code: entity.zip_code || "",
+        registration_number: entity.registration_number || "",
+        tax_id: entity.tax_id || "",
+      });
+    }
     if (modalData) {
       setIsEditMode(true);
       setForm({
@@ -71,6 +88,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
         branch: modalData.branch || "",
       });
     }
+    
   }, 
   //es-lint-disable-next-line
   [modalData]);
@@ -247,7 +265,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 <h3 className="font-semibold text-text">Core Information</h3>
               </div>
               
-              <Input
+              {!form.name && <Input
                 label="Business Name"
                 placeholder="Enter your business name"
                 required
@@ -257,7 +275,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onChange={handleChange("name")}
                 onBlur={() => handleBlur("name")}
                 error={errors.name}
-              />
+              />}
 
               <Input
                 label="Business Branch"
@@ -271,6 +289,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 error={errors.branch}
               />
 
+              {!form.registration_number && 
               <Input
                 label="Registration Number (Optional)"
                 placeholder="e.g., RC1234567"
@@ -280,7 +299,8 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onChange={handleChange("registration_number")}
                 onBlur={() => handleBlur("registration_number")}
                 error={errors.registration_number}
-              />
+              />}
+              {!form.tax_id && 
 
               <Input
                 label="Tax ID (Optional)"
@@ -292,6 +312,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onBlur={() => handleBlur("tax_id")}
                 error={errors.tax_id}
               />
+              }
 
               <Input
                 label="Contact Email"
@@ -339,7 +360,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 <h3 className="font-semibold text-text">Address</h3>
               </div>
               
-              <Input
+              {!form.country && <Input
                 type="select"
                 label="Country"
                 placeholder="Select Country"
@@ -351,7 +372,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onChange={handleChange("country")}
                 onBlur={() => handleBlur("country")}
                 error={errors.country}
-              />
+              />}
 
               <Input
                 label="State/Province"
@@ -389,8 +410,8 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onBlur={() => handleBlur("address")}
                 error={errors.address}
               />
-
-              <Input
+            {!form.zip_code &&
+            <Input
                 label="ZIP Code"
                 placeholder="Enter postal/ZIP code"
                 required
@@ -400,7 +421,7 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
                 onChange={handleChange("zip_code")}
                 onBlur={() => handleBlur("zip_code")}
                 error={errors.zip_code}
-              />
+              />}
             </div>
           </div>
         </form>

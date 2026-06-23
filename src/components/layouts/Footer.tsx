@@ -11,9 +11,7 @@ const FOOTER_LINKS: FooterLink[] = [
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
   { label: "Security", href: "/security" },
-  { label: "Status", href: "https://status.nexusos.io" },
   { label: "Help", href: "/help" },
-  { label: "Changelog", href: "/changelog" },
 ];
 
 
@@ -37,11 +35,9 @@ const Footer: React.FC = () => {
             <div
               className={"w-[28px] h-[28px] rounded-[7px] flex items-center justify-center"}
             >
-              Nx
+              <img src="/logo192.png" alt="" />
             </div>
-            <span className="text-sm font-bold text-white tracking-[-0.3px]">
-              Nexus<span className="text-sky-400">OS</span>
-            </span>
+           
           </div>
 
           {/* Divider */}
@@ -49,7 +45,7 @@ const Footer: React.FC = () => {
 
           {/* Copyright */}
           <p className="text-[12px] text-text-light">
-            © {year} NexusOS Inc.
+            © {year} MIVA Prestige Enterprise.
           </p>
         </div>
 
@@ -62,7 +58,7 @@ const Footer: React.FC = () => {
             <a
               key={link.label}
               href={link.href}
-              className="text-[12.5px] text-text-light hover:text-sky-400
+              className="text-[12.5px] text-text-light hover:text-primary
                 transition-colors duration-150
                 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 rounded"
             >

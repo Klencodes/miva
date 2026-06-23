@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   X,
   Save,
@@ -11,24 +11,28 @@ import {
   Package,
   FileText,
   Settings,
+  BuildingIcon,
 } from "lucide-react";
 import Input from "../../components/common/Input";
 import { Button } from "../../components/common";
 import { useModal } from "../../core/hooks/useModal";
-import { IUser, UserPermissions } from "../../core/types";
+import { Entity, IUser, UserPermissions } from "../../core/types";
 import { Roles } from "../../core/enums/roles";
 import UserService from "../../core/services/user";
+import { useStore } from "../../core/contexts/StoreProvider";
 // Define the form data type explicitly
 type FormData = Partial<IUser> & {
   password?: string;
+  entity_id?: string;
   permissions: UserPermissions;
 };
 
 const AddEditUser = () => {
   const { modalRef, modalData } = useModal();
+  const { storeEntities, setStoreEntities } = useStore();
   const user = modalData?.user as IUser;
   const editing = !!user;
-
+  const [loading, setLoading] = useState(false);
   const defaultPermissions: UserPermissions = {
     can_edit_inventory: false,
     can_delete_inventory: false,
@@ -43,12 +47,13 @@ const AddEditUser = () => {
   };
 
   const [formData, setFormData] = useState<FormData>({
+    entity_id: "",
     first_name: "",
     last_name: "",
     email: "",
     phone: "",
     address: "",
-    role: Roles.VIEWER,
+    role: Roles.SALES,
     permissions: { ...defaultPermissions },
     is_active: true,
     verified: false,
@@ -120,12 +125,13 @@ const AddEditUser = () => {
           }
         } else {
           const createData = {
+            entity_id: formData.entity_id || "",
             first_name: formData.first_name || "",
             last_name: formData.last_name || "",
             email: formData.email || "",
             phone: formData.phone || "",
             address: formData.address || "",
-            role: formData.role || Roles.VIEWER,
+            role: formData.role || Roles.SALES,
             password: formData.password || "",
             permissions: formData.permissions,
             is_active: formData.is_active ?? true,
@@ -173,6 +179,35 @@ const AddEditUser = () => {
     }
   };
 
+  const fetchEntities = useCallback(async () => {
+    if (storeEntities?.length > 0 || editing) return;
+    try {
+      setLoading(true);
+      const res = await UserService.getMyEntities();
+      const entities: Entity[] = res?.results?.entities || [];
+
+      // Filter out the "ALL_ENTITIES" entity
+      const filteredEntities = entities.filter(
+        (e: Entity) => e.uuid !== "ALL_ENTITIES",
+      );
+
+      setStoreEntities(filteredEntities);
+    } catch (err) {
+      console.error("Failed to load entities:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [storeEntities, setStoreEntities, editing]);
+
+  useEffect(()=>{
+    fetchEntities();
+  },[fetchEntities])
+  const entityOptions = useMemo(() => {
+    return storeEntities.map((e) => ({
+      value: e.uuid,
+      label: `${e.branch || "Main"} | ${e.name}`,
+    }));
+  }, [storeEntities]);
   // Role options
   const roleOptions = [
     { value: Roles.SUPER_ADMIN, label: "Super Admin" },
@@ -240,7 +275,7 @@ const AddEditUser = () => {
 
       {/* Form */}
       <div className="flex-1 overflow-y-auto space-y-6 pb-4">
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form className="p-6 space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-text-light flex items-center gap-2">
@@ -300,6 +335,7 @@ const AddEditUser = () => {
                 disabled={isSubmitting}
               />
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="Role"
@@ -322,6 +358,20 @@ const AddEditUser = () => {
                 disabled={isSubmitting}
               />
             </div>
+            {/* {!editing &&  */}
+              <div className="grid grid-cols-1 gap-4">
+                <Input
+                  type="multi-select"
+                  label="Entity"
+                  value={formData.entity_id || ""}
+                  onChange={handleInputChange("entity_id")}
+                  selectOptions={entityOptions}
+                  selectPlaceholder="Select entity"
+                  prefixIcon={<BuildingIcon size={14} />}
+                  disabled={loading}
+                />
+              </div>
+            {/* } */}
           </div>
 
           {/* Password */}
@@ -408,6 +458,7 @@ const AddEditUser = () => {
         </Button>
         <Button
           type="submit"
+          onClick={handleSubmit}
           className="flex items-center gap-2"
           disabled={isSubmitting}
         >

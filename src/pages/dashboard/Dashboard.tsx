@@ -34,7 +34,7 @@ import {
 import { useStore } from "../../core/contexts/StoreProvider";
 import { eventService } from "../../core/services/events";
 import { DashboardStats, Entity } from "../../core/types";
-import { Input } from "../../components/common";
+import { Input, Loader } from "../../components/common";
 import UserService from "../../core/services/user";
 
 // ─── Color Palette ──────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 // ─── Main Dashboard Component ─────────────────────────────────────────────
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, entity } = useStore();
+  const { user, entity, setEntity } = useStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [entities, setEntities] = useState<Entity[]>([]);
@@ -155,11 +155,11 @@ const Dashboard: React.FC = () => {
   const [loadingEntities, setLoadingEntities] = useState(false);
   
   const [dateRange, setDateRange] = useState<{
-    start_date: Date | null;
-    end_date: Date | null;
+    start: Date | null;
+    end: Date | null;
   }>({
-    start_date: null,
-    end_date: null,
+    start: null,
+    end: null,
   });
   const [stats, setStats] = useState<DashboardStats>({
     inventory: {
@@ -187,7 +187,6 @@ const Dashboard: React.FC = () => {
     },
     invoice_status_breakdown: {
       draft: { count: 0, amount: 0 },
-      quoted: { count: 0, amount: 0 },
       invoiced: { count: 0, amount: 0 },
       partially: { count: 0, amount: 0 },
       paid: { count: 0, amount: 0 },
@@ -217,7 +216,6 @@ const Dashboard: React.FC = () => {
         setSelectedEntityId(entityList[0].uuid);
       }
     } catch (err) {
-      console.error("Failed to load entities:", err);
       toast.error("Error", { description: "Failed to load entities" });
     } finally {
       setLoadingEntities(false);
@@ -225,71 +223,89 @@ const Dashboard: React.FC = () => {
   }, [entity]);
 
   // ── Fetch Dashboard Data ──────────────────────────────────────────────────
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
+  // ── Fetch Dashboard Data ──────────────────────────────────────────────────
+const fetchDashboardData = useCallback(async () => {
+  if (loadingEntities) return;
+  try {
+    setLoading(true);
 
-      const params: any = {};
-      if (dateRange.start_date) {
-        params.date_from = dateRange.start_date.toISOString();
-      }
-      if (dateRange.end_date) {
-        params.date_to = dateRange.end_date.toISOString();
-      }
-      
-      // Add entity filter
-      if (selectedEntityId) {
-        params.entity_id = selectedEntityId;
-      }
-
-      const response = await DashboardService.getDashboardStats(
-        params.date_from,
-        params.date_to,
-        params.entity_id
-      );
-
-      if (response.success) {
-        setStats(response.results);
-      } else {
-        toast.error("Error", {
-          description: response.message || "Failed to load dashboard data",
-        });
-      }
-    } catch (error: any) {
-      console.error("Error fetching dashboard data:", error);
-      toast.error("Error", {
-        description: error.message || "Failed to load dashboard data",
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    const params: any = {};
+    
+    // Fix: Properly format dates for the API
+    if (dateRange.start) {
+      // Use UTC date to avoid timezone issues
+      const startDate = new Date(dateRange.start);
+      startDate.setUTCHours(0, 0, 0, 0);
+      params.date_from = startDate.toISOString();
     }
-  }, [dateRange, selectedEntityId]);
-
-  // ── Load data on mount ────────────────────────────────────────────────────
-  useEffect(() => {
-    fetchEntities();
-  }, [fetchEntities]);
-
-  // ── Fetch dashboard data when entity changes ────────────────────────────
-  useEffect(() => {
+    if (dateRange.end) {
+      const endDate = new Date(dateRange.end);
+      endDate.setUTCHours(23, 59, 59, 999);
+      params.date_to = endDate.toISOString();
+    }
+    
+    // Add entity filter
     if (selectedEntityId) {
-      fetchDashboardData();
+      params.entity_id = selectedEntityId;
     }
-  }, [fetchDashboardData, selectedEntityId]);
 
-  // Listen for refresh events
-  useEffect(() => {
-    const handleRefresh = () => {
-      fetchDashboardData();
-    };
+    console.log('📊 Fetching dashboard with params:', params); // Debug log
 
-    eventService.onRefresh(handleRefresh);
+    const response = await DashboardService.getDashboardStats(
+      params.date_from,
+      params.date_to,
+      params.entity_id
+    );
 
-    return () => {
-      eventService.offRefresh(handleRefresh);
-    };
-  }, [fetchDashboardData]);
+    if (response.success) {
+      setStats(response.results);
+    } else {
+      toast.error("Error", {
+        description: response.message || "Failed to load dashboard data",
+      });
+    }
+  } catch (error: any) {
+    console.error("Error fetching dashboard data:", error);
+    toast.error("Error", {
+      description: error.message || "Failed to load dashboard data",
+    });
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+}, [dateRange, selectedEntityId, loadingEntities]);
+
+// ── Load data on mount ────────────────────────────────────────────────────
+useEffect(() => {
+  fetchEntities();
+}, [fetchEntities]);
+
+// ── Fetch dashboard data when entity OR date range changes ────────────
+useEffect(() => {
+  if (selectedEntityId) {
+    fetchDashboardData();
+  }
+}, [fetchDashboardData, selectedEntityId, dateRange]); // ← Added dateRange
+
+// ── Listen for refresh events ──────────────────────────────────────────────
+useEffect(() => {
+  const handleRefresh = () => {
+    fetchDashboardData();
+  };
+
+  eventService.onRefresh(handleRefresh);
+
+  return () => {
+    eventService.offRefresh(handleRefresh);
+  };
+}, [fetchDashboardData]);
+
+useEffect(() => {
+  console.log('📅 Date range changed:', {
+    start: dateRange.start?.toISOString(),
+    end: dateRange.end?.toISOString()
+  });
+}, [dateRange]);
 
   // ── Refresh Handler ──────────────────────────────────────────────────────
   const handleRefresh = async () => {
@@ -301,10 +317,10 @@ const Dashboard: React.FC = () => {
   // ── Entity Change Handler ────────────────────────────────────────────────
   const handleEntityChange = (value: string) => {
     setSelectedEntityId(value);
-    // const selectedEntity = entities.find(e => e.uuid === value);
-    // if (selectedEntity) {
-    //   setEntity(selectedEntity);
-    // }
+    const selectedEntity = entities.find(e => e.uuid === value);
+    if (selectedEntity && selectedEntity.uuid !== "ALL_ENTITIES" ) {
+      setEntity(selectedEntity);
+    }
   };
 
   // ── Entity Options ───────────────────────────────────────────────────────
@@ -377,13 +393,7 @@ const Dashboard: React.FC = () => {
       bg: "bg-slate-50",
       bar: "bg-slate-400",
     },
-    quoted: {
-      label: "Quoted",
-      icon: FileText,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      bar: "bg-purple-500",
-    },
+  
     cancelled: {
       label: "Cancelled",
       icon: XCircle,
@@ -393,6 +403,13 @@ const Dashboard: React.FC = () => {
     },
   };
 
+  if(loadingEntities){
+    return(
+      <div className="flex justify-center items-center">
+        <Loader />
+      </div>
+    )
+  }
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 mx-auto">
@@ -582,108 +599,116 @@ const Dashboard: React.FC = () => {
       {/* Invoice Status & Top Selling Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Invoice Status Card */}
-        <div className="lg:col-span-1 bg-card border border-border  overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-          {/* Card Header */}
-          <div className="px-5 py-4 border-b border-border bg-gradient-to-br from-primary-5/15 to-transparent">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-10 rounded-xl">
-                  <FileText className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-text">
-                    Invoice Status
-                  </h3>
-                  <p className="text-[11px] text-text-light">
-                    Real-time breakdown
-                  </p>
-                </div>
-              </div>
-              <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full">
-                {invoiceStats.total_invoices || 0} total
-              </span>
-            </div>
-          </div>
-
-          {/* Card Body */}
-          <div className="p-4 space-y-3">
-            {Object.keys(stats.invoice_status_breakdown).filter(
-              (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
-            ).length === 0 ? (
-              <EmptyState
-                icon={<FileText className="w-6 h-6 text-text-light/40" />}
-                title="No invoice data"
-                description="Create your first invoice to get started"
-              />
-            ) : (
-              Object.entries(stats.invoice_status_breakdown).map(([status, data]) => {
-                const total = invoiceStats.total_invoices || 1;
-                const percentage = ((data.count / total) * 100).toFixed(0);
-                const config = statusConfig[status] || statusConfig.draft;
-                const Icon = config.icon;
-
-                return (
-                  <div key={status} className="group">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1 rounded-lg ${config.bg}`}>
-                          <Icon className={`w-3.5 h-3.5 ${config.color}`} />
-                        </div>
-                        <span className="text-sm font-medium text-text">
-                          {config.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="font-semibold text-text">
-                          {data.count}
-                        </span>
-                        <span className={`text-xs font-medium ${config.color}`}>
-                          {percentage}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ease-out ${config.bar}`}
-                        style={{
-                          width: `${Math.min(parseFloat(percentage), 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Card Footer */}
-          {Object.keys(stats.invoice_status_breakdown).filter(
-            (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
-          ).length > 0 && (
-            <div className="px-4 py-3 border-t border-border bg-slate-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-[11px] text-text-light">
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  Paid
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  Pending
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  Overdue
-                </span>
-              </div>
-              <button
-                onClick={() => navigate("/invoices")}
-                className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
-              >
-                View all →
-              </button>
-            </div>
-          )}
+        {/* Invoice Status Card */}
+<div className="lg:col-span-1 bg-card border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+  {/* Card Header */}
+  <div className="px-5 py-4 border-b border-border bg-gradient-to-br from-primary-5/15 to-transparent">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary-10 rounded-xl">
+          <FileText className="w-4 h-4 text-primary" />
         </div>
+        <div>
+          <h3 className="text-sm font-semibold text-text">
+            Invoice Status
+          </h3>
+          <p className="text-[11px] text-text-light">
+            Real-time breakdown
+          </p>
+        </div>
+      </div>
+      <span className="px-2.5 py-1 text-[11px] font-medium bg-primary-5 text-primary rounded-full whitespace-nowrap">
+        {invoiceStats.total_invoices || 0} total
+      </span>
+    </div>
+  </div>
+
+  {/* Card Body */}
+  <div className="p-4 space-y-3">
+    {Object.keys(stats.invoice_status_breakdown).filter(
+      (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
+    ).length === 0 ? (
+      <EmptyState
+        icon={<FileText className="w-6 h-6 text-text-light/40" />}
+        title="No invoice data"
+        description="Create your first invoice to get started"
+      />
+    ) : (
+      Object.entries(stats.invoice_status_breakdown)
+        .filter(([_, data]) => data.count > 0) // Only show statuses with count > 0
+        .sort(([statusA], [statusB]) => {
+          // Custom sort order: paid, invoiced, partially, overdue, draft, cancelled
+          const order = ['paid', 'invoiced', 'partially', 'overdue', 'draft', 'cancelled'];
+          return order.indexOf(statusA) - order.indexOf(statusB);
+        })
+        .map(([status, data]) => {
+          const total = invoiceStats.total_invoices || 1;
+          const percentage = ((data.count / total) * 100);
+          const config = statusConfig[status] || statusConfig.draft;
+          const Icon = config.icon;
+
+          return (
+            <div key={status} className="group">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`p-1 rounded-full ${config.bg} flex-shrink-0`}>
+                    <Icon className={`w-3.5 h-3.5 ${config.color}`} />
+                  </div>
+                  <span className="text-sm font-medium text-text truncate">
+                    {config.label}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="font-semibold text-text text-sm">
+                    {data.count}
+                  </span>
+                  <span className={`text-xs font-medium ${config.color}`}>
+                    {percentage > 0 ? `${Math.round(percentage)}%` : '0%'}
+                  </span>
+                </div>
+              </div>
+              <div className="w-full h-2 bg-background rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ease-out ${config.bar}`}
+                  style={{
+                    width: `${Math.min(percentage, 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })
+    )}
+  </div>
+
+  {/* Card Footer */}
+  {Object.keys(stats.invoice_status_breakdown).filter(
+    (key) => stats.invoice_status_breakdown[key as keyof typeof stats.invoice_status_breakdown].count > 0
+  ).length > 0 && (
+    <div className="px-4 py-3 border-t border-border bg-slate-50/50 flex items-center justify-between">
+      <div className="flex items-center gap-3 text-[11px] text-text-light">
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          Paid
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Pending
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          Overdue
+        </span>
+      </div>
+      <button
+        onClick={() => navigate("/invoices")}
+        className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+      >
+        View all →
+      </button>
+    </div>
+  )}
+</div>
 
         {/* Top Selling Items Card */}
         <div className="lg:col-span-1 bg-card border border-border  overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -753,7 +778,7 @@ const Dashboard: React.FC = () => {
                             {item.name}
                           </span>
                           <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap">
-                            GHS {item.revenue.toFixed(2)}
+                            {entity?.currency} {item.revenue.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
@@ -886,7 +911,7 @@ const Dashboard: React.FC = () => {
           {stats.recent_transactions.length > 0 && (
             <div className="px-4 py-3 border-t border-border bg-slate-50/50">
               <button
-                onClick={() => navigate("/transactions")}
+                onClick={() => navigate("/notifications")}
                 className="w-full text-[11px] font-medium text-primary hover:text-primary/80 transition-colors text-center"
               >
                 View all activity →

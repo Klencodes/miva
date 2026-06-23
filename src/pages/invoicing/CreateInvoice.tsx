@@ -31,7 +31,7 @@ import {
 import InventoryService from "../../core/services/inventory";
 import { eventService } from "../../core/services/events";
 import { useStore } from "../../core/contexts/StoreProvider";
-import CustomerService from "../../core/services/customer"
+import CustomerService from "../../core/services/customer";
 
 interface FormInvoiceItem {
   id: string;
@@ -74,7 +74,7 @@ const CreateInvoice = () => {
   const [itemSearch, setItemSearch] = useState("");
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
-  
+
   // Invoice details
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(
@@ -120,7 +120,6 @@ const CreateInvoice = () => {
     if (metadata instanceof Map) {
       metadataObj = Object.fromEntries(metadata);
     }
-    console.log(metadataObj, "metadataObj")
     return {
       tax_rate: metadataObj.tax_rate || 0,
       nhil_rate: metadataObj.nhil_rate || 0,
@@ -132,38 +131,48 @@ const CreateInvoice = () => {
       covid_levy_enabled: metadataObj.covid_levy_enabled ?? true,
     };
   }, [entity?.metadata]);
-  
 
+  // Load inventory items
   const fetchInventoryItem = useCallback(async () => {
     setLoadingInventory(true);
     try {
-      const res = await InventoryService.getItems();
+      console.log("🔄 Fetching inventory items...");
+      const res = await InventoryService.getItems({ page: 1, limit: 20000 });
       if (res.success) {
-        setInventoryItems(res.results?.items || []);
+        const items = res.results?.items || [];
+        console.log(`✅ Fetched ${items.length} inventory items`);
+        setInventoryItems(items);
       } else {
+        console.warn("⚠️ Failed to fetch inventory:", res.message);
         setInventoryItems([]);
       }
     } catch (error) {
-      console.error(`Error occurred while fetching inventory: ${error}`);
+      console.error("❌ Error fetching inventory:", error);
       setInventoryItems([]);
+      toast.error("Error", {
+        description: "Failed to load inventory items. Please try again.",
+      });
     } finally {
       setLoadingInventory(false);
     }
   }, []);
 
-  // Load inventory items
+  // 1. Initial load
   useEffect(() => {
     fetchInventoryItem();
   }, [fetchInventoryItem]);
 
-  // Listen for refresh events
+  // 3. Refresh on events
   useEffect(() => {
     const handleRefresh = () => {
+      console.log("📨 Refresh event received - fetching inventory");
       fetchInventoryItem();
     };
 
+    // Register event listeners
     eventService.onRefresh(handleRefresh);
 
+    // Cleanup
     return () => {
       eventService.offRefresh(handleRefresh);
     };
@@ -181,44 +190,47 @@ const CreateInvoice = () => {
     return `${prefix}${year}${month}${day}-${random}`;
   };
 
-    // Fetch customers from API
-    const fetchCustomers = useCallback(async () => {
-      try {
-        setLoading(true);
-        
-        // Build query params
-        const params: any = {
-          page: 1,
-          limit: 10,
-        };
-  
-        if (customerSearch) {
-          params.search = customerSearch;
-        }
-  
-        const response = await CustomerService.getCustomers(params);
-        
-        if (response.success) {
-          const customerData = response.results?.customers || [];
-          setCustomers(customerData);
-        } else {
-          toast.error('Error', { description: response.message || 'Failed to load customers' });
-        }
-      } catch (error: any) {
-        toast.error('Error', { description: error.message || 'Failed to load customers' });
-      } finally {
-        setLoading(false);
-      }
-    }, [customerSearch]);
-  
+  // Fetch customers from API
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    useEffect(()=> {
-      fetchCustomers()
-      //eslint-disable-next-line
-    }, [])
+      // Build query params
+      const params: any = {
+        page: 1,
+        limit: 10,
+      };
+
+      if (customerSearch) {
+        params.search = customerSearch;
+      }
+
+      const response = await CustomerService.getCustomers(params);
+
+      if (response.success) {
+        const customerData = response.results?.customers || [];
+        setCustomers(customerData);
+      } else {
+        toast.error("Error", {
+          description: response.message || "Failed to load customers",
+        });
+      }
+    } catch (error: any) {
+      toast.error("Error", {
+        description: error.message || "Failed to load customers",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [customerSearch]);
+
+  useEffect(() => {
+    fetchCustomers();
+    //eslint-disable-next-line
+  }, []);
 
   // Set invoice number on load
-  
+
   useEffect(() => {
     if (!isEditing && !invoiceNumber) {
       setInvoiceNumber(generateInvoiceNumber());
@@ -230,7 +242,7 @@ const CreateInvoice = () => {
     if (!isEditing && invoiceDate) {
       const date = new Date(invoiceDate);
       let daysToAdd = 30; // Default Net 30
-      
+
       switch (terms) {
         case "Due on Receipt":
           daysToAdd = 0;
@@ -250,7 +262,7 @@ const CreateInvoice = () => {
         default:
           daysToAdd = 30;
       }
-      
+
       date.setDate(date.getDate() + daysToAdd);
       setDueDate(date.toISOString().split("T")[0]);
     }
@@ -469,7 +481,7 @@ const CreateInvoice = () => {
   // Add item
   const addItem = () => {
     if (!selectedItemId) return;
-    const inventoryItem = inventoryItems.find((i) => (i.uuid) === selectedItemId);
+    const inventoryItem = inventoryItems.find((i) => i.uuid === selectedItemId);
     if (!inventoryItem) return;
 
     const existingItem = items.find((i) => i.id === selectedItemId);
@@ -576,7 +588,9 @@ const CreateInvoice = () => {
         vat_rate: taxRates.vat_enabled ? taxRates.tax_rate : 0,
         nhil_rate: taxRates.nhil_enabled ? taxRates.nhil_rate : 0,
         getfund_rate: taxRates.getfund_enabled ? taxRates.getfund_rate : 0,
-        covid_levy_rate: taxRates.covid_levy_enabled ? taxRates.covid_levy_rate : 0,
+        covid_levy_rate: taxRates.covid_levy_enabled
+          ? taxRates.covid_levy_rate
+          : 0,
         notes: notes || undefined,
         terms: terms || "Due on Receipt",
         currency: entity?.currency || "GHC",
@@ -820,9 +834,11 @@ const CreateInvoice = () => {
                             className={`${isDark ? "hover:bg-slate-800" : "hover:bg-slate-50"} p-3 cursor-pointer border-b border-border last:border-0 transition-colors`}
                             onClick={() => {
                               setSelectedItemId(item.uuid);
-                              setItemSearch(item.part_number 
-                                ? `${item.name} (${item.part_number})` 
-                                : item.name);
+                              setItemSearch(
+                                item.part_number
+                                  ? `${item.name} (${item.part_number})`
+                                  : item.name,
+                              );
                               setShowItemDropdown(false);
                             }}
                           >
@@ -1006,9 +1022,16 @@ const CreateInvoice = () => {
                         : "Discount Amount (GHS)"
                     }
                     labelType="default"
-                    value={isDiscountFocused && discountRate === 0 ? "" : discountRate}
+                    value={
+                      isDiscountFocused && discountRate === 0
+                        ? ""
+                        : discountRate
+                    }
                     onChange={(value: number) => {
-                      const numValue = value === null || value === undefined ? 0 : Number(value);
+                      const numValue =
+                        value === null || value === undefined
+                          ? 0
+                          : Number(value);
                       setDiscountRate(Math.max(0, numValue));
                     }}
                     onFocus={() => setIsDiscountFocused(true)}
@@ -1039,7 +1062,7 @@ const CreateInvoice = () => {
                 {taxRates.vat_enabled && taxRates.tax_rate > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-text-light">
-                      VAT ({taxRates.tax_rate}%):
+                      {`VAT (${taxRates.tax_rate}%)`}
                     </span>
                     <span className="text-text">GHS {vat.toFixed(2)}</span>
                   </div>
@@ -1047,7 +1070,7 @@ const CreateInvoice = () => {
                 {taxRates.nhil_enabled && taxRates.nhil_rate > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-text-light">
-                      NHIL ({taxRates.nhil_rate}%):
+                      {`NHIL (${taxRates.nhil_rate}%)`}
                     </span>
                     <span className="text-text">GHS {nhil.toFixed(2)}</span>
                   </div>
@@ -1055,7 +1078,7 @@ const CreateInvoice = () => {
                 {taxRates.getfund_enabled && taxRates.getfund_rate > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-text-light">
-                      GETFund ({taxRates.getfund_rate}%):
+                      {`GETFund (${taxRates.getfund_rate}%):`}
                     </span>
                     <span className="text-text">GHS {getfund.toFixed(2)}</span>
                   </div>
@@ -1064,7 +1087,7 @@ const CreateInvoice = () => {
                   taxRates.covid_levy_rate > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-text-light">
-                        COVID-19 Levy ({taxRates.covid_levy_rate}%):
+                        {`COVID-19 Levy (${taxRates.covid_levy_rate}%):`}
                       </span>
                       <span className="text-text">
                         GHS {covidLevy.toFixed(2)}
@@ -1114,9 +1137,16 @@ const CreateInvoice = () => {
                         type="number"
                         label="Amount Paid (GHS)"
                         labelType="default"
-                        value={isPaymentFocused && paymentAmount === 0 ? "" : paymentAmount}
+                        value={
+                          isPaymentFocused && paymentAmount === 0
+                            ? ""
+                            : paymentAmount
+                        }
                         onChange={(value: number) => {
-                          const numValue = value === null || value === undefined ? 0 : Number(value);
+                          const numValue =
+                            value === null || value === undefined
+                              ? 0
+                              : Number(value);
                           setPaymentAmount(Math.max(0, numValue));
                         }}
                         onFocus={() => setIsPaymentFocused(true)}
@@ -1126,26 +1156,33 @@ const CreateInvoice = () => {
                         step={0.01}
                       />
                     </div>
-                    <div>
-                      <Input
-                        type="text"
-                        label="Reference"
-                        labelType="default"
-                        placeholder="Transaction reference..."
-                        value={paymentReference}
-                        onChange={(value: string) => setPaymentReference(value)}
-                      />
-                    </div>
-                    <div>
-                      <Input
-                        type="text"
-                        label="Branch"
-                        labelType="default"
-                        placeholder="Payment notes..."
-                        value={bankBranch}
-                        onChange={(value: string) => setbankBranch(value)}
-                      />
-                    </div>
+
+                    {paymentMethod === "Bank" && (
+                      <div>
+                        <Input
+                          type="text"
+                          label="Branch"
+                          labelType="default"
+                          placeholder="Bank Branch..."
+                          value={bankBranch}
+                          onChange={(value: string) => setbankBranch(value)}
+                        />
+                      </div>
+                    )}
+                    {(paymentMethod === "Bank" || paymentMethod === "MoMo") && (
+                        <div>
+                          <Input
+                            type="text"
+                            label="Transaction ID"
+                            labelType="default"
+                            placeholder="Transaction Id"
+                            value={paymentReference}
+                            onChange={(value: string) =>
+                              setPaymentReference(value)
+                            }
+                          />
+                        </div>
+                      )}
                   </div>
 
                   {/* Credit Payment Details - Only shown when Credit is selected */}
@@ -1153,7 +1190,9 @@ const CreateInvoice = () => {
                     <div className="bg-primary-5 p-4 border border-primary-20 rounded-lg">
                       <div className="flex items-center gap-2 text-primary mb-3">
                         <CreditCard className="w-4 h-4" />
-                        <span className="font-semibold">Credit Payment Details</span>
+                        <span className="font-semibold">
+                          Credit Payment Details
+                        </span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -1182,7 +1221,9 @@ const CreateInvoice = () => {
                         <div className="md:col-span-2">
                           <div className="bg-background p-3 rounded-lg border border-border">
                             <div className="flex justify-between items-center">
-                              <span className="text-text-light">Total Amount Due:</span>
+                              <span className="text-text-light">
+                                Total Amount Due:
+                              </span>
                               <span className="text-lg font-bold text-primary">
                                 GHS {total.toFixed(2)}
                               </span>

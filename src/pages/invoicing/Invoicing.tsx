@@ -58,11 +58,11 @@ const Invoicing = () => {
       }
 
       if (dateRange.start) {
-        params.date_from = dateRange.start.toISOString();
+        params.date_from = dateRange.start;
       }
 
       if (dateRange.end) {
-        params.date_to = dateRange.end.toISOString();
+        params.date_to = dateRange.end;
       }
 
       const response = await InvoiceService.getInvoices(params);

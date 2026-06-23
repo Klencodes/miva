@@ -16,9 +16,6 @@ import {
   Phone,
   Mail,
   MapPin,
-  CreditCard,
-  Smartphone,
-  Building,
   Hash,
   Calendar,
 } from "lucide-react";
@@ -32,6 +29,7 @@ import InvoiceService from "../../core/services/invoice";
 import { toast } from "sonner";
 import DeleteModal from "./DeleteInvoice";
 import { useStore } from "../../core/contexts/StoreProvider";
+import SendInvoiceModal from "./SendInvoiceModal";
 
 const InvoiceDetails = () => {
   const navigate = useNavigate();
@@ -40,13 +38,28 @@ const InvoiceDetails = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+  // const [sending, setSending] = useState(false);
   const { openModal } = useModal();
   const { entity } = useStore();
 
   // Get watermark text from entity metadata
-  const watermarkText = entity?.metadata?.watermark || "";
-
+  const paymentWatermarkText =
+    invoice?.payment_status === "paid"
+      ? "PAID"
+      : invoice?.payment_status === "unpaid"
+        ? "UNPAID"
+        : invoice?.payment_status === "partially"
+          ? "PARTIALLY"
+          : "DRAFT";
+  const statusWatermarkText =
+    invoice?.status === "invoiced"
+      ? "INVOICED"
+      : invoice?.status === "draft"
+        ? "DRAFT"
+        : invoice?.status === "quoted"
+          ? "QUOTED"
+          : "CANCELLED";
+  const watermarkText = `${statusWatermarkText} ${paymentWatermarkText}`;
   // Load invoice from navigation state or fetch by ID
   useEffect(() => {
     const loadInvoice = async () => {
@@ -179,9 +192,7 @@ const InvoiceDetails = () => {
           </style>
         </head>
         <body>
-          <div class="watermark-container">
-            <div class="watermark-text">${watermarkText || "INVOICE"}</div>
-          </div>
+          
           <div class="print-area">
             ${printContent.innerHTML}
           </div>
@@ -198,6 +209,7 @@ const InvoiceDetails = () => {
         printWindow.close();
       }, 300);
     };
+    // eslint-disable-next-line 
   }, [invoice, watermarkText]);
 
   const handleDownloadPDF = useCallback(async () => {
@@ -254,7 +266,7 @@ const InvoiceDetails = () => {
         vat_rate: invoice.vat_rate || 12.5,
         notes: `Duplicate of ${invoice.number}${invoice.notes ? ` - ${invoice.notes}` : ""}`,
         terms: invoice.terms || "Due on Receipt",
-        currency: "GHS",
+        currency: "{invoice.currency}",
         status: "draft" as InvStatus,
         payments: [],
         amount_paid: 0,
@@ -279,15 +291,15 @@ const InvoiceDetails = () => {
   const handleSendEmail = useCallback(async () => {
     if (!invoice) return;
 
-    setSending(true);
     try {
-      const response = await InvoiceService.sendInvoice(
-        invoice.uuid,
-        invoice.customer.email,
-        `Please find attached invoice ${invoice.number}`,
-      );
+      const result = await openModal(SendInvoiceModal, {
+        data: { invoice },
+        side: "right",
+        size: "md",
+      });
 
-      if (response.success) {
+      if (result?.success) {
+        // Optionally update invoice status or show success
         toast.success("Success", {
           description: `Invoice sent to ${invoice.customer.email || "customer"}`,
         });
@@ -297,10 +309,8 @@ const InvoiceDetails = () => {
       toast.error("Error", {
         description: error.message || "Failed to send invoice",
       });
-    } finally {
-      setSending(false);
     }
-  }, [invoice]);
+  }, [invoice, openModal]);
 
   const handleOpenPaymentModal = useCallback(async () => {
     if (!invoice) return;
@@ -401,17 +411,17 @@ const InvoiceDetails = () => {
     return "Unpaid";
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    const icons: Record<string, { icon: any; color: string }> = {
-      Cash: { icon: CreditCard, color: "text-success" },
-      MoMo: { icon: Smartphone, color: "text-purple-600" },
-      Bank: { icon: Building, color: "text-blue-600" },
-      Credit: { icon: CreditCard, color: "text-amber-600" },
-    };
-    const config = icons[method] || icons.Cash;
-    const Icon = config.icon;
-    return <Icon className={`w-4 h-4 ${config.color}`} />;
-  };
+  // const getPaymentMethodIcon = (method: string) => {
+  //   const icons: Record<string, { icon: any; color: string }> = {
+  //     Cash: { icon: CreditCard, color: "text-success" },
+  //     MoMo: { icon: Smartphone, color: "text-purple-600" },
+  //     Bank: { icon: Building, color: "text-blue-600" },
+  //     Credit: { icon: CreditCard, color: "text-amber-600" },
+  //   };
+  //   const config = icons[method] || icons.Cash;
+  //   const Icon = config.icon;
+  //   return <Icon className={`w-4 h-4 ${config.color}`} />;
+  // };
 
   if (loading) {
     return (
@@ -461,12 +471,6 @@ const InvoiceDetails = () => {
   const paymentMethod = getPaymentMethod(invoice);
   const paymentStatus = getPaymentStatus(invoice);
 
-  // Get payment details from first payment
-  const firstPayment =
-    invoice.payments && invoice.payments.length > 0
-      ? invoice.payments[0]
-      : null;
-
   return (
     <div className="p-4 md:p-6 bg-background min-h-screen">
       <div className="max-w-6xl mx-auto">
@@ -509,11 +513,11 @@ const InvoiceDetails = () => {
                 <Button
                   onClick={handleSendEmail}
                   variant="ghost"
-                  disabled={sending}
+                  // disabled={sending}
                   className="px-3 py-1.5 text-xs"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  {sending ? "..." : "Email"}
+                  { "Email"}
                 </Button>
               )}
 
@@ -614,11 +618,10 @@ const InvoiceDetails = () => {
                 </div>
               </div>
 
-              {/* Company, Customer & Payment Info - Side by Side */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 py-6 border-b border-border print:grid-cols-3 print:gap-8">
-                {" "}
-                {/* Company Info - Left Column */}
-                <div>
+              {/* Company, Customer Side by Side */}
+              <div className="flex flex-col md:flex-row justify-between gap-6 md:gap-8 py-6 border-b border-border print:flex-row print:gap-8">
+                {/* Company Info - Left */}
+                <div className="flex-1">
                   <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center gap-2">
                     <Building2 className="w-3.5 h-3.5" />
                     Company
@@ -646,118 +649,46 @@ const InvoiceDetails = () => {
                           {entity.phone}
                         </p>
                       )}
-                      {/* {entity?.tax_id && (
-                        <p className="text-text-light text-xs flex items-center gap-2">
-                          <Hash className="w-3.5 h-3.5" />
-                          Tax ID: {entity.tax_id}
-                        </p>
-                      )} */}
                     </div>
                   </div>
                 </div>
-                {/* Bill To - Middle Column */}
-                <div>
-                  <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5" />
-                    Bill To
-                  </h3>
-                  <div className="space-y-1.5">
-                    <p className="font-semibold text-text">
-                      {invoice.customer.name}
-                    </p>
-                    {invoice.customer.address && (
-                      <p className="text-text-light text-sm">
-                        {invoice.customer.address}
+
+                {/* Bill To - Right */}
+                <div className="flex-1 flex flex-col items-end">
+                  <div className="max-w-md w-full">
+                    <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center justify-end gap-2">
+                      <span>Bill To</span>
+                      <MapPin className="w-3.5 h-3.5" />
+                    </h3>
+                    <div className="space-y-1.5 text-right">
+                      <p className="font-semibold text-text">
+                        {invoice.customer.name}
                       </p>
-                    )}
-                    <div className="space-y-1 text-sm text-text-light">
-                      {invoice.customer.email && (
-                        <p className="flex items-center gap-2">
-                          <Mail className="w-3.5 h-3.5" />
-                          {invoice.customer.email}
+                      {invoice.customer.address && (
+                        <p className="text-text-light text-sm">
+                          {invoice.customer.address}
                         </p>
                       )}
-                      {invoice.customer.phone && (
-                        <p className="flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5" />
-                          {invoice.customer.phone}
-                        </p>
-                      )}
-                      {invoice.customer.tax_id && (
-                        <p className="text-text-light text-xs flex items-center gap-2">
-                          <Hash className="w-3.5 h-3.5" />
-                          Tax ID: {invoice.customer.tax_id}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {/* Payment Details - Right Column */}
-                <div>
-                  <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <CreditCard className="w-3.5 h-3.5" />
-                    Payment Details
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      {getPaymentMethodIcon(paymentMethod)}
-                      <span className="text-sm font-medium text-text">
-                        {paymentMethod}
-                      </span>
-                    </div>
-
-                    {firstPayment && (
-                      <div className="space-y-1.5 text-sm">
-                        {/* MoMo Details */}
-                        {paymentMethod === "MoMo" && firstPayment.reference && (
-                          <div className="flex items-center gap-2 text-text-light">
-                            <Smartphone className="w-3.5 h-3.5" />
-                            <span>Reference: {firstPayment.reference}</span>
-                          </div>
+                      <div className="space-y-1 text-sm text-text-light">
+                        {invoice.customer.email && (
+                          <p className="flex items-center justify-end gap-2">
+                            <span>{invoice.customer.email}</span>
+                            <Mail className="w-3.5 h-3.5" />
+                          </p>
                         )}
-
-                        {/* Bank Details */}
-                        {paymentMethod === "Bank" && (
-                          <>
-                            {firstPayment.reference && (
-                              <div className="flex items-center gap-2 text-text-light">
-                                <Hash className="w-3.5 h-3.5" />
-                                <span>
-                                  Transaction: {firstPayment.reference}
-                                </span>
-                              </div>
-                            )}
-                            {firstPayment.bank_branch && (
-                              <div className="flex items-center gap-2 text-text-light">
-                                <Building className="w-3.5 h-3.5" />
-                                <span>Branch: {firstPayment.bank_branch}</span>
-                              </div>
-                            )}
-                          </>
+                        {invoice.customer.phone && (
+                          <p className="flex items-center justify-end gap-2">
+                            <span>{invoice.customer.phone}</span>
+                            <Phone className="w-3.5 h-3.5" />
+                          </p>
+                        )}
+                        {invoice.customer.tax_id && (
+                          <p className="text-text-light text-xs flex items-center justify-end gap-2">
+                            <span>Tax ID: {invoice.customer.tax_id}</span>
+                            <Hash className="w-3.5 h-3.5" />
+                          </p>
                         )}
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-1 text-sm pt-2 border-t border-border">
-                      <span className="text-text-light">Status</span>
-                      <div className="text-right">
-                        {getPaymentStatusBadge(paymentStatus)}
-                      </div>
-                      <span className="text-text-light">Amount Paid</span>
-                      <span className="text-right font-medium text-success">
-                        {invoice.currency} {invoice.amount_paid.toFixed(2)}
-                      </span>
-                      {invoice.remaining_balance > 0 && (
-                        <>
-                          <span className="text-text-light">Remaining</span>
-                          <span
-                            className={`text-right font-medium ${invoice.remaining_balance <= 0 ? "text-success" : "text-amber-600"}`}
-                          >
-                            {invoice.currency}{" "}
-                            {invoice.remaining_balance.toFixed(2)}
-                          </span>
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -797,10 +728,11 @@ const InvoiceDetails = () => {
                             {item.quantity}
                           </td>
                           <td className="py-2.5 px-4 text-right text-text-light hidden sm:table-cell">
-                            GHS {item.price.toFixed(2)}
+                            {invoice.currency} {item.price.toFixed(2)}
                           </td>
                           <td className="py-2.5 px-4 text-right font-medium text-text">
-                            GHS {(item.price * item.quantity).toFixed(2)}
+                            {invoice.currency}{" "}
+                            {(item.price * item.quantity).toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -825,46 +757,55 @@ const InvoiceDetails = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-text-light">Subtotal</span>
                       <span className="text-text">
-                        GHS {invoice.subtotal.toFixed(2)}
+                        {invoice.currency} {invoice.subtotal.toFixed(2)}
                       </span>
                     </div>
                     {invoice.discount_total > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-text-light">Discount</span>
                         <span className="text-danger">
-                          -GHS {invoice.discount_total.toFixed(2)}
+                          -{invoice.currency}{" "}
+                          {invoice.discount_total.toFixed(2)}
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-text-light">
-                        VAT ({invoice.vat_rate || 12.5}%)
-                      </span>
-                      <span className="text-text">
-                        GHS {invoice.vat.toFixed(2)}
-                      </span>
-                    </div>
+                    {invoice.vat_rate > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-text-light">
+                          VAT ({invoice.vat_rate}%)
+                        </span>
+                        <span className="text-text">
+                          {invoice.currency} {invoice.vat.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                     {invoice.nhil > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-text-light">NHIL (2.5%)</span>
+                        <span className="text-text-light">
+                          NHIL ({invoice.nhil}%)
+                        </span>
                         <span className="text-text">
-                          GHS {invoice.nhil.toFixed(2)}
+                          {invoice.currency} {invoice.nhil.toFixed(2)}
                         </span>
                       </div>
                     )}
                     {invoice.getfund > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-text-light">GETFund (2.5%)</span>
+                        <span className="text-text-light">
+                          GETFund ({invoice.getfund}%)
+                        </span>
                         <span className="text-text">
-                          GHS {invoice.getfund.toFixed(2)}
+                          {invoice.currency} {invoice.getfund.toFixed(2)}
                         </span>
                       </div>
                     )}
                     {invoice.covid_levy > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-text-light">COVID Levy (1%)</span>
+                        <span className="text-text-light">
+                          COVID Levy ({invoice.covid_levy}%)
+                        </span>
                         <span className="text-text">
-                          GHS {invoice.covid_levy.toFixed(2)}
+                          {invoice.currency} {invoice.covid_levy.toFixed(2)}
                         </span>
                       </div>
                     )}
@@ -878,7 +819,7 @@ const InvoiceDetails = () => {
                       <div className="flex justify-between text-sm pt-1">
                         <span className="text-text-light">Amount Paid</span>
                         <span className="text-success">
-                          -GHS {invoice.amount_paid.toFixed(2)}
+                          -{invoice.currency} {invoice.amount_paid.toFixed(2)}
                         </span>
                       </div>
                     )}
@@ -888,7 +829,8 @@ const InvoiceDetails = () => {
                           Remaining Balance
                         </span>
                         <span className="font-bold text-amber-600">
-                          GHS {invoice.remaining_balance.toFixed(2)}
+                          {invoice.currency}{" "}
+                          {invoice.remaining_balance.toFixed(2)}
                         </span>
                       </div>
                     )}
