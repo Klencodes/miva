@@ -300,6 +300,7 @@ const EntitySwitcher: React.FC<EntitySwitcherProps> = ({
   // Display values
   const entityName = entity?.name || "Select Organisation";
   const entityInitial = entityName.charAt(0).toUpperCase();
+  const { user } = useStore();
 
   return (
     <div ref={dropdownRef} className="relative">
@@ -368,12 +369,12 @@ const EntitySwitcher: React.FC<EntitySwitcherProps> = ({
                 <p className="text-[12px] text-text-light">
                   No organisations found
                 </p>
-                <button
+                {user?.role === "admin" && (<button
                   onClick={handleAddEntity}
                   className="text-xs text-primary hover:underline mt-1"
                 >
                   Create your first organisation
-                </button>
+                </button>)}
               </div>
             ) : (
               displayEntities.map((e: Entity) => {
@@ -439,7 +440,7 @@ const EntitySwitcher: React.FC<EntitySwitcherProps> = ({
 
           {/* Footer action */}
           <div className="border-t border-border p-1.5">
-            <button
+            {user?.role === "admin" && (<button
               onClick={handleAddEntity}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-lg
                 text-[12px] text-text-light hover:bg-white/[0.05]
@@ -447,7 +448,7 @@ const EntitySwitcher: React.FC<EntitySwitcherProps> = ({
             >
               <Building2 size={13} />
               Add Branch
-            </button>
+            </button>)}
           </div>
         </div>
       )}

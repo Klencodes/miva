@@ -3,8 +3,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 const Login = React.lazy(() => import('./Login'));
 const ForgotPassword = React.lazy(() => import('./ForgotPassword'));
+const CreateNewPassword = React.lazy(() => import('./CreateNewPassword'));
 const CreateOrganisation = React.lazy(() => import('./CreateOrganisation'));
 const Verify = React.lazy(() => import('./Verify'));
+const AccessDenied = React.lazy(() => import('./AccessDenied'));
 
 const AuthRoutes: React.FC = () => {
   return (
@@ -17,7 +19,9 @@ const AuthRoutes: React.FC = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/verify" element={<Verify />} />
       <Route path="/create-organisation" element={<CreateOrganisation />} />
-      
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/create-password" element={<CreateNewPassword />} />
+      <Route path="/access-denied" element={<AccessDenied />} />
       {/* Catch all for auth - redirect to login */}
       <Route path="*" element={<Navigate to="/account/login" replace />} />
     </Routes>

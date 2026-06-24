@@ -79,6 +79,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (isAuthenticated) {
     const verified = user?.verified;
+    const canCreateOrganisation = user?.role === "admin" || user?.role === "super_admin";
     const hasNoEntities = (user?.entities?.length ?? 0) === 0;
 
     // Step 1: Must verify first
@@ -87,8 +88,12 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Step 2: Verified but no entities
-    if (verified && hasNoEntities && location.pathname !== "/account/create-organisation") {
+    if (verified && hasNoEntities && canCreateOrganisation && location.pathname !== "/account/create-organisation") {
       return <Navigate to="/account/create-organisation" replace />;
+    }
+
+ if (verified && hasNoEntities && !canCreateOrganisation && location.pathname !== "/account/access-denied") {
+      return <Navigate to="/account/access-denied" replace />;
     }
 
     // Step 3: Fully set up — redirect away from public routes

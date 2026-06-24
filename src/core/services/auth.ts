@@ -125,13 +125,9 @@ class AuthService {
   /**
    * Reset password
    */
-  async resetPassword(token: string, new_password: string, confirm_password: string): Promise<IResponse> {
+  async resetPassword({otp, email, new_password, confirm_password}: any): Promise<IResponse> {
     try {
-      const response = await axios.post(`${this.baseURL}/auth/reset-password`, {
-        token,
-        new_password,
-        confirm_password
-      });
+      const response = await axios.post(`${this.baseURL}/auth/reset-password`, {otp, email, new_password, confirm_password});
       return response.data;
     } catch (error) {
       console.error('Error resetting password:', error);

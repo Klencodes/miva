@@ -4,7 +4,7 @@ import AuthService from "../../core/services/auth";
 import { Button, Input } from "../../components/common";
 import { Lock, Mail } from "lucide-react";
 import { useStore } from "../../core/contexts/StoreProvider";
-import { ENTITY_KEY, setStoredItem, USER_KEY } from "../../core/hooks/useStore";
+import { setStoredItem, USER_KEY } from "../../core/hooks/useStore";
 import { UserRole } from "../../core/types";
 import { usePageTitle } from "../../core/hooks/usePageTitle";
 
@@ -129,7 +129,7 @@ const Login: React.FC = () => {
 
           } else {
             // Regular user without entities goes to contact admin page
-            redirectPath = "/access-denied";
+            redirectPath = "/account/access-denied";
           }
         }
 
