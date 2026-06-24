@@ -171,7 +171,7 @@ class ExpenseService {
         params,
       });
 
-      return response.data.results;
+      return response.data;
     } catch (error: any) {
       console.error("Error getting expenses:", error);
       throw error;

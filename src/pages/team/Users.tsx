@@ -11,6 +11,7 @@ import { eventService } from "../../core/services/events";
 import UserService from "../../core/services/user";
 import { usePageTitle } from "../../core/hooks/usePageTitle";
 import { toast } from "sonner";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 const Users = () => {
   const { openModal } = useModal();
@@ -101,6 +102,7 @@ const Users = () => {
   // ── Trigger fetch when page / search / filter / refreshKey change ──────────
   useEffect(() => {
     fetchUsers();
+    //eslint-disable-next-line
   }, [page, searchQuery, filterStatus, refreshKey]);
 
   // ── Listen for refresh events ──────────────────────────────────────────────
@@ -189,14 +191,16 @@ const Users = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this user? This action cannot be undone.",
-      )
-    ) {
+  const handleDeleteUser = async (user: IUser) => {
+    const res = await openModal(ConfirmModal, {
+      data:{
+        title: "Delete User",
+        message: `Are you sure you want to delete ${user?.name}? This action cannot be undone.`
+      }
+    })
+    if (res?.confirmed) {
       try {
-        const response = await UserService.deleteUser(userId);
+        const response = await UserService.deleteUser(user.uuid);
         if (response.success) {
           toast.success("Success", {
             description: "User deleted successfully",
@@ -351,7 +355,7 @@ const Users = () => {
     actions.push({
       title: "Delete",
       icon: "delete",
-      handler: () => handleDeleteUser(item.uuid || item.id),
+      handler: () => handleDeleteUser(item),
       classes: "text-danger",
     });
 

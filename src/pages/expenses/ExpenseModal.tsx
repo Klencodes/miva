@@ -29,7 +29,7 @@ const ExpenseModal = () => {
   const [formData, setFormData] = useState<ExpenseFormData>({
     title: "",
     description: "",
-    amount: 0,
+    amount: "",
     category: "",
     sub_category: "",
     date: new Date().toISOString().split("T")[0],
@@ -55,7 +55,7 @@ const ExpenseModal = () => {
       setFormData({
         title: expense.title,
         description: expense.description || "",
-        amount: expense.amount,
+        amount: expense.amount?.toString(),
         category: expense.category,
         sub_category: expense.sub_category || "",
         date: expense.date,
@@ -89,7 +89,7 @@ const ExpenseModal = () => {
     try {
       modalRef?.close({
         success: true,
-        data: formData,
+        data: {...formData, amount: Number(formData.amount)},
       });
     } catch (error: any) {
       toast.error("Error", {

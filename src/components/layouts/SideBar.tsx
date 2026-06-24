@@ -57,6 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
       }
     ],
   },
+
   {
     label: "Main",
     items: [
@@ -112,7 +113,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Notifications",
         icon: <Bell size={20} />,
         href: "/notifications",
-        badge: "3",
+        badge: "3", // Dynamic unread count
         badgeVariant: "warning",
       },
     ],
@@ -213,6 +214,7 @@ const UserFooter: React.FC = () => {
   );
 };
 
+// ─── Sidebar Component ────────────────────────────────────────────────────────
 // ─── Entity Switcher ──────────────────────────────────────────────────────────
 interface EntitySwitcherProps {
   entity: Entity | null;
@@ -473,13 +475,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
         ...group,
         items: group.items.filter((item) => {
           // If item is dashboard, only show for admin/super_admin
-          if (item.id === "dashboard" || item.id === "teams") {
+          if (item.id === "dashboard" || item.id === "teams" || item.id === "expenses") {
             return hasDashboardAccess;
           }
           return true;
         }),
       };
-    }).filter((group) => group.items.length > 0);
+    }).filter((group) => group.items.length > 0); // Remove empty groups
   }, [hasDashboardAccess]);
 
   // Fetch entities function - stores in local state
@@ -493,11 +495,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
     try {
       const res = await UserService.getMyEntities();
       const entities: Entity[] = res?.results || [];
+
       // Filter out the "ALL_ENTITIES" entity
       const filteredEntities = entities.filter(
         (e: Entity) => e.uuid !== "ALL_ENTITIES",
       );
-
 
       // Store in local state
       setLocalEntities(filteredEntities);
@@ -550,8 +552,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
     }
 
     // If on dashboard with ALL_ENTITIES, switch to first valid entity
-    // FIXED: Use entity?.uuid instead of entity?.entity_id
-    if (isDashboard && entity?.uuid === "ALL_ENTITIES") {
+    if (isDashboard && entity?.entity_id === "ALL_ENTITIES") {
       const filtered = localEntities.filter(
         (e: Entity) => e.uuid !== "ALL_ENTITIES",
       );
@@ -569,15 +570,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
       if (isMobile) {
         onClose();
       }
+
       // Check if current entity is "ALL_ENTITIES"
-      if (entity?.uuid === "ALL_ENTITIES" || entity?.entity_id === "ALL_ENTITIES") {
+      if (entity?.entity_id === "ALL_ENTITIES") {
+        // Use localEntities for filtering
         const filteredEntities = localEntities.filter(
           (e: Entity) => e.uuid !== "ALL_ENTITIES",
         );
 
         if (filteredEntities.length > 0) {
+          // Set to first valid entity before navigating
           setEntity(filteredEntities[0]);
+          // Navigate after setting entity
           navigate(href);
+          // Trigger refresh to update data with new entity
           eventService.triggerRefresh();
           return;
         }

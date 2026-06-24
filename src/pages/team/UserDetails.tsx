@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/common";
 import { useModal } from "../../core/hooks/useModal";
+import { IUser } from "../../core/types";
 
 const UserDetail = () => {
   const { modalData, modalRef } = useModal();
@@ -55,8 +56,8 @@ const UserDetail = () => {
     return labels[role] || role;
   };
 
-  const handleEdit = () => {
-    modalRef?.close({ action: "edit" });
+  const handleEdit = (user: IUser) => {
+    modalRef?.close({ action: "edit", user});
   };
 
   // Permission groups for display
@@ -106,7 +107,7 @@ const UserDetail = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            onClick={handleEdit}
+            onClick={()=>handleEdit(user)}
             className="flex items-center gap-2"
             size="sm"
           >

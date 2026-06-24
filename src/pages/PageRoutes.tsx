@@ -13,6 +13,7 @@ const Customers = React.lazy(() => import("./customers/Customers"));
 const Users = React.lazy(() => import("./team/Users"));
 const Notifications = React.lazy(() => import("./notifications/Notifications"));
 const ExpenseTracker = React.lazy(() => import("./expenses/ExpenseTracker"));
+const KnowledgeBase = React.lazy(() => import("./knowledgebase/KnowledgeBase"));
 
 export const PagesRoutes: React.FC = () => {
   return (
@@ -37,6 +38,7 @@ export const PagesRoutes: React.FC = () => {
       <Route path="/team" element={<Users />} />
 
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/knowledge-base" element={<KnowledgeBase />} />
       {/* Catch all route for protected pages */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

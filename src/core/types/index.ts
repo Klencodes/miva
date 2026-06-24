@@ -603,7 +603,7 @@ export interface ExpenseCategory {
 export interface ExpenseFormData {
   title: string;
   description: string;
-  amount: number;
+  amount: string;
   category: string;
   sub_category: string;
   date: string;

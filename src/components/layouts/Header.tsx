@@ -1,6 +1,7 @@
 import { Bell, InfoIcon, Menu, Moon, SunDimIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useTheme } from "../../core/contexts/ThemeProvider";
+import { useNavigate } from "react-router-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface HeaderProps {
@@ -12,7 +13,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
   const { toggleTheme, isDark } = useTheme();
   const [online, setOnline]= useState<boolean>(true);
-
+  const navigate = useNavigate();
   useEffect(() => {
     const handleOnline = () => {
      setOnline(true);
@@ -75,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
       {/* ── Right actions ── */}
       <div className="flex items-center gap-1.5 ml-auto">
         {/* Help */}
-        <button aria-label="Knowledge base">
+        <button aria-label="Knowledge base" onClick={()=>navigate("/knowledge-base")}>
           <InfoIcon size={19} />
         </button>
 
@@ -89,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
         </button>
 
         {/* Notifications */}
-        <button aria-label="Notifications" className="relative">
+        <button aria-label="Notifications" className="relative" onClick={()=>navigate("/notifications")}>
           <Bell size={20} />
           {/* Notification dot */}
           <span

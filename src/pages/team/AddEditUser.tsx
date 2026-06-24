@@ -20,10 +20,11 @@ import { Entity, IUser, UserPermissions } from "../../core/types";
 import { Roles } from "../../core/enums/roles";
 import UserService from "../../core/services/user";
 import { useStore } from "../../core/contexts/StoreProvider";
+
 // Define the form data type explicitly
 type FormData = Partial<IUser> & {
   password?: string;
-  entity_id?: string;
+  entity_ids?: string[]; // Array of entity UUIDs
   permissions: UserPermissions;
 };
 
@@ -33,6 +34,7 @@ const AddEditUser = () => {
   const user = modalData?.user as IUser;
   const editing = !!user;
   const [loading, setLoading] = useState(false);
+  
   const defaultPermissions: UserPermissions = {
     can_edit_inventory: false,
     can_delete_inventory: false,
@@ -47,7 +49,7 @@ const AddEditUser = () => {
   };
 
   const [formData, setFormData] = useState<FormData>({
-    entity_id: "",
+    entity_ids: [],
     first_name: "",
     last_name: "",
     email: "",
@@ -66,11 +68,15 @@ const AddEditUser = () => {
 
   useEffect(() => {
     if (user) {
+      // Extract entity IDs from user's entities array
+      const entityIds = user.entities?.map((e) => e.uuid) ?? [];
+      
       setFormData({
         ...user,
-        entity_id: user.entities?.map((e) => e.uuid) || [],
-        permissions: user.permissions || { ...defaultPermissions },
-        is_active: user.is_active !== undefined ? user.is_active : true,
+        entity_ids: entityIds,
+        entities: user.entities ?? [],
+        permissions: user.permissions ?? { ...defaultPermissions },
+        is_active: user.is_active ?? true,
       });
     }
     //eslint-disable-next-line
@@ -106,6 +112,11 @@ const AddEditUser = () => {
       newErrors.password = "Password must be at least 6 characters";
     }
 
+    // Validate at least one entity is selected
+    if (!formData.entity_ids || formData.entity_ids.length === 0) {
+      newErrors.entity_ids = "At least one entity must be selected";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -116,18 +127,26 @@ const AddEditUser = () => {
       setIsSubmitting(true);
       try {
         const saveData = { ...formData };
+        
         // Remove password if empty
         if (!saveData.password) {
           delete saveData.password;
         }
+
+        // Prepare data for API
+        const apiData = {
+          ...saveData,
+          entity_ids: saveData.entity_ids || [],
+        };
+
         if (editing) {
-          const result = await UserService.updateUser(user?.uuid, formData);
+          const result = await UserService.updateUser(user?.uuid, apiData);
           if (result.success) {
             modalData?.close({ action: "edit" });
           }
         } else {
           const createData = {
-            entity_id: formData.entity_id || "",
+            entity_ids: formData.entity_ids || [],
             first_name: formData.first_name || "",
             last_name: formData.last_name || "",
             email: formData.email || "",
@@ -201,15 +220,17 @@ const AddEditUser = () => {
     }
   }, [storeEntities, setStoreEntities, editing]);
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchEntities();
-  },[fetchEntities])
+  }, [fetchEntities]);
+
   const entityOptions = useMemo(() => {
     return storeEntities.map((e) => ({
       value: e.uuid,
       label: `${e.branch || "Main"} | ${e.name}`,
     }));
   }, [storeEntities]);
+
   // Role options
   const roleOptions = [
     { value: Roles.SUPER_ADMIN, label: "Super Admin" },
@@ -251,11 +272,22 @@ const AddEditUser = () => {
     },
   ];
 
+  // Get selected entity labels for display
+  // const getSelectedEntityLabels = useMemo(() => {
+  //   if (!formData.entity_ids || formData.entity_ids.length === 0) return [];
+    
+  //   return formData.entity_ids
+  //     .map((id) => {
+  //       const entity = storeEntities.find((e) => e.uuid === id);
+  //       return entity ? `${entity.branch || "Main"} | ${entity.name}` : id;
+  //     })
+  //     .filter(Boolean);
+  // }, [formData.entity_ids, storeEntities]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header - Fixed at top */}
       <div className="flex-shrink-0 border-b border-border px-6 py-4 flex justify-between items-center bg-card">
-        {/* Header */}
         <div>
           <h3 className="text-lg font-semibold text-text">
             {editing ? "Edit User" : "Add New User"}
@@ -360,20 +392,43 @@ const AddEditUser = () => {
                 disabled={isSubmitting}
               />
             </div>
-            {/* {!editing &&  */}
-              <div className="grid grid-cols-1 gap-4">
-                <Input
-                  type="multi-select"
-                  label="Entity"
-                  value={formData.entity_id || ""}
-                  onChange={handleInputChange("entity_id")}
-                  selectOptions={entityOptions}
-                  selectPlaceholder="Select entity"
-                  prefixIcon={<BuildingIcon size={14} />}
-                  disabled={loading}
-                />
-              </div>
-            {/* } */}
+            
+            {/* Entity Selection - Multi-select */}
+            <div className="grid grid-cols-1 gap-4">
+              <Input
+                type="multi-select"
+                label="Entities"
+                value={formData.entity_ids || []}
+                onChange={handleInputChange("entity_ids")}
+                selectOptions={entityOptions}
+                selectPlaceholder="Select entities"
+                prefixIcon={<BuildingIcon size={14} />}
+                disabled={loading || isSubmitting}
+                error={errors.entity_ids}
+                required
+              />
+              
+              {/* Display selected entities for debugging/visibility */}
+              {editing && formData.entity_ids && formData.entity_ids.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {formData.entity_ids.map((id) => {
+                    const entity = storeEntities.find((e) => e.uuid === id);
+                    return entity ? (
+                      <span
+                        key={id}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-10 text-primary"
+                      >
+                        {entity.branch || "Main"} | {entity.name}
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
+              
+              <p className="text-xs text-text-light mt-1">
+                Select one or more entities this user should have access to
+              </p>
+            </div>
           </div>
 
           {/* Password */}
@@ -448,6 +503,7 @@ const AddEditUser = () => {
           </div>
         </form>
       </div>
+      
       {/* Actions */}
       <div className="flex justify-end gap-3 border-t border-border p-4">
         <Button
