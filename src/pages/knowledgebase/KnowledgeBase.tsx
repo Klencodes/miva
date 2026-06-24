@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
   BookOpen,
@@ -11,9 +11,6 @@ import {
   Settings,
   DollarSign,
   ChevronRight,
-  Copy,
-  Check,
-  ExternalLink,
   Building2,
   CreditCard,
   BarChart3,
@@ -763,13 +760,13 @@ const KnowledgeBase: React.FC = () => {
   };
 
   // ── Copy Link ─────────────────────────────────────────────────────────────
-  const [copied, setCopied] = useState(false);
-  const handleCopyLink = useCallback((articleId: string) => {
-    const url = `${window.location.origin}/knowledge-base/${articleId}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, []);
+//   const [copied, setCopied] = useState(false);
+//   const handleCopyLink = useCallback((articleId: string) => {
+//     const url = `${window.location.origin}/knowledge-base/${articleId}`;
+//     navigator.clipboard.writeText(url);
+//     setCopied(true);
+//     setTimeout(() => setCopied(false), 2000);
+//   }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -828,29 +825,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
                 <h1 className="text-2xl font-bold text-text">{selectedArticle.title}</h1>
                 <p className="text-text-light mt-1">{selectedArticle.description}</p>
-                <div className="flex items-center gap-2 mt-3">
-                  <button
-                    onClick={() => handleCopyLink(selectedArticle.id)}
-                    className="flex items-center gap-1.5 text-xs text-text-light hover:text-primary transition-colors"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy link</span>
-                      </>
-                    )}
-                  </button>
-                  <span className="text-text-light">•</span>
-                  <button className="flex items-center gap-1.5 text-xs text-text-light hover:text-primary transition-colors">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Open in new tab</span>
-                  </button>
-                </div>
+                
               </div>
 
               {/* Article content */}
