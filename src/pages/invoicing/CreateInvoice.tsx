@@ -32,6 +32,7 @@ import InventoryService from "../../core/services/inventory";
 import { eventService } from "../../core/services/events";
 import { useStore } from "../../core/contexts/StoreProvider";
 import CustomerService from "../../core/services/customer";
+import { generateCode } from "../../core/utils/id-generator";
 
 interface FormInvoiceItem {
   id: string;
@@ -179,17 +180,6 @@ const CreateInvoice = () => {
   }, [fetchInventoryItem]);
 
   // Generate invoice number
-  //eslint-disable-next-line
-  const generateInvoiceNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const random = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-    const prefix = entity?.metadata?.invoice_prefix || "INV";
-    return `${prefix}${year}${month}${day}-${random}`;
-  };
-
   // Fetch customers from API
   const fetchCustomers = useCallback(async () => {
     try {
@@ -233,9 +223,9 @@ const CreateInvoice = () => {
 
   useEffect(() => {
     if (!isEditing && !invoiceNumber) {
-      setInvoiceNumber(generateInvoiceNumber());
+      setInvoiceNumber(generateCode(entity?.metadata?.invoice_prefix));
     }
-  }, [isEditing, generateInvoiceNumber, invoiceNumber]);
+  }, [isEditing, generateCode, invoiceNumber]);
 
   // Auto-set due date based on terms
   useEffect(() => {
@@ -562,7 +552,7 @@ const CreateInvoice = () => {
       }
 
       const invoiceData = {
-        number: isEditing ? invoiceNumber : generateInvoiceNumber(),
+        number: isEditing ? invoiceNumber : generateCode(entity?.metadata?.invoice_prefix),
         date: invoiceDate,
         due_date: dueDate || undefined,
         customer: {

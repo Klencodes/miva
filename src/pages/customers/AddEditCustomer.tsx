@@ -72,10 +72,10 @@ const AddEditCustomer = () => {
       let response: any;
       
       if (editing && customer?.uuid) {
-                const saveData = { ...customer, ...formData };
+        const saveData = { ...customer, ...formData };
 
         // Update existing entity
-        response = await CustomerService.updateCustomer(modalData?.uuid, saveData );
+        response = await CustomerService.updateCustomer(customer?.uuid, saveData );
       } else {
         // Create new entity
         response = await CustomerService.createCustomer(formData);
@@ -89,9 +89,8 @@ const AddEditCustomer = () => {
       
       // Close the modal upon success
       modalRef!.close({ success: true }); 
-      } catch (error) {
-        console.error("Error saving customer:", error);
-        alert("An error occurred while saving the customer. Please try again.");
+      } catch (error: any) {
+        toast.error('Error', { description: error?.message || 'An error occurred while saving the customer. Please try again.' });
       } finally {
         setIsSubmitting(false);
       }
@@ -224,7 +223,7 @@ const AddEditCustomer = () => {
       </div>
 
       {/* Actions - Fixed at bottom */}
-        <div className="flex justify-end items-center p-4 border-t border-border mt-auto sticky bottom-0 z-10 bg-card">
+        <div className="flex justify-end items-center p-4 border-t border-border mt-auto sticky bottom-0 z-10  gap-x-4">
         <Button
           type="button"
           variant="outline"

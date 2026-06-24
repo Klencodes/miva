@@ -34,6 +34,7 @@ import { eventService } from "../../core/services/events";
 import { DashboardStats, Entity } from "../../core/types";
 import { Input, Loader } from "../../components/common";
 import UserService from "../../core/services/user";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 
 // ─── Color Palette ──────────────────────────────────────────────────────────
 const COLORS = {
@@ -151,6 +152,7 @@ const Dashboard: React.FC = () => {
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
   const [loadingEntities, setLoadingEntities] = useState(false);
 
+  usePageTitle("Insights");
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
     end: Date | null;
@@ -194,32 +196,38 @@ const Dashboard: React.FC = () => {
 
   // ── Fetch Entities ────────────────────────────────────────────────────────
   const fetchEntities = useCallback(async () => {
-    setLoadingEntities(true);
-    try {
-      const res = await UserService.getMyEntities();
-      const entityList: Entity[] = res?.results?.entities || [];
+  setLoadingEntities(true);
+  try {
+    const res = await UserService.getMyEntities();
+    const entityList: Entity[] = res?.results || [];
+    
+    // Separate "ALL_ENTITIES" from the rest
+    const allEntities = entityList.filter(e => e.uuid === "ALL_ENTITIES");
+    const otherEntities = entityList.filter(e => e.uuid !== "ALL_ENTITIES");
+    
+    // Sort other entities alphabetically by name
+    const sortedOthers = otherEntities.sort((a, b) => 
+      (a.name || '').localeCompare(b.name || '')
+    );
+    
+    // Combine: "ALL_ENTITIES" first, then the rest sorted alphabetically
+    const sortedEntities = [...allEntities, ...sortedOthers];
 
-      // Filter out ALL_ENTITIES
-      // const filteredEntities = entityList.filter(
-      //   (e: Entity) => e.uuid !== "ALL_ENTITIES"
-      // );
+    setEntities(sortedEntities);
 
-      setEntities(entityList);
-
-      // Set selected entity to current entity or first one
-      if (entity && entityList.some((e) => e.uuid === entity.uuid)) {
-        setSelectedEntityId(entity.uuid);
-      } else if (entityList.length > 0) {
-        setSelectedEntityId(entityList[0].uuid);
-      }
-    } catch (err) {
-      toast.error("Error", { description: "Failed to load entities" });
-    } finally {
-      setLoadingEntities(false);
+    // Set selected entity to current entity or first one
+    if (entity && sortedEntities.some((e) => e.uuid === entity.uuid)) {
+      setSelectedEntityId(entity.uuid);
+    } else if (sortedEntities.length > 0) {
+      setSelectedEntityId(sortedEntities[0].uuid);
     }
-  }, [entity]);
+  } catch (err) {
+    toast.error("Error", { description: "Failed to load entities" });
+  } finally {
+    setLoadingEntities(false);
+  }
+}, [entity]);;
 
-  // ── Fetch Dashboard Data ──────────────────────────────────────────────────
   // ── Fetch Dashboard Data ──────────────────────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
     if (loadingEntities) return;
@@ -413,9 +421,9 @@ const Dashboard: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-text">Business Insigts</h1>
           <p className="text-text-light text-sm">
-            Welcome back, {user?.name || "User"}! Here's your business overview.
+            Welcome back, {user?.first_name || "User"}! Here's your business overview.
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">

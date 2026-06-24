@@ -3,7 +3,7 @@ import { useModal } from "../../core/hooks/useModal";
 import { Button, Input } from "../../components/common";
 import { countries } from "../auth/countries";
 import { toast } from "sonner";
-import { X, Building, Mail, Phone, MapPin, Save, Users } from "lucide-react";
+import { X, Building, Mail, MapPin, Save, Users } from "lucide-react";
 import SupplierService from "../../core/services/supplier";
 
 // FormData matches Supplier but with all fields required for the form
@@ -502,7 +502,6 @@ const AddEditSupplier = () => {
                       : ""
                   }
                   placeholder="987654321"
-                  prefixIcon={<Phone className="w-4 h-4" />}
                 />
               </div>
             </div>

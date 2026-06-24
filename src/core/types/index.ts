@@ -1,8 +1,11 @@
 export interface IResponse {
   message: string;
-  code: string;
+  code?: string;
   success: boolean;
   results: any;
+  count?: number;
+  next?: string;
+  previous?: string;
 }
 
 /** ==========================================================================================
@@ -97,6 +100,8 @@ export interface InvoiceItem {
   type: InvItemType;
   unit: InvItemUnitType;
   quantity: number;
+  part_number?: string;
+
   specs?: {
     sae?: string;
     pressure?: number;
@@ -607,4 +612,18 @@ export interface ExpenseFormData {
   vendor_contact: string;
   status: string;
   receipt?: File | null;
+}
+export interface ExpenseFilters {
+  search?: string;
+  category?: string;
+  status?: string;
+  payment_method?: string;
+  vendor?: string;
+  start_date?: string;
+  end_date?: string;
+  entity_id?: string;
+  page?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
 }

@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { DateFormatEnums, formatDate } from "../../core/utils/date-format";
 import { Button, Input } from "../../components/common";
 import activityLogService from "../../core/services/activityLog";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -580,7 +581,7 @@ const Notifications: React.FC = () => {
     total: 0,
     totalPages: 0,
   });
-
+  usePageTitle("Notifications");
   // Fetch activity logs as notifications
   const fetchNotifications = useCallback(async () => {
     setLoading(true);

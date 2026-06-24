@@ -4,8 +4,9 @@ import AuthService from "../../core/services/auth";
 import { Button, Input } from "../../components/common";
 import { Lock, Mail } from "lucide-react";
 import { useStore } from "../../core/contexts/StoreProvider";
-import { setStoredItem, USER_KEY } from "../../core/hooks/useStore";
+import { ENTITY_KEY, setStoredItem, USER_KEY } from "../../core/hooks/useStore";
 import { UserRole } from "../../core/types";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 
 interface LoginForm {
   email: string;
@@ -42,7 +43,7 @@ const Login: React.FC = () => {
   const [errors, setErrors] = useState<LoginErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
-
+  usePageTitle("Login");
   const navigate = useNavigate();
 
   // ✅ Single useStore call — reads from the shared singleton context
@@ -107,10 +108,11 @@ const Login: React.FC = () => {
           redirectPath = "/dashboard";
         }
         // Check if user is admin
-        else if (userRole === "admin") {
+        else if (userRole === "admin" || userRole === "super_admin") {
           if (hasEntities) {
             // Admin with entities goes to dashboard
             setEntity(user.entities[0])
+            // setStoredItem(ENTITY_KEY, user.entities[0]);
             redirectPath = "/dashboard";
           } else {
             // Admin without entities goes to create organisation

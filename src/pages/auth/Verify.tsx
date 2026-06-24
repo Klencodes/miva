@@ -16,6 +16,7 @@ import {
   USER_KEY,
 } from "../../core/hooks/useStore";
 import { IUser } from "../../core/types";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 
 const Verify = () => {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
@@ -27,7 +28,7 @@ const Verify = () => {
   const [success, setSuccess] = useState("");
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
-
+  usePageTitle("Verify Account");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
   const { setUser, checkAdminExists } = useStore();

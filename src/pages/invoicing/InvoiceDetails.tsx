@@ -30,6 +30,8 @@ import { toast } from "sonner";
 import DeleteModal from "./DeleteInvoice";
 import { useStore } from "../../core/contexts/StoreProvider";
 import SendInvoiceModal from "./SendInvoiceModal";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
+import { generateCode } from "../../core/utils/id-generator";
 
 const InvoiceDetails = () => {
   const navigate = useNavigate();
@@ -41,7 +43,7 @@ const InvoiceDetails = () => {
   // const [sending, setSending] = useState(false);
   const { openModal } = useModal();
   const { entity } = useStore();
-
+  usePageTitle("Invoice Details");
   // Get watermark text from entity metadata
   const paymentWatermarkText =
     invoice?.payment_status === "paid"
@@ -209,7 +211,7 @@ const InvoiceDetails = () => {
         printWindow.close();
       }, 300);
     };
-    // eslint-disable-next-line 
+    // eslint-disable-next-line
   }, [invoice, watermarkText]);
 
   const handleDownloadPDF = useCallback(async () => {
@@ -253,6 +255,7 @@ const InvoiceDetails = () => {
         items: invoice.items.map((item) => ({
           id: item.id,
           name: item.name,
+          part_number: item.part_number,
           type: item.type,
           unit: item.unit,
           quantity: item.quantity,
@@ -260,13 +263,14 @@ const InvoiceDetails = () => {
           cost: item.cost || 0,
           specs: item.specs || {},
         })),
+        number: generateCode(entity?.metadata?.invoice_prefix),
         date: new Date().toISOString(),
         discount_type: invoice.discount_type || "percentage",
         discount_rate: invoice.discount_rate || 0,
         vat_rate: invoice.vat_rate || 12.5,
         notes: `Duplicate of ${invoice.number}${invoice.notes ? ` - ${invoice.notes}` : ""}`,
         terms: invoice.terms || "Due on Receipt",
-        currency: "{invoice.currency}",
+        currency: invoice.currency || "GHC",
         status: "draft" as InvStatus,
         payments: [],
         amount_paid: 0,
@@ -411,18 +415,6 @@ const InvoiceDetails = () => {
     return "Unpaid";
   };
 
-  // const getPaymentMethodIcon = (method: string) => {
-  //   const icons: Record<string, { icon: any; color: string }> = {
-  //     Cash: { icon: CreditCard, color: "text-success" },
-  //     MoMo: { icon: Smartphone, color: "text-purple-600" },
-  //     Bank: { icon: Building, color: "text-blue-600" },
-  //     Credit: { icon: CreditCard, color: "text-amber-600" },
-  //   };
-  //   const config = icons[method] || icons.Cash;
-  //   const Icon = config.icon;
-  //   return <Icon className={`w-4 h-4 ${config.color}`} />;
-  // };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -501,70 +493,72 @@ const InvoiceDetails = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {canMakePayment && (
-                <Button onClick={handleOpenPaymentModal}>
-                  <Plus className="w-3.5 h-3.5" />
-                  Make Payment
-                </Button>
-              )}
+            {invoice.status !== "cancelled" && (
+              <div className="flex flex-wrap gap-1.5">
+                {canMakePayment && (
+                  <Button onClick={handleOpenPaymentModal}>
+                    <Plus className="w-3 h-3" />
+                    Make Payment
+                  </Button>
+                )}
 
-              {invoice.customer.email && (
+                {invoice.customer.email && (
+                  <Button
+                    onClick={handleSendEmail}
+                    variant="ghost"
+                    // disabled={sending}
+                    className="px-3 py-1.5 text-xs"
+                  >
+                    <Send className="w-3 h-3" />
+                    {"Email"}
+                  </Button>
+                )}
+
                 <Button
-                  onClick={handleSendEmail}
+                  onClick={handlePrint}
                   variant="ghost"
-                  // disabled={sending}
                   className="px-3 py-1.5 text-xs"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  { "Email"}
+                  <Printer className="w-3 h-3" />
                 </Button>
-              )}
 
-              <Button
-                onClick={handlePrint}
-                variant="ghost"
-                className="px-3 py-1.5 text-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-              </Button>
-
-              <Button
-                onClick={handleDownloadPDF}
-                variant="ghost"
-                className="px-3 py-1.5 text-xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={handleDuplicate}
-                className="px-3 py-1.5 text-xs"
-              >
-                <Copy className="w-3.5 h-3.5" />
-              </Button>
-
-              {canEdit && (
                 <Button
-                  variant="info"
-                  onClick={handleEdit}
+                  onClick={handleDownloadPDF}
+                  variant="ghost"
                   className="px-3 py-1.5 text-xs"
                 >
-                  <Edit className="w-3.5 h-3.5" />
+                  <Download className="w-3 h-3" />
                 </Button>
-              )}
 
-              {canDelete && (
                 <Button
-                  onClick={handleOpenDeleteModal}
-                  variant="danger"
+                  variant="ghost"
+                  onClick={handleDuplicate}
                   className="px-3 py-1.5 text-xs"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Copy className="w-3 h-3" />
                 </Button>
-              )}
-            </div>
+
+                {canEdit && (
+                  <Button
+                    variant="info"
+                    onClick={handleEdit}
+                    className="px-3 py-1.5 text-xs"
+                  >
+                    <Edit className="w-3 h-3" />
+                  </Button>
+                )}
+
+                {canDelete && (
+                  <Button
+                    onClick={handleOpenDeleteModal}
+                    variant="danger"
+                    className="px-3 py-1.5 text-xs"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -585,9 +579,9 @@ const InvoiceDetails = () => {
           <div className="p-6 print:p-8 relative z-10">
             <div className="max-w-4xl mx-auto">
               {/* Invoice Header */}
-              <div className="flex flex-wrap justify-between items-start gap-4 pb-6 border-b-2 border-border">
+              <div className="flex flex-wrap justify-between items-start gap-4 pb-2 border-b-2 border-border">
                 <div>
-                  <h2 className="text-3xl font-bold text-text tracking-tight">
+                  <h2 className="text-2xl font-bold text-text tracking-tight">
                     INVOICE
                   </h2>
                   <div className="mt-1">
@@ -619,11 +613,11 @@ const InvoiceDetails = () => {
               </div>
 
               {/* Company, Customer Side by Side */}
-              <div className="flex flex-col md:flex-row justify-between gap-6 md:gap-8 py-6 border-b border-border print:flex-row print:gap-8">
+              <div className="flex flex-col md:flex-row justify-between gap-6 md:gap-8 py-4 border-b border-border print:flex-row print:gap-8">
                 {/* Company Info - Left */}
                 <div className="flex-1">
-                  <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Building2 className="w-3.5 h-3.5" />
+                  <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Building2 className="w-3 h-3" />
                     Company
                   </h3>
                   <div className="space-y-1.5">
@@ -632,20 +626,20 @@ const InvoiceDetails = () => {
                     </p>
                     {entity?.address && (
                       <p className="text-text-light text-sm flex items-start gap-2">
-                        <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                        <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
                         <span>{entity.address}</span>
                       </p>
                     )}
                     <div className="space-y-1 text-sm text-text-light">
                       {entity?.email && (
                         <p className="flex items-center gap-2">
-                          <Mail className="w-3.5 h-3.5" />
+                          <Mail className="w-3 h-3" />
                           {entity.email}
                         </p>
                       )}
                       {entity?.phone && (
                         <p className="flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5" />
+                          <Phone className="w-3 h-3" />
                           {entity.phone}
                         </p>
                       )}
@@ -654,11 +648,11 @@ const InvoiceDetails = () => {
                 </div>
 
                 {/* Bill To - Right */}
-                <div className="flex-1 flex flex-col items-end">
+                <div className="flex-1 flex flex-col">
                   <div className="max-w-md w-full">
                     <h3 className="text-xs font-semibold text-text-light uppercase tracking-wider mb-3 flex items-center justify-end gap-2">
                       <span>Bill To</span>
-                      <MapPin className="w-3.5 h-3.5" />
+                      <MapPin className="w-3 h-3" />
                     </h3>
                     <div className="space-y-1.5 text-right">
                       <p className="font-semibold text-text">
@@ -673,19 +667,19 @@ const InvoiceDetails = () => {
                         {invoice.customer.email && (
                           <p className="flex items-center justify-end gap-2">
                             <span>{invoice.customer.email}</span>
-                            <Mail className="w-3.5 h-3.5" />
+                            <Mail className="w-3 h-3" />
                           </p>
                         )}
                         {invoice.customer.phone && (
                           <p className="flex items-center justify-end gap-2">
                             <span>{invoice.customer.phone}</span>
-                            <Phone className="w-3.5 h-3.5" />
+                            <Phone className="w-3 h-3" />
                           </p>
                         )}
                         {invoice.customer.tax_id && (
                           <p className="text-text-light text-xs flex items-center justify-end gap-2">
                             <span>Tax ID: {invoice.customer.tax_id}</span>
-                            <Hash className="w-3.5 h-3.5" />
+                            <Hash className="w-3 h-3" />
                           </p>
                         )}
                       </div>
@@ -844,7 +838,7 @@ const InvoiceDetails = () => {
                 <>
                   {invoice.due_date && (
                     <div className="flex items-center gap-2 text-text-light">
-                      <Calendar className="w-3.5 h-3.5" />
+                      <Calendar className="w-3 h-3" />
                       <span>
                         Due:{" "}
                         {formatDate(

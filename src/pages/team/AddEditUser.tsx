@@ -54,6 +54,7 @@ const AddEditUser = () => {
     phone: "",
     address: "",
     role: Roles.SALES,
+    entities: [],
     permissions: { ...defaultPermissions },
     is_active: true,
     verified: false,
@@ -67,6 +68,7 @@ const AddEditUser = () => {
     if (user) {
       setFormData({
         ...user,
+        entity_id: user.entities?.map((e) => e.uuid) || [],
         permissions: user.permissions || { ...defaultPermissions },
         is_active: user.is_active !== undefined ? user.is_active : true,
       });
@@ -137,8 +139,8 @@ const AddEditUser = () => {
             is_active: formData.is_active ?? true,
             verified: formData.verified ?? false,
           };
-          const result = await UserService.createUser(createData);
-          if (result.success) {
+          const response = await UserService.createUser(createData);
+          if (response.success) {
             modalData?.close({ action: "add" });
           }
         }

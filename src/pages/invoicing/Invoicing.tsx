@@ -1,27 +1,48 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { SelectOption } from '../../components/common/Input';
 import { Button, DataTable } from '../../components/common';
+import { ColumnDef } from '../../components/common/Datatable';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { DiscountType, InvItemType, InvItemUnitType, Invoice, InvStatus } from '../../core/types';
+import { Invoice } from '../../core/types';
 import InvoiceService from "../../core/services/invoice";
 import { eventService } from '../../core/services/events';
+import { usePageTitle } from '../../core/hooks/usePageTitle';
+import ConfirmModal from '../../components/common/ConfirmModal';
+import { useModal } from '../../core/hooks/useModal';
+import { generateCode } from '../../core/utils/id-generator';
+import { useStore } from '../../core/contexts/StoreProvider';
+import { DateFormatEnums } from '../../core/utils/date-format';
 
 const Invoicing = () => {
   const navigate = useNavigate();
+  usePageTitle("Invoices");
+  const { openModal } = useModal();
+  const { entity } = useStore();
 
-  // State management
+  // ── State ──────────────────────────────────────────────────────────────────
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPayment, setFilterPayment] = useState('all');
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [selectedSort, setSelectedSort] = useState('date_desc');
-  const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
-  const limit = 10;
-  // Helper function to safely get payment method
+  const [refreshKey, setRefreshKey] = useState(0);
+  const LIMIT = 10;
+
+  // ── Refs to always have latest values without re-creating fetch ────────────
+  const searchRef = useRef(searchQuery);
+  const filterStatusRef = useRef(filterStatus);
+  const filterPaymentRef = useRef(filterPayment);
+  const pageRef = useRef(page);
+
+  useEffect(() => { searchRef.current = searchQuery; }, [searchQuery]);
+  useEffect(() => { filterStatusRef.current = filterStatus; }, [filterStatus]);
+  useEffect(() => { filterPaymentRef.current = filterPayment; }, [filterPayment]);
+  useEffect(() => { pageRef.current = page; }, [page]);
+
+  // ── Helper functions ──────────────────────────────────────────────────────
   const getPaymentMethod = (invoice: Invoice): string => {
     if (!invoice) return 'Cash';
     if (invoice.payments && Array.isArray(invoice.payments) && invoice.payments.length > 0) {
@@ -30,7 +51,6 @@ const Invoicing = () => {
     return 'Cash';
   };
 
-  // Helper function to safely get payment status
   const getPaymentStatus = (invoice: Invoice): string => {
     if (!invoice) return 'Unpaid';
     if (invoice.remaining_balance <= 0) return 'Paid';
@@ -38,101 +58,6 @@ const Invoicing = () => {
     return 'Unpaid';
   };
 
-  // Fetch invoices from API
-  const fetchInvoices = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Build query params
-      const params: any = {
-        page,
-        limit,
-      };
-
-      if (searchTerm) {
-        params.search = searchTerm;
-      }
-
-      if (selectedFilter !== 'all') {
-        params.status = selectedFilter;
-      }
-
-      if (dateRange.start) {
-        params.date_from = dateRange.start;
-      }
-
-      if (dateRange.end) {
-        params.date_to = dateRange.end;
-      }
-
-      const response = await InvoiceService.getInvoices(params);
-      
-      if (response.success) {
-        const invoiceData = response.results?.invoices || [];
-        setInvoices(invoiceData);
-        setCount(response.results?.pagination?.total || 0);
-      }
-    } catch (error: any) {
-      console.error('Error fetching invoices:', error);
-      toast.error('Error', {
-        description: error.message || 'Failed to load invoices'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, searchTerm, selectedFilter, dateRange]);
-
-  // Load invoices on mount and when dependencies change
-  useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices]);
-
-  // Listen for refresh events
-  useEffect(() => {
-    const handleRefresh = () => {
-      fetchInvoices();
-    };
-
-    eventService.onRefresh(handleRefresh);
-
-    return () => {
-      eventService.offRefresh(handleRefresh);
-    };
-  }, [fetchInvoices]);
-
-  // Filter options
-  const statusOptions: SelectOption[] = [
-    { value: 'all', label: 'All Statuses' },
-    { value: 'invoiced', label: 'Invoiced' },
-    { value: 'quoted', label: 'Quoted' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'partially', label: 'Partially Paid' },
-    { value: 'overdue', label: 'Overdue' },
-  ];
-
-  const paymentStatusOptions: SelectOption[] = [
-    { value: 'all', label: 'All Payments' },
-    { value: 'Paid', label: 'Paid' },
-    { value: 'Partial', label: 'Partial' },
-    { value: 'Unpaid', label: 'Unpaid' },
-  ];
-
-  const sortOptions: SelectOption[] = [
-    { value: 'date_desc', label: 'Newest First' },
-    { value: 'date_asc', label: 'Oldest First' },
-    { value: 'total_desc', label: 'Highest Total' },
-    { value: 'total_asc', label: 'Lowest Total' },
-    { value: 'customer_asc', label: 'Customer A-Z' },
-    { value: 'customer_desc', label: 'Customer Z-A' },
-    { value: 'status_asc', label: 'Status A-Z' },
-    { value: 'status_desc', label: 'Status Z-A' },
-    { value: 'paymentStatus_asc', label: 'Payment Status A-Z' },
-    { value: 'paymentStatus_desc', label: 'Payment Status Z-A' },
-  ];
-
-  // Helper functions
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       invoiced: 'bg-emerald-100 text-emerald-700',
@@ -165,122 +90,146 @@ const Invoicing = () => {
     return icons[method] || '💰';
   };
 
-  // Sort function
-  const handleSort = useCallback((sortValue: string) => {
-    if (!sortValue) return;
-    setSelectedSort(sortValue);
-    setPage(1);
+  // ── Fetch (stable, never recreated) ───────────────────────────────────────
+  const fetchInvoices = useRef(async () => {
+    try {
+      setLoading(true);
+      const params: any = {
+        page: pageRef.current,
+        limit: LIMIT,
+      };
+
+      if (searchRef.current) {
+        params.search = searchRef.current;
+      }
+
+      if (filterStatusRef.current !== 'all') {
+        params.status = filterStatusRef.current;
+      }
+
+      if (filterPaymentRef.current !== 'all') {
+        params.payment_status = filterPaymentRef.current;
+      }
+
+      const response = await InvoiceService.getInvoices(params);
+
+      if (response.success) {
+        setInvoices(response.results || []);
+        setCount(response.count || 0);
+      } else {
+        toast.error('Error', { description: response.message || 'Failed to load invoices' });
+      }
+    } catch (error: any) {
+      console.error('Error fetching invoices:', error);
+      toast.error('Error', { description: error.message || 'Failed to load invoices' });
+    } finally {
+      setLoading(false);
+    }
+  }).current;
+
+  // ── Trigger fetch when page / search / filter / refreshKey change ──────────
+  useEffect(() => {
+    fetchInvoices();
+    //eslint-disable-next-line
+  }, [page, searchQuery, filterStatus, filterPayment, refreshKey]);
+
+  // ── Listen for refresh events ──────────────────────────────────────────────
+  useEffect(() => {
+    const handleRefresh = () => setRefreshKey(prev => prev + 1);
+    eventService.onRefresh(handleRefresh);
+    return () => eventService.offRefresh(handleRefresh);
   }, []);
 
-  // Filter and search invoices (frontend filtering)
-  const filteredInvoices = useMemo(() => {
-    let result = [...invoices];
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  const handleSearch = (query: string) => {
+    searchRef.current = query;
+    pageRef.current = 1;
+    setSearchQuery(query);
+  };
 
-    // Apply status filter
-    if (selectedFilter !== 'all') {
-      result = result.filter(inv => 
-        inv.status === selectedFilter
-      );
+  const handleFilter = (filter: string) => {
+    // Determine if filter is for status or payment
+    const statusValues = ['all', 'invoiced', 'quoted', 'draft', 'cancelled', 'paid', 'partially', 'overdue'];
+    const paymentValues = ['all', 'Paid', 'Partial', 'Unpaid'];
+
+    if (statusValues.includes(filter)) {
+      filterStatusRef.current = filter;
+      setFilterStatus(filter);
+    } else if (paymentValues.includes(filter)) {
+      filterPaymentRef.current = filter;
+      setFilterPayment(filter);
     }
 
-    // Apply search
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      result = result.filter(inv =>
-        inv.number.toLowerCase().includes(search) ||
-        inv.customer?.name?.toLowerCase().includes(search) ||
-        inv.customer?.email?.toLowerCase().includes(search) ||
-        inv.number.toLowerCase().includes(search)
-      );
-    }
+    pageRef.current = 1;
+    setPage(1);
+  };
 
-    // Apply date range filter
-    if (dateRange.start) {
-      result = result.filter(inv => new Date(inv.date) >= dateRange.start!);
-    }
-    if (dateRange.end) {
-      result = result.filter(inv => new Date(inv.date) <= dateRange.end!);
-    }
-
-    return result;
-  }, [invoices, selectedFilter, searchTerm, dateRange]);
-
-  // Sort the filtered invoices
-  const sortedInvoices = useMemo(() => {
-    const result = [...filteredInvoices];
-    
-    if (!selectedSort) return result;
-
-    const [field, direction] = selectedSort.split('_');
+  const handleSort = (sortValue: string) => {
+    if (!sortValue) return;
+    const [field, direction] = sortValue.split('_');
     const dir = direction as 'asc' | 'desc';
 
-    return result.sort((a, b) => {
-      let cmp = 0;
-      
-      switch (field) {
-        case 'number':
-          cmp = a.number.localeCompare(b.number);
-          break;
-        case 'customer':
-          cmp = (a.customer?.name || '').localeCompare(b.customer?.name || '');
-          break;
-        case 'date':
-          cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
-          break;
-        case 'total':
-          cmp = a.total - b.total;
-          break;
-        case 'status':
-          cmp = a.status.localeCompare(b.status);
-          break;
-        case 'paymentMethod': {
-          const methodA = getPaymentMethod(a);
-          const methodB = getPaymentMethod(b);
-          cmp = methodA.localeCompare(methodB);
-          break;
+    setInvoices((prev) =>
+      [...prev].sort((a, b) => {
+        let cmp = 0;
+
+        switch (field) {
+          case 'number':
+            cmp = a.number.localeCompare(b.number);
+            break;
+          case 'customer':
+            cmp = (a.customer?.name || '').localeCompare(b.customer?.name || '');
+            break;
+          case 'date':
+            cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
+            break;
+          case 'total':
+            cmp = a.total - b.total;
+            break;
+          case 'status':
+            cmp = a.status.localeCompare(b.status);
+            break;
+          case 'paymentMethod': {
+            const methodA = getPaymentMethod(a);
+            const methodB = getPaymentMethod(b);
+            cmp = methodA.localeCompare(methodB);
+            break;
+          }
+          case 'paymentStatus': {
+            const statusA = getPaymentStatus(a);
+            const statusB = getPaymentStatus(b);
+            cmp = statusA.localeCompare(statusB);
+            break;
+          }
+          default:
+            cmp = 0;
         }
-        case 'paymentStatus': {
-          const statusA = getPaymentStatus(a);
-          const statusB = getPaymentStatus(b);
-          cmp = statusA.localeCompare(statusB);
-          break;
-        }
-        default:
-          cmp = 0;
-      }
-      
-      return dir === 'asc' ? cmp : -cmp;
-    });
-  }, [filteredInvoices, selectedSort]);
 
-  // Update count when filtered results change
-  useEffect(() => {
-    setCount(sortedInvoices.length);
-  }, [sortedInvoices.length]);
+        return dir === 'asc' ? cmp : -cmp;
+      })
+    );
+  };
 
-  // Get paginated data
-  const paginatedData = useMemo(() => {
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    return sortedInvoices.slice(start, end);
-  }, [sortedInvoices, page, limit]);
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
-  // Handler functions
-  const onNewInvoice = useCallback(() => {
+  // ── Navigation handlers ──────────────────────────────────────────────────
+  const onNewInvoice = () => {
     navigate('/invoices/create');
-  }, [navigate]);
+  };
 
-  const onViewInvoice = useCallback((invoice: Invoice) => {
-    navigate(`/invoices/${invoice.uuid || invoice.uuid}`, { state: { invoice } });
-  }, [navigate]);
+  const onViewInvoice = (invoice: Invoice) => {
+    navigate(`/invoices/${invoice.uuid}`, { state: { invoice } });
+  };
 
-  const onPrintInvoice = useCallback((invoice: Invoice) => {
-    navigate(`/invoices/${invoice.uuid || invoice.uuid}`, { state: { invoice, print: true } });
-  }, [navigate]);
+  const onPrintInvoice = (invoice: Invoice) => {
+    navigate(`/invoices/${invoice.uuid}`, { state: { invoice, print: true } });
+  };
 
-  const onEditInvoice = useCallback((invoice: Invoice) => {
-    navigate(`/invoices/edit/${invoice.uuid || invoice.uuid}`, { 
-      state: { 
+  const onEditInvoice = (invoice: Invoice) => {
+    navigate(`/invoices/edit/${invoice.uuid}`, {
+      state: {
         invoice: {
           ...invoice,
           date: invoice.date,
@@ -288,65 +237,71 @@ const Invoicing = () => {
           createdAt: invoice.created_at,
           updatedAt: invoice.updated_at,
         }
-      } 
+      }
     });
-  }, [navigate]);
+  };
 
-  const onCopyInvoice = useCallback(async (invoice: Invoice) => {
+  const onCopyInvoice = async (invoice: Invoice) => {
+    if (!invoice) return;
+
     try {
-      // Create a copy of the invoice
       const copyData = {
         customer: {
-          name: invoice.customer?.name || '',
-          email: invoice.customer?.email || '',
-          phone: invoice.customer?.phone || '',
-          address: invoice.customer?.address || '',
+          name: invoice.customer.name,
+          email: invoice.customer.email || "",
+          phone: invoice.customer.phone || "",
+          address: invoice.customer.address || "",
+          tax_id: invoice.customer.tax_id || "",
         },
-        items: invoice.items.map(item => ({
+        items: invoice.items.map((item) => ({
           id: item.id,
-          name: item.description || item.name || '',
+          name: item.name,
+          part_number: item.part_number,
+          type: item.type,
+          unit: item.unit,
           quantity: item.quantity,
           price: item.price,
-          cost: 0,
-          unit: 'pieces' as InvItemUnitType,
-          type: 'other' as InvItemType,
+          cost: item.cost || 0,
+          specs: item.specs || {},
         })),
+        number: generateCode(entity?.metadata?.invoice_prefix),
         date: new Date().toISOString(),
-        discount_type: 'percentage' as DiscountType,
-        discount_rate: 0,
+        discount_type: invoice.discount_type || "percentage",
+        discount_rate: invoice.discount_rate || 0,
         vat_rate: invoice.vat_rate || 12.5,
-        notes: `Duplicate of ${invoice.number}${invoice.notes ? ` - ${invoice.notes}` : ''}`,
-        terms: invoice.terms || 'Due on Receipt',
-        currency: 'GHS',
-        status: 'draft' as InvStatus,
-        payment_method: getPaymentMethod(invoice),
+        notes: `Duplicate of ${invoice.number}${invoice.notes ? ` - ${invoice.notes}` : ""}`,
+        terms: invoice.terms || "Due on Receipt",
+        currency: invoice.currency || "GHC",
+        status: "draft" as any,
+        payments: [],
+        amount_paid: 0,
       };
 
       const response = await InvoiceService.createInvoice(copyData);
-      
+
       if (response.success) {
-        toast.success('Success', {
-          description: `Invoice ${invoice.number} duplicated successfully`
+        toast.success("Success", {
+          description: `Invoice ${invoice.number} duplicated successfully`,
         });
-        fetchInvoices(); // Refresh the list
+        navigate(`/invoices/${response.results.invoice.uuid}`);
       }
     } catch (error: any) {
-      console.error('Error copying invoice:', error);
-      toast.error('Error', {
-        description: error.message || 'Failed to duplicate invoice'
+      console.error("Error duplicating invoice:", error);
+      toast.error("Error", {
+        description: error.message || "Failed to duplicate invoice",
       });
     }
-  }, [fetchInvoices]);
+  };
 
-  const onMarkAsPaid = useCallback(async (invoiceId: string) => {
+  const onMarkAsPaid = async (invoiceId: string) => {
     try {
       const response = await InvoiceService.markAsPaid(invoiceId);
-      
+
       if (response.success) {
         toast.success('Success', {
           description: 'Invoice marked as paid successfully'
         });
-        fetchInvoices(); // Refresh the list
+        fetchInvoices();
       }
     } catch (error: any) {
       console.error('Error marking invoice as paid:', error);
@@ -354,103 +309,102 @@ const Invoicing = () => {
         description: error.message || 'Failed to mark invoice as paid'
       });
     }
-  }, [fetchInvoices]);
+  };
 
-  const onCancelInvoice = useCallback(async (invoiceId: string) => {
-    if (!window.confirm('Are you sure you want to cancel this invoice?')) return;
-    
+  const onCancelInvoice = async (invoiceId: string) => {
     try {
-      const response = await InvoiceService.cancelInvoice(invoiceId);
-      
-      if (response.success) {
-        toast.success('Success', {
-          description: 'Invoice cancelled successfully'
-        });
-        fetchInvoices(); // Refresh the list
+      const result = await openModal(ConfirmModal, {
+        data: {
+          title: 'Cancel Invoice',
+          message: 'Are you sure you want to cancel this invoice?',
+          confirmText: 'Cancel Invoice',
+          variant: 'warning',
+        },
+      });
+
+      if (result?.confirmed) {
+        const response = await InvoiceService.cancelInvoice(invoiceId);
+
+        if (response.success) {
+          toast.success('Success', {
+            description: 'Invoice cancelled successfully',
+          });
+          fetchInvoices();
+        }
       }
     } catch (error: any) {
       console.error('Error cancelling invoice:', error);
       toast.error('Error', {
-        description: error.message || 'Failed to cancel invoice'
+        description: error.message || 'Failed to cancel invoice',
       });
     }
-  }, [fetchInvoices]);
+  };
 
-  const onDeleteInvoice = useCallback(async (invoiceId: string) => {
-    if (!window.confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) return;
-    
+  const onDeleteInvoice = async (invoiceId: string) => {
     try {
-      const response = await InvoiceService.deleteInvoice(invoiceId);
-      
-      if (response.success) {
-        toast.success('Success', {
-          description: 'Invoice deleted successfully'
-        });
-        fetchInvoices(); // Refresh the list
+      const result = await openModal(ConfirmModal, {
+        data: {
+          title: 'Delete Invoice',
+          message: 'Are you sure you want to delete this invoice? This action cannot be undone.',
+          confirmText: 'Delete',
+          variant: 'danger',
+        },
+      });
+
+      if (result?.confirmed) {
+        const response = await InvoiceService.deleteInvoice(invoiceId);
+
+        if (response.success) {
+          toast.success('Success', {
+            description: 'Invoice deleted successfully',
+          });
+          fetchInvoices();
+        }
       }
     } catch (error: any) {
       console.error('Error deleting invoice:', error);
       toast.error('Error', {
-        description: error.message || 'Failed to delete invoice'
+        description: error.message || 'Failed to delete invoice',
       });
     }
-  }, [fetchInvoices]);
+  };
 
-  const onSearch = useCallback((term: string) => {
-    setSearchTerm(term);
-    setPage(1);
-  }, []);
-
-  const onFilter = useCallback((filter: string) => {
-    setSelectedFilter(filter);
-    setPage(1);
-  }, []);
-
-  const onPageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
-
-  const onDateRangeChange = useCallback((start?: Date, end?: Date) => {
-    setDateRange({ start, end });
-    setPage(1);
-  }, []);
-
-  // Table columns definition
-  const columns = [
+  // ── Column definitions ─────────────────────────────────────────────────────
+  const columns: ColumnDef[] = [
     {
-      header: 'Invoice #',
-      value: (item: Invoice) => item.number,
-      type: 'column' as const,
-      bold: true,
+      header: 'INVOICE #',
       sortable: true,
       sortField: 'number',
-      onClick: (item: Invoice) => onViewInvoice(item),
+      value: (item: Invoice) => item.number,
+      type: 'column',
+      bold: true,
+      link: (item: Invoice) => `/invoices/${item.uuid}`,
     },
     {
-      header: 'Customer',
-      value: (item: Invoice) => item.customer?.name || "Walk-In",
-      type: 'column' as const,
+      header: 'CUSTOMER',
       sortable: true,
-      sortField: 'customer'
+      sortField: 'customer',
+      value: (item: Invoice) => item.customer?.name || "Walk-In",
+      type: 'column',
     },
     {
-      header: 'Date',
-      value: (item: Invoice) => item.date,
-      type: 'date' as const,
+      header: 'DATE',
       sortable: true,
       sortField: 'date',
-      format: 'MMM dd, yyyy',
+      value: (item: Invoice) => item.date,
+      type: 'date',
+      format: DateFormatEnums.MEDIUM_DATE,
     },
     {
-      header: 'Total',
-      value: (item: Invoice) => `GHS ${item.total.toFixed(2)}`,
-      type: 'column' as const,
+      header: 'TOTAL',
       sortable: true,
-      sortField: "total",
+      sortField: 'total',
+      value: (item: Invoice) => `GHS ${item.total.toFixed(2)}`,
+      type: 'column',
       bold: true,
     },
     {
-      header: 'Payment Progress',
+      header: 'PAYMENT PROGRESS',
       value: (item: Invoice) => {
         const percent = item.total > 0 ? (item.amount_paid / item.total) * 100 : 0;
         return (
@@ -460,10 +414,10 @@ const Invoicing = () => {
               <span className="font-medium">{percent.toFixed(0)}%</span>
             </div>
             <div className="w-full bg-slate-200 rounded-full h-2">
-              <div 
+              <div
                 className={`h-2 rounded-full transition-all ${
-                  percent >= 100 ? 'bg-emerald-500' : 
-                  percent > 0 ? 'bg-amber-500' : 
+                  percent >= 100 ? 'bg-emerald-500' :
+                  percent > 0 ? 'bg-amber-500' :
                   'bg-red-500'
                 }`}
                 style={{ width: `${Math.min(percent, 100)}%` }}
@@ -476,56 +430,53 @@ const Invoicing = () => {
           </div>
         );
       },
-      type: 'column' as const,
+      type: 'column',
     },
     {
-      header: 'Payment',
+      header: 'PAYMENT',
       sortable: true,
-      sortField: "paymentMethod",
+      sortField: 'paymentMethod',
       value: (item: Invoice) => {
         const method = getPaymentMethod(item);
         return `${getPaymentMethodIcon(method)} ${method}`;
       },
-      type: 'column' as const,
+      type: 'column',
     },
     {
-      header: 'Status',
+      header: 'STATUS',
       sortable: true,
-      sortField: "status",
+      sortField: 'status',
       value: (item: Invoice) => item.status,
-      type: 'status' as const,
+      type: 'status',
       statusClasses: (item: Invoice) => getStatusColor(item.status),
     },
     {
-      header: 'Payment Status',
+      header: 'PAYMENT STATUS',
       sortable: true,
-      sortField: "paymentStatus",
+      sortField: 'paymentStatus',
       value: (item: Invoice) => getPaymentStatus(item),
-      type: 'status' as const,
+      type: 'status',
       statusClasses: (item: Invoice) => getPaymentStatusColor(getPaymentStatus(item)),
     },
   ];
 
-  // Custom actions for each invoice row
-  const getCustomActions = useCallback((item: Invoice) => {
+  // ── Row actions ────────────────────────────────────────────────────────────
+  const getCustomActions = (item: Invoice) => {
     const actions = [];
     const paymentStatus = getPaymentStatus(item);
 
-    // View action
     actions.push({
       title: 'View Details',
       icon: 'view',
       handler: () => onViewInvoice(item),
     });
 
-    // Print action
     actions.push({
       title: 'Print / PDF',
       icon: 'copy',
       handler: () => onPrintInvoice(item),
     });
 
-    // Edit action (only for draft and quoted)
     if (item.status === 'draft' || item.status === 'quoted') {
       actions.push({
         title: 'Edit',
@@ -534,14 +485,12 @@ const Invoicing = () => {
       });
     }
 
-    // Copy action
     actions.push({
       title: 'Duplicate',
       icon: 'copy',
       handler: () => onCopyInvoice(item),
     });
 
-    // Mark as paid (only for invoiced and not paid)
     if ((item.status === 'invoiced' || paymentStatus === 'Partial') && paymentStatus !== 'Paid') {
       actions.push({
         title: 'Mark as Paid',
@@ -551,7 +500,6 @@ const Invoicing = () => {
       });
     }
 
-    // Cancel action (only for invoiced and not cancelled)
     if (item.status !== 'cancelled' && item.status !== 'draft') {
       actions.push({
         title: 'Cancel Invoice',
@@ -561,7 +509,6 @@ const Invoicing = () => {
       });
     }
 
-    // Delete action (only for draft and quoted)
     if (item.status === 'draft' || item.status === 'quoted') {
       actions.push({
         title: 'Delete',
@@ -572,11 +519,43 @@ const Invoicing = () => {
     }
 
     return actions;
-  }, [onViewInvoice, onPrintInvoice, onEditInvoice, onCopyInvoice, onMarkAsPaid, onCancelInvoice, onDeleteInvoice]);
+  };
 
+  // ── Filter / sort option lists ─────────────────────────────────────────────
+  const filterOptions = [
+    // Status filters
+    { value: 'all', label: 'All Statuses' },
+    { value: 'invoiced', label: 'Invoiced' },
+    { value: 'quoted', label: 'Quoted' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'partially', label: 'Partially Paid' },
+    { value: 'overdue', label: 'Overdue' },
+    // Payment status filters
+    { value: 'all', label: 'All Payments' },
+    { value: 'Paid', label: 'Paid' },
+    { value: 'Partial', label: 'Partial' },
+    { value: 'Unpaid', label: 'Unpaid' },
+  ];
+
+  const sortOptions = [
+    { value: 'date_desc', label: 'Newest First' },
+    { value: 'date_asc', label: 'Oldest First' },
+    { value: 'total_desc', label: 'Highest Total' },
+    { value: 'total_asc', label: 'Lowest Total' },
+    { value: 'customer_asc', label: 'Customer A-Z' },
+    { value: 'customer_desc', label: 'Customer Z-A' },
+    { value: 'status_asc', label: 'Status A-Z' },
+    { value: 'status_desc', label: 'Status Z-A' },
+    { value: 'paymentStatus_asc', label: 'Payment Status A-Z' },
+    { value: 'paymentStatus_desc', label: 'Payment Status Z-A' },
+  ];
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="">
+      <div className="flex justify-between items-center pb-4">
         <div>
           <h2 className="text-2xl font-bold text-text">Invoices</h2>
           <p className="text-text-light text-sm">Manage and track all your invoices</p>
@@ -589,27 +568,26 @@ const Invoicing = () => {
 
       <DataTable
         columns={columns}
-        data={paginatedData}
+        data={invoices}
         loading={loading}
-        placeholder="Search invoices by number, customer, or email..."
+        placeholder="Search by invoice number, customer, or email..."
         searchLabel="Search Invoices"
         noDataMessage={
-          searchTerm || selectedFilter !== 'all' || dateRange.start || dateRange.end
-            ? "No invoices match your filters"
-            : "No invoices found. Create your first invoice!"
+          searchQuery || filterStatus !== 'all' || filterPayment !== 'all'
+            ? 'No invoices match your filters'
+            : 'No invoices found. Create your first invoice!'
         }
         addButtonText="Create Invoice"
         page={page}
-        limit={limit}
+        limit={LIMIT}
         count={count}
+        filterOptions={filterOptions}
         sortOptions={sortOptions}
-        filterOptions={[...statusOptions, ...paymentStatusOptions]}
         customActions={getCustomActions}
-        onSearch={onSearch}
-        onFilter={onFilter}
+        onSearch={handleSearch}
+        onFilter={handleFilter}
         onSort={handleSort}
-        onPageChange={onPageChange}
-        onDateRangeChange={onDateRangeChange}
+        onPageChange={handlePageChange}
         onAdd={onNewInvoice}
       />
     </div>

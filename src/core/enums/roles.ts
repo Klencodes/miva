@@ -7,3 +7,5 @@ export const enum Roles {
 }
 
 export const SUPER_ADMIN_ENTITY_ID = "SUPER_ADMINISTRATOR";
+
+export const APP_NAME = "MIVA - HMS";

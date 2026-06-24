@@ -96,7 +96,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row md:items-start gap-4">
+    <div className="flex flex-col md:flex-row md:items-start gap-4 pt-2">
       {/* Search Input */}
       <div className="relative flex-grow">
         <Input
@@ -142,7 +142,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
       
       {/* Date Range Filter */}
       {showDateRange && (
-        <div className="flex gap-x-2 items-end">
+        <div className="flex items-end">
           <div className="min-w-[280px] -mb-5">
             <Input
               type="date-range"
@@ -162,7 +162,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           {(dateRangeValue.start || dateRangeValue.end) && (
             <button
               onClick={handleResetDateRange}
-              className="px-4 py-2 text-sm font-medium rounded-md transition-colors"
+              className="px-4 -mb-5 py-2.5 text-sm font-medium rounded-md transition-colors"
               style={{
                 backgroundColor: 'transparent',
                 color: 'var(--color-danger, #ef4444)',

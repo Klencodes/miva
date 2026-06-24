@@ -13,10 +13,12 @@ import CustomerService from "../../core/services/customer";
 import AddEditCustomer from "./AddEditCustomer";
 import CustomerDetail from "./CustomerDetails";
 import { toast } from "sonner";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 const Customers = () => {
   const { openModal } = useModal();
-
+  usePageTitle("Customers");
   // State management
   const [customers, setCustomers] = useState<ICustomer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,9 +77,9 @@ const Customers = () => {
       const response = await CustomerService.getCustomers(params);
       
       if (response.success) {
-        const customerData = response.results?.customers || [];
+        const customerData = response.results || [];
         setCustomers(customerData);
-        setCount(response.results?.pagination?.total || 0);
+        setCount(response.count || 0);
       } else {
         toast.error('Error', { description: response.message || 'Failed to load customers' });
       }
@@ -151,11 +153,14 @@ const Customers = () => {
   };
 
   const handleDeleteCustomer = useCallback(async (customerId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this customer? This action cannot be undone.",
-      )
-    ) {
+
+      const res = await openModal(ConfirmModal,{
+          data: {
+            title: "Delete Customer",
+            message: "Are you sure you want to delete this customer? This action cannot be undone."
+          }
+      })
+    if (res?.confirmed) {
       try {
         const response = await CustomerService.deleteCustomer(customerId);
         if (response.success) {

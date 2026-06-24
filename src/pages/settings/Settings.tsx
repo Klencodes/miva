@@ -26,6 +26,7 @@ import { useTheme } from "../../core/contexts/ThemeProvider";
 import { useStore } from "../../core/contexts/StoreProvider";
 import { toast } from "sonner";
 import EntityService from "../../core/services/entity"
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 interface CompanySettings {
   name: string;
   email: string;
@@ -64,7 +65,7 @@ const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("company");
-
+  usePageTitle("Settings");
   // Company Settings
   const [company, setCompany] = useState<CompanySettings>({
     name: "",

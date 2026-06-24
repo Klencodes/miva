@@ -1,14 +1,14 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Button, DataTable } from '../../components/common';
-import { InventoryItem } from '../../core/types';
-import { ColumnDef } from '../../components/common/Datatable';
-import { useStore } from '../../core/contexts/StoreProvider';
-import { useModal } from '../../core/hooks/useModal';
-import { eventService } from '../../core/services/events';
-import InventoryService from '../../core/services/inventory';
-import AddEditInventory from './AddEditInventory';
-import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { Plus } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
+import { Button, DataTable } from "../../components/common";
+import { ColumnDef } from "../../components/common/Datatable";
+import { useStore } from "../../core/contexts/StoreProvider";
+import { useModal } from "../../core/hooks/useModal";
+import { eventService } from "../../core/services/events";
+import InventoryService from "../../core/services/inventory";
+import { InventoryItem } from "../../core/types";
+import AddEditInventory from "./AddEditInventory";
 
 const Inventory = () => {
   const { user } = useStore();
@@ -20,40 +20,43 @@ const Inventory = () => {
   const [filterType, setFilterType] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0,
-  });
+  const [page, setPage] = useState(1);
+  const [count, setCount] = useState(0);
+  const LIMIT = 10;
 
-  // ── Load data ──────────────────────────────────────────────────────────────
-  const fetchInventory = useCallback(async () => {
+  // ── Refs to always have latest values without re-creating fetch ────────────
+  const searchRef = useRef(searchQuery);
+  const filterRef = useRef(filterType);
+  const pageRef = useRef(page);
+
+  useEffect(() => { searchRef.current = searchQuery; }, [searchQuery]);
+  useEffect(() => { filterRef.current = filterType; }, [filterType]);
+  useEffect(() => { pageRef.current = page; }, [page]);
+
+  // ── Fetch (stable, never recreated) ───────────────────────────────────────
+  const fetchInventory = useRef(async () => {
     try {
       setLoading(true);
       const params: any = {
-        page: pagination.page,
-        limit: pagination.limit,
+        page: pageRef.current,
+        limit: LIMIT,
       };
 
-      if (searchQuery) {
-        params.search = searchQuery;
+      if (searchRef.current) {
+        params.search = searchRef.current;
       }
 
-      if (filterType !== 'all') {
-        params.type = filterType;
+      if (filterRef.current !== 'all') {
+        params.type = filterRef.current;
       }
 
       const response = await InventoryService.getItems(params);
-      
+
       if (response.success) {
-        setInventory(response.results?.items || []);
-        setPagination(response.results?.pagination || {
-          page: 1,
-          limit: 10,
-          total: 0,
-          totalPages: 0,
-        });
+        setInventory(response.results || []);
+        setCount(response.count || 0);
+      } else {
+        toast.error('Error', { description: response.message || 'Failed to load inventory' });
       }
     } catch (error: any) {
       console.error('Error fetching inventory:', error);
@@ -61,33 +64,35 @@ const Inventory = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, filterType, pagination.page, pagination.limit]);
+  }).current;
 
-  // Listen for refresh events
-  useEffect(() => {
-    const handleRefresh = () => {
-      setRefreshKey(prev => prev + 1);
-      fetchInventory();
-    };
-
-    eventService.onRefresh(handleRefresh);
-
-    return () => {
-      eventService.offRefresh(handleRefresh);
-    };
-  }, [fetchInventory]);
-
-  // Load data on mount and when dependencies change
+  // ── Trigger fetch when page / search / filter / refreshKey change ──────────
   useEffect(() => {
     fetchInventory();
-  }, [fetchInventory, refreshKey]);
+    //eslint-disable-next-line
+  }, [page, searchQuery, filterType, refreshKey]);
 
-  // ── Filter ─────────────────────────────────────────────────────────────────
-  const filteredInventory = useMemo(() => {
-    return inventory;
-  }, [inventory]);
+  // ── Listen for refresh events ──────────────────────────────────────────────
+  useEffect(() => {
+    const handleRefresh = () => setRefreshKey(prev => prev + 1);
+    eventService.onRefresh(handleRefresh);
+    return () => eventService.offRefresh(handleRefresh);
+  }, []);
 
-  // ── onSort handler ─────────────────────────────────────────────────────────
+  // ── Handlers ───────────────────────────────────────────────────────────────
+const handleSearch = (query: string) => {
+  searchRef.current = query;  
+  pageRef.current = 1;       
+  setSearchQuery(query);    
+};
+
+const handleFilter = (filter: string) => {
+  filterRef.current = filter; 
+  pageRef.current = 1;        
+  setFilterType(filter);      
+  setPage(1);
+};
+
   const handleSort = (sortValue: string) => {
     if (!sortValue) return;
     const lastUnderscore = sortValue.lastIndexOf('_');
@@ -109,6 +114,9 @@ const Inventory = () => {
     );
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
   // ── CRUD handlers ──────────────────────────────────────────────────────────
   const updateInventory = async (id: string, newQuantity: number) => {
@@ -118,7 +126,7 @@ const Inventory = () => {
         type: 'set',
         reason: 'Manual adjustment',
       });
-      
+
       if (response.success) {
         toast.success('Success', { description: 'Stock updated successfully' });
         fetchInventory();
@@ -131,7 +139,7 @@ const Inventory = () => {
   const deleteInventoryItem = async (id: string) => {
     try {
       const response = await InventoryService.deleteItem(id);
-      
+
       if (response.success) {
         toast.success('Success', { description: 'Item deleted successfully' });
         fetchInventory();
@@ -141,12 +149,11 @@ const Inventory = () => {
     }
   };
 
-
   const handleAddEditItem = async (item?: InventoryItem) => {
     const result = await openModal(AddEditInventory, {
       data: { item },
-      size: "2xl",
-      side: "right",
+      size: '2xl',
+      side: 'right',
     });
 
     if (result?.success) {
@@ -168,7 +175,7 @@ const Inventory = () => {
       },
       type: 'column',
       bold: true,
-      link: (item: InventoryItem) => `/inventory/${item.uuid}`,
+      onClick: (item: InventoryItem) => handleAddEditItem(item),
     },
     {
       header: 'PART #',
@@ -209,8 +216,8 @@ const Inventory = () => {
       value: (item: InventoryItem) => {
         const isLow = item.quantity <= item.reorder_threshold;
         return (
-          <span className={isLow && item.quantity > 0 ? 'text-amber-600 font-bold' : 
-                         item.quantity === 0 ? 'text-red-600 font-bold' : ''}>
+          <span className={isLow && item.quantity > 0 ? 'text-amber-600 font-bold' :
+            item.quantity === 0 ? 'text-red-600 font-bold' : ''}>
             {item.quantity}
             {isLow && item.quantity > 0 && <span className="ml-1 text-xs">⚠️</span>}
           </span>
@@ -223,16 +230,34 @@ const Inventory = () => {
       header: 'COST',
       sortable: true,
       sortField: 'cost',
-      value: (item: InventoryItem) => `GHS ${item.cost.toFixed(2)}`,
+      value: (item: InventoryItem) => `GHS ${item.cost?.toFixed(2) || '0.00'}`,
       type: 'column',
     },
     {
       header: 'PRICE',
       sortable: true,
       sortField: 'price',
-      value: (item: InventoryItem) => `GHS ${item.price.toFixed(2)}`,
+      value: (item: InventoryItem) => `GHS ${item.price?.toFixed(2) || '0.00'}`,
       type: 'column',
       bold: true,
+    },
+    {
+      header: 'STOCK STATUS',
+      value: (item: InventoryItem) => {
+        const status = item.stock_status || 'unknown';
+        const statusMap: Record<string, { label: string; className: string }> = {
+          in_stock: { label: 'In Stock', className: 'bg-emerald-100 text-emerald-700' },
+          low_stock: { label: 'Low Stock', className: 'bg-amber-100 text-amber-700' },
+          out_of_stock: { label: 'Out of Stock', className: 'bg-red-100 text-red-700' },
+        };
+        const statusInfo = statusMap[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-700' };
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.className}`}>
+            {statusInfo.label}
+          </span>
+        );
+      },
+      type: 'column',
     },
     {
       header: 'METADATA',
@@ -321,22 +346,20 @@ const Inventory = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center pb-4">
         <div>
           <h2 className="text-2xl font-bold text-text">Inventory Management</h2>
           <p className="text-text-light text-sm">Manage and track all your hydraulic components</p>
         </div>
-        <Button onClick={()=>handleAddEditItem()}>
+        <Button onClick={() => handleAddEditItem()}>
           <Plus className="w-5 h-5" />
           Add Item
         </Button>
       </div>
 
-      {/* DataTable */}
       <DataTable
         columns={columns}
-        data={filteredInventory}
+        data={inventory}
         loading={loading}
         placeholder="Search by name, part number, supplier..."
         searchLabel="Search Inventory"
@@ -346,17 +369,17 @@ const Inventory = () => {
             : 'No inventory items found'
         }
         addButtonText="Add Product"
-        page={pagination.page}
-        limit={pagination.limit}
-        count={pagination.total}
+        page={page}
+        limit={LIMIT}
+        count={count}
         filterOptions={filterOptions}
         sortOptions={sortOptions}
         customActions={getCustomActions}
-        onSearch={setSearchQuery}
-        onFilter={setFilterType}
+        onSearch={handleSearch}
+        onFilter={handleFilter}
         onSort={handleSort}
-        onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
-        onAdd={()=>handleAddEditItem()}
+        onPageChange={handlePageChange}
+        onAdd={() => handleAddEditItem()}
       />
     </div>
   );

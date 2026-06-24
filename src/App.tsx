@@ -5,9 +5,9 @@ import { useStore } from "./core/contexts/StoreProvider";
 import IRoutes from "./routes";
 import { Loader } from "./components/common";
 import { toast, Toaster } from "sonner";
+import { APP_NAME } from "./core/enums/roles";
 
 function App() {
-  const appTitle = "MIVA - HMS";
   const location = useLocation();
   const { initializeTheme, isThemeReady } = useTheme();
   const { checkAuthStatus, initializationComplete } = useStore();
@@ -37,7 +37,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    document.title = appTitle;
+    document.title = APP_NAME;
     window.scrollTo(0, 0);
   }, [location]);
 

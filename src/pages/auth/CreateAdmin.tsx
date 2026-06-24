@@ -6,6 +6,7 @@ import AuthService from "../../core/services/auth";
 import { useStore } from "../../core/contexts/StoreProvider";
 import { setStoredItem, USER_KEY } from "../../core/hooks/useStore";
 import { UserPermissions, UserRole } from "../../core/types";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 
 interface CreateAdminForm {
   first_name: string;
@@ -66,7 +67,7 @@ function validate(form: CreateAdminForm): CreateAdminErrors {
 const CreateAdmin: React.FC = () => {
   const navigate = useNavigate();
   const { checkAdminExists, setUser } = useStore();
-
+  usePageTitle("Create Admin Account")
   const [form, setForm] = useState<CreateAdminForm>({
     first_name: "",
     last_name: "",

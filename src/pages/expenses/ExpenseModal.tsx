@@ -48,8 +48,7 @@ const ExpenseModal = () => {
       label: `${cat.icon} ${cat.name}`,
     }),
   );
-  console.log(categories, "categories><><<>M<M<");
-  console.log(categoryOptions, "categoryOptions><><<>M<M<");
+
 
   useEffect(() => {
     if (isEditing && expense) {

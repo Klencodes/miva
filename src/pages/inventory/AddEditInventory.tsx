@@ -3,9 +3,11 @@ import { useModal } from "../../core/hooks/useModal";
 import { Button, Input } from "../../components/common";
 import { SelectOption } from "../../components/common/Input";
 import { toast } from "sonner";
-import { InvItemType, InvItemUnitType, InventoryItem } from "../../core/types";
+import { InvItemType, InvItemUnitType, InventoryItem, Supplier } from "../../core/types";
 import InventoryService from "../../core/services/inventory";
+import SupplierService from "../../core/services/supplier";
 import * as XLSX from "xlsx";
+import { Building, Phone, Search, X } from "lucide-react";
 
 interface InventoryFormData {
   name: string;
@@ -16,7 +18,7 @@ interface InventoryFormData {
   reorder_threshold: string;
   cost: string;
   price: string;
-  supplier: string;
+  supplier: string; // This stores the supplier ID
   image: string;
   metadata: Record<string, any>;
 }
@@ -124,6 +126,14 @@ const AddEditInventory: React.FC = () => {
   const [customMetadataKey, setCustomMetadataKey] = useState("");
   const [customMetadataValue, setCustomMetadataValue] = useState("");
 
+  // Supplier search states
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierLoading, setSupplierLoading] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(); 
+  const supplierDropdownRef = useRef<HTMLDivElement>(null);
+
   // Bulk upload states
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [bulkItems, setBulkItems] = useState<BulkInventoryItem[]>([]);
@@ -131,12 +141,68 @@ const AddEditInventory: React.FC = () => {
   const [selectedExample, setSelectedExample] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Fetch suppliers for dropdown ──────────────────────────────────────────
+  const fetchSuppliers = useCallback(async (search: string = "") => {
+    try {
+      setSupplierLoading(true);
+      const params: any = {
+        page: 1,
+        limit: 10,
+        status: "active",
+      };
+
+      if (search) {
+        params.search = search;
+      }
+
+      const response = await SupplierService.getSuppliers(params);
+      
+      if (response.success) {
+        setSuppliers(response.results || []);
+      }
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+    } finally {
+      setSupplierLoading(false);
+    }
+  }, []);
+
+  // ── Debounced supplier search ─────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (supplierSearch) {
+        fetchSuppliers(supplierSearch);
+      } else {
+        fetchSuppliers("");
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [supplierSearch, fetchSuppliers]);
+
+  // ── Click outside handler for supplier dropdown ──────────────────────────
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target as Node)) {
+        setShowSupplierDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Initialize form with edit data if provided
   useEffect(() => {
     if (modalData?.item) {
       setIsEditMode(true);
       setItemUuid(modalData.item.uuid);
       const item = modalData.item as InventoryItem;
+
+      // If there's a supplier ID, fetch the supplier name for display
+      if (item.supplier) {
+        fetchSupplierName(item.supplier);
+      }
 
       setForm({
         name: item.name || "",
@@ -153,6 +219,22 @@ const AddEditInventory: React.FC = () => {
       });
     }
   }, [modalData]);
+
+  // ── Fetch supplier name when editing ──────────────────────────────────────
+  const fetchSupplierName = async (supplierId: string) => {
+    try {
+      const response = await SupplierService.getSupplierByUuid(supplierId);
+      if (response.success) {
+        const supplier = response.results?.supplier;
+        if (supplier) {
+          setSelectedSupplier(supplier);
+          setSupplierSearch(supplier.name);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching supplier details:", error);
+    }
+  };
 
   const validate = useCallback(
     (data: InventoryFormData): Partial<InventoryFormData> => {
@@ -179,6 +261,28 @@ const AddEditInventory: React.FC = () => {
       });
     }
   };
+
+  // ── Supplier selection handler ────────────────────────────────────────────
+  const handleSelectSupplier = (supplier: Supplier) => {
+    setForm(prev => ({
+      ...prev,
+      supplier: supplier.uuid // Store just the supplier ID
+    }));
+    setSelectedSupplier(supplier);
+    setSupplierSearch(supplier.name);
+    setShowSupplierDropdown(false);
+  };
+
+  // ── Clear supplier selection ──────────────────────────────────────────────
+  const handleClearSupplier = () => {
+    setForm(prev => ({
+      ...prev,
+      supplier: "" // Clear the supplier ID
+    }));
+    setSelectedSupplier(null);
+    setSupplierSearch("");
+  };
+
   const handleAddCustomMetadata = () => {
     if (customMetadataKey && customMetadataValue) {
       setForm((prev) => ({
@@ -355,7 +459,7 @@ const AddEditInventory: React.FC = () => {
         reorder_threshold: Number(form.reorder_threshold),
         cost: Number(form.cost),
         price: Number(form.price),
-        supplier: form.supplier || undefined,
+        supplier: form.supplier || undefined, // This will be the supplier ID
         image: form.image || undefined,
         metadata: form.metadata,
       };
@@ -683,14 +787,121 @@ const AddEditInventory: React.FC = () => {
                   step={0.01}
                 />
 
-                <Input
-                  label="Supplier"
-                  placeholder="Supplier name"
-                  name="supplier"
-                  id="supplier"
-                  value={form.supplier}
-                  onChange={handleChange("supplier")}
-                />
+                {/* Supplier Search Field */}
+                <div className="relative" ref={supplierDropdownRef}>
+                  <Input
+                    type="search"
+                    label="Supplier"
+                    placeholder="Search supplier by name..."
+                    value={supplierSearch}
+                    onChange={(value: string) => {
+                      setSupplierSearch(value);
+                      setShowSupplierDropdown(true);
+                      // If user types, clear the selected supplier
+                      if (form.supplier && value !== selectedSupplier?.name) {
+                        setForm(prev => ({
+                          ...prev,
+                          supplier: ""
+                        }));
+                        setSelectedSupplier(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      setShowSupplierDropdown(true);
+                      if (!supplierSearch) {
+                        fetchSuppliers("");
+                      }
+                    }}
+                    prefixIcon={<Search size={15} />}
+                    suffixIcon={
+                      form.supplier && (
+                        <button
+                          type="button"
+                          onClick={handleClearSupplier}
+                          className="text-text-light hover:text-danger transition-colors"
+                        >
+                          <X size={15} />
+                        </button>
+                      )
+                    }
+                  />
+
+                  {/* Supplier Dropdown */}
+                  {showSupplierDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {supplierLoading ? (
+                        <div className="p-4 text-center text-text-light">
+                          Loading suppliers...
+                        </div>
+                      ) : suppliers.length > 0 ? (
+                        <div>
+                          {suppliers.map((supplier) => (
+                            <button
+                              key={supplier.uuid}
+                              type="button"
+                              onClick={() => handleSelectSupplier(supplier)}
+                              className="w-full text-left px-4 py-3 hover:bg-background transition-colors border-b border-border last:border-0"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium text-text">
+                                  {supplier.name}
+                                </span>
+                                <div className="flex items-center gap-2 text-xs text-text-light mt-1">
+                                  {supplier.email && (
+                                    <span>{supplier.email}</span>
+                                  )}
+                                  {supplier.phone_number && (
+                                    <span>
+                                      {supplier.phone_code || ""} {supplier.phone_number}
+                                    </span>
+                                  )}
+                                </div>
+                                {supplier.address && (
+                                  <span className="text-xs text-text-light mt-0.5">
+                                    {supplier.address}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : supplierSearch ? (
+                        <div className="p-4 text-center text-text-light">
+                          No suppliers found matching "{supplierSearch}"
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-text-light">
+                          No suppliers available
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Show selected supplier badge */}
+                {form.supplier && selectedSupplier && (
+                  <div className="flex items-center gap-2 p-2 bg-primary-5 rounded-lg border border-primary-20">
+                    
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-text">
+                        {selectedSupplier?.name}
+                      </div>
+                      {selectedSupplier?.phone_number && <div className="flex flex-row text-xs text-text-light py-1">
+                         <Phone size={13} className="pr-1"/>{`${selectedSupplier?.phone_code}${selectedSupplier?.phone_number}`}
+                      </div>}
+                      {selectedSupplier?.address&&<div className="flex flex-row text-xs text-text-light">
+                         <Building size={13} className="pr-1"/>{selectedSupplier?.address}
+                      </div>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearSupplier}
+                      className="text-text-light hover:text-danger transition-colors p-1"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
 
                 <Input
                   label="Image URL"
