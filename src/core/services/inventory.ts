@@ -20,12 +20,12 @@ const inventoryService = {
                        inventoryService.adjustStock(uuid, { quantity, type: 'subtract', reason }),
   setStock:          (uuid: string, quantity: number, reason = 'Stock manually set'): Promise<IResponse> =>
                        inventoryService.adjustStock(uuid, { quantity, type: 'set', reason }),
-  delete:            (uuid: string): Promise<IResponse> => api.delete(`/inventory/${uuid}`),
+  delete:            (uuid: string): Promise<IResponse> => api.del(`/inventory/${uuid}`),
   search:            (search: string): Promise<IResponse> => api.get('/inventory', { params: { search, limit: 20 } }),
   getByType:         (type: string, page = 1, limit = 10): Promise<IResponse> => api.get('/inventory', { params: { type, page, limit } }),
   getBySupplier:     (supplier: string, page = 1, limit = 10): Promise<IResponse> => api.get('/inventory', { params: { supplier, page, limit } }),
   checkPartNumber:   async (partNumber: string): Promise<boolean> => {
-    try { const r = await inventoryService.getByPartNumber(partNumber); return r.success && !!r.results?.item; }
+    try { const r = await inventoryService.getByPartNumber(partNumber); return r.success && !!r.results; }
     catch { return false; }
   },
   getValue: async (): Promise<{ total_value: number; total_price: number; total_items: number; total_quantity: number }> => {

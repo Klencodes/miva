@@ -1,5 +1,5 @@
 // config/api.ts
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { IUser } from '../types';
 import { getStoredItem, USER_KEY, ENTITY_KEY } from '../hooks/useStore';
 
@@ -37,9 +37,25 @@ client.interceptors.response.use(undefined, (error) => {
   return Promise.reject(error.response?.data || error);
 });
 
-// // Auth helpers
-// const getUser   = () => getStoredItem<IUser | null>(USER_KEY, null);
-// const getEntity = () => getStoredItem<any>(ENTITY_KEY, null);
-// const clearAuth = () => { localStorage.removeItem(USER_KEY); localStorage.removeItem(ENTITY_KEY); };
+const get  = <T>(url: string, config?: AxiosRequestConfig) => client.get<T>(url, config).then(r => r.data);
+const post = <T>(url: string, data?: any, config?: AxiosRequestConfig) => client.post<T>(url, data, config).then(r => r.data);
+const put  = <T>(url: string, data?: any, config?: AxiosRequestConfig) => client.put<T>(url, data, config).then(r => r.data);
+const patch = <T>(url: string, data?: any, config?: AxiosRequestConfig) => client.patch<T>(url, data, config).then(r => r.data);
+const del  = <T>(url: string, config?: AxiosRequestConfig) => client.delete<T>(url, config).then(r => r.data);
 
-export default client;
+// File upload with optional progress callback
+const upload = <T>(url: string, file: File, fieldName = 'file', onProgress?: (pct: number) => void) => {
+  const form = new FormData();
+  form.append(fieldName, file);
+  return client.post<T>(url, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => onProgress?.(Math.round((e.loaded * 100) / (e.total ?? 1))),
+  }).then(r => r.data);
+};
+
+// Auth helpers
+const getUser   = () => getStoredItem<IUser | null>(USER_KEY, null);
+const getEntity = () => getStoredItem<any>(ENTITY_KEY, null);
+const clearAuth = () => { localStorage.removeItem(USER_KEY); localStorage.removeItem(ENTITY_KEY); };
+// eslint-disable-next-line
+export default { get, post, put, patch, del, upload, getUser, getEntity, clearAuth };

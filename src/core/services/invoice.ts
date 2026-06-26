@@ -17,7 +17,7 @@ const invoiceService = {
   addPayment:        (uuid: string, payment: InvoicePayment): Promise<IResponse> => api.post(`/invoices/${uuid}/payments`, payment),
   markAsPaid:        (uuid: string): Promise<IResponse> => api.patch(`/invoices/${uuid}/paid`, {}),
   cancel:            (uuid: string): Promise<IResponse> => api.patch(`/invoices/${uuid}/cancel`, {}),
-  delete:            (uuid: string): Promise<IResponse> => api.delete(`/invoices/${uuid}`),
+  delete:            (uuid: string): Promise<IResponse> => api.del(`/invoices/${uuid}`),
   send:              (uuid: string, email?: string, message?: string): Promise<IResponse> =>
                        api.post(`/invoices/${uuid}/send`, { email, message }),
   export:            (uuid: string, format = 'pdf'): Promise<Blob> =>

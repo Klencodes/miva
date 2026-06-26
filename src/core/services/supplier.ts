@@ -16,7 +16,7 @@ const supplierService = {
   getByUuid:     (uuid: string): Promise<IResponse> => api.get(`/suppliers/${uuid}`),
   create:        (data: SupplierData): Promise<IResponse> => api.post('/suppliers', data),
   update:        (uuid: string, data: Partial<SupplierData>): Promise<IResponse> => api.put(`/suppliers/${uuid}`, data),
-  delete:        (uuid: string): Promise<IResponse> => api.delete(`/suppliers/${uuid}`),
+  delete:        (uuid: string): Promise<IResponse> => api.del(`/suppliers/${uuid}`),
   getOrders:     (id: string, params?: { page?: number; limit?: number; status?: string; date_from?: string; date_to?: string }): Promise<IResponse> =>
                    api.get(`/suppliers/${id}/orders`, { params }),
   getStats:      (id: string): Promise<IResponse> => api.get(`/suppliers/${id}/stats`),

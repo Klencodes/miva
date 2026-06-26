@@ -37,12 +37,12 @@ interface BulkInventoryItem {
   metadata?: Record<string, any>;
 }
 
-interface TemplateColumn {
-  header: string;
-  key: string;
-  required: boolean;
-  description: string;
-}
+// interface TemplateColumn {
+//   header: string;
+//   key: string;
+//   required: boolean;
+//   description: string;
+// }
 
 const initialFormState: InventoryFormData = {
   name: "",
@@ -75,19 +75,19 @@ const unitOptions: SelectOption[] = [
 ];
 
 // Template columns for documentation
-const TEMPLATE_COLUMNS: TemplateColumn[] = [
-  { header: "Name", key: "name", required: true, description: "Item name" },
-  { header: "Part Number", key: "part_number", required: false, description: "Part number or SKU" },
-  { header: "Type", key: "type", required: true, description: "hose, fitting, ferrule, assembly, adapter, coupling, other" },
-  { header: "Unit", key: "unit", required: true, description: "meters, feet, pieces" },
-  { header: "Quantity", key: "quantity", required: true, description: "Numeric value" },
-  { header: "Reorder Threshold", key: "reorder_threshold", required: false, description: "Minimum stock level" },
-  { header: "Cost", key: "cost", required: true, description: "Cost price" },
-  { header: "Price", key: "price", required: true, description: "Selling price" },
-  { header: "Supplier", key: "supplier", required: false, description: "Supplier name or ID" },
-  { header: "Image URL", key: "image", required: false, description: "Product image URL" },
-  { header: "Metadata", key: "metadata", required: false, description: 'JSON object e.g., {"key":"value"}' },
-];
+// const TEMPLATE_COLUMNS: TemplateColumn[] = [
+//   { header: "Name", key: "name", required: true, description: "Item name" },
+//   { header: "Part Number", key: "part_number", required: false, description: "Part number or SKU" },
+//   { header: "Type", key: "type", required: true, description: "hose, fitting, ferrule, assembly, adapter, coupling, other" },
+//   { header: "Unit", key: "unit", required: true, description: "meters, feet, pieces" },
+//   { header: "Quantity", key: "quantity", required: true, description: "Numeric value" },
+//   { header: "Reorder Threshold", key: "reorder_threshold", required: false, description: "Minimum stock level" },
+//   { header: "Cost", key: "cost", required: true, description: "Cost price" },
+//   { header: "Price", key: "price", required: true, description: "Selling price" },
+//   { header: "Supplier", key: "supplier", required: false, description: "Supplier name or ID" },
+//   { header: "Image URL", key: "image", required: false, description: "Product image URL" },
+//   { header: "Metadata", key: "metadata", required: false, description: 'JSON object e.g., {"key":"value"}' },
+// ];
 
 // Example metadata templates
 const metadataExamples = [
@@ -837,10 +837,10 @@ const AddEditInventory: React.FC = () => {
               <ul className="text-sm text-text-light space-y-1 list-disc list-inside">
                 <li>Upload a JSON or Excel file with your inventory items</li>
                 <li>
-                  Required fields: name, type, unit, quantity, cost, price
+                  Required fields: name, type, unit, part_number, quantity, cost, price
                 </li>
                 <li>
-                  Optional fields: part_number, reorder_threshold, supplier,
+                  Optional fields: reorder_threshold, supplier,
                   image, metadata
                 </li>
                 <li>Metadata can be any key-value pairs or JSON object</li>

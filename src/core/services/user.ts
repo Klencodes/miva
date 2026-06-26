@@ -10,14 +10,14 @@ const userService = {
   create:             (data: ICreateUserData): Promise<IResponse> => api.post('/users', data),
   update:             (uuid: string, data: IUpdateUserData): Promise<IResponse> => api.put(`/users/${uuid}`, data),
   toggleActive:       (uuid: string, is_active: boolean): Promise<IResponse> => api.patch(`/users/${uuid}/active`, { is_active }),
-  delete:             (uuid: string): Promise<IResponse> => api.delete(`/users/${uuid}`),
-  permanentDelete:    (uuid: string): Promise<IResponse> => api.delete(`/users/${uuid}/permanent`),
+  delete:             (uuid: string): Promise<IResponse> => api.del(`/users/${uuid}`),
+  permanentDelete:    (uuid: string): Promise<IResponse> => api.del(`/users/${uuid}/permanent`),
   updatePassword:     (uuid: string, new_password: string, confirm_password: string): Promise<IResponse> =>
                         api.patch(`/users/${uuid}/password`, { new_password, confirm_password }),
   assignEntity:       (uuid: string, assignment: IUserEntityAssignment): Promise<IResponse> =>
                         api.post(`/users/${uuid}/entities`, assignment),
   removeEntity:       (uuid: string, entityId: string): Promise<IResponse> =>
-                        api.delete(`/users/${uuid}/entities/${entityId}`),
+                        api.del(`/users/${uuid}/entities/${entityId}`),
   setPrimaryEntity:   (uuid: string, entityId: string): Promise<IResponse> =>
                         api.patch(`/users/${uuid}/entities/${entityId}/primary`, {}),
   getUsersByEntity:   (entityId: string, params: { page?: number; limit?: number } = {}): Promise<IResponse> =>

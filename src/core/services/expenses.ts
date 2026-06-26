@@ -34,7 +34,7 @@ const expenseService = {
   approve:               (uuid: string): Promise<IResponse> => api.patch(`/expenses/${uuid}/approve`, {}),
   markAsPaid:            (uuid: string): Promise<IResponse> => api.patch(`/expenses/${uuid}/pay`, {}),
   reject:                (uuid: string, reason: string): Promise<IResponse> => api.patch(`/expenses/${uuid}/reject`, { reason }),
-  delete:                (uuid: string): Promise<IResponse> => api.delete(`/expenses/${uuid}`),
+  delete:                (uuid: string): Promise<IResponse> => api.del(`/expenses/${uuid}`),
   getStats:              (filters: DateEntityFilter = {}): Promise<IResponse> => api.get('/expenses/stats', { params: filters }),
   getCategoryBreakdown:  (filters: DateEntityFilter = {}): Promise<IResponse> => api.get('/expenses/stats/categories', { params: filters }),
   getStatusBreakdown:    (filters: DateEntityFilter = {}): Promise<IResponse> => api.get('/expenses/stats/status', { params: filters }),

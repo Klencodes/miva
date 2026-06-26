@@ -253,7 +253,6 @@ const Dashboard: React.FC = () => {
         params.entity_id = selectedEntityId;
       }
 
-      console.log("📊 Fetching dashboard with params:", params); // Debug log
 
       const response = await DashboardService.getStats(
         params.date_from,
@@ -304,12 +303,6 @@ const Dashboard: React.FC = () => {
     };
   }, [fetchDashboardData]);
 
-  useEffect(() => {
-    console.log("📅 Date range changed:", {
-      start: dateRange.start?.toISOString(),
-      end: dateRange.end?.toISOString(),
-    });
-  }, [dateRange]);
 
   // ── Refresh Handler ──────────────────────────────────────────────────────
   const handleRefresh = async () => {

@@ -13,7 +13,7 @@ const customerService = {
   bulkCreate:          (customers: Partial<ICustomer>[]): Promise<IResponse> => api.post('/customers/bulk', { customers }),
   update:              (uuid: string, data: Partial<ICustomer>): Promise<IResponse> => api.put(`/customers/${uuid}`, data),
   toggleActive:        (uuid: string, is_active: boolean): Promise<IResponse> => api.patch(`/customers/${uuid}/active`, { is_active }),
-  delete:              (uuid: string): Promise<IResponse> => api.delete(`/customers/${uuid}`),
+  delete:              (uuid: string): Promise<IResponse> => api.del(`/customers/${uuid}`),
 };
 
 export default customerService;
