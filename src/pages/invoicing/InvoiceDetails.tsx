@@ -290,6 +290,7 @@ const InvoiceDetails = () => {
         description: error.message || "Failed to duplicate invoice",
       });
     }
+    // eslint-disable-next-line
   }, [invoice, navigate]);
 
   const handleSendEmail = useCallback(async () => {
