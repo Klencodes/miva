@@ -258,7 +258,7 @@ const Users = () => {
       },
       type: "column",
       bold: true,
-      link: (item: IUser) => `/users/${item.uuid}`,
+      onClick: (item: IUser) => handleViewUser(item),
     },
     {
       header: "PHONE",

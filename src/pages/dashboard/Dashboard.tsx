@@ -200,7 +200,7 @@ const Dashboard: React.FC = () => {
   try {
     const res = await UserService.getMyEntities();
     const entityList: Entity[] = res?.results || [];
-    
+      console.log(entityList, "entityList")
     // Separate "ALL_ENTITIES" from the rest
     const allEntities = entityList.filter(e => e.uuid === "ALL_ENTITIES");
     const otherEntities = entityList.filter(e => e.uuid !== "ALL_ENTITIES");
@@ -226,7 +226,7 @@ const Dashboard: React.FC = () => {
   } finally {
     setLoadingEntities(false);
   }
-}, [entity]);;
+}, [entity]);
 
   // ── Fetch Dashboard Data ──────────────────────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
@@ -332,7 +332,7 @@ const Dashboard: React.FC = () => {
   const entityOptions = [
     ...entities.map((e: Entity) => ({
       value: e.uuid,
-      label: e.name,
+      label: `${e.branch} | ${e.name}`,
     })),
   ];
 
