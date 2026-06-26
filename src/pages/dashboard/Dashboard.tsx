@@ -200,7 +200,6 @@ const Dashboard: React.FC = () => {
   try {
     const res = await UserService.getMyEntities();
     const entityList: Entity[] = res?.results || [];
-      console.log(entityList, "entityList")
     // Separate "ALL_ENTITIES" from the rest
     const allEntities = entityList.filter(e => e.uuid === "ALL_ENTITIES");
     const otherEntities = entityList.filter(e => e.uuid !== "ALL_ENTITIES");

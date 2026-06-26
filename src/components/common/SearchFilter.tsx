@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Input, { SelectOption, DateRangeValue } from "./Input";
+import { Filter, X } from "lucide-react";
 
 interface SearchFilterProps {
   placeholder?: string;
@@ -14,8 +15,8 @@ interface SearchFilterProps {
   onFilterChange: (filter: string) => void;
   onDateRangeChange: (dateRange: { start_date: string; end_date: string } | null) => void;
   currentDateRange?: { start_date: string; end_date: string } | null;
-  autoApply?: boolean; // New prop to control auto-apply behavior
-  showQuickSelect?: boolean; // New prop to show quick select options
+  autoApply?: boolean;
+  showQuickSelect?: boolean;
 }
 
 export const SearchFilter: React.FC<SearchFilterProps> = ({
@@ -31,12 +32,13 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   onDateRangeChange,
   currentDateRange,
   userRole,
-  autoApply = true, // Default to auto-apply mode
-  showQuickSelect = true, // Default to showing quick select
+  autoApply = true,
+  showQuickSelect = true,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSort, setSelectedSort] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   
   // Convert string dates to Date objects for the date-range input
   const [dateRangeValue, setDateRangeValue] = useState<DateRangeValue>({
@@ -45,6 +47,8 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   });
 
   const showDateRange = !!onDateRangeChange;
+  const hasAdvancedFilters = showSort || showFilters || showDateRange;
+  const hasActiveFilters = selectedSort || selectedFilter || dateRangeValue.start || dateRangeValue.end;
 
   // Debounce search
   useEffect(() => {
@@ -65,7 +69,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
     onFilterChange(value);
   };
 
-  // Sync local state when parent-applied range changes (e.g., page load, reset from elsewhere)
+  // Sync local state when parent-applied range changes
   useEffect(() => {
     if (currentDateRange) {
       setDateRangeValue({
@@ -79,7 +83,6 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   const handleDateRangeChange = (range: DateRangeValue) => {
     setDateRangeValue(range);
     
-    // If auto-apply is enabled, immediately notify parent
     if (autoApply && range.start && range.end) {
       onDateRangeChange({
         start_date: range.start.toISOString().split('T')[0],
@@ -95,83 +98,191 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
     onDateRangeChange(null);
   };
 
+  // Reset all filters
+  const handleResetAllFilters = () => {
+    setSelectedSort("");
+    setSelectedFilter("");
+    setDateRangeValue({ start: null, end: null });
+    onDateRangeChange(null);
+    onSortChange("");
+    onFilterChange("");
+    setShowAdvancedFilters(false);
+  };
+
   return (
-    <div className="flex flex-col md:flex-row md:items-start gap-4 pt-2">
-      {/* Search Input */}
-      <div className="relative flex-grow">
-        <Input
-          type="text"
-          label={searchLabel}
-          placeholder={placeholder}
-          value={searchTerm}
-          onChange={(value: string) => setSearchTerm(value)}
-        />
+    <div className="flex flex-col gap-3 pt-2">
+      {/* Main Search Row - Always Visible */}
+      <div className="flex items-center gap-2">
+        {/* Search Input - Takes full width on mobile */}
+        <div className="relative flex-1">
+          <Input
+            type="text"
+            label={searchLabel}
+            placeholder={placeholder}
+            value={searchTerm}
+            onChange={(value: string) => setSearchTerm(value)}
+          />
+        </div>
+
+        {/* Advanced Filters Toggle - Only show if there are filters */}
+        {hasAdvancedFilters && (
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="flex-shrink-0 p-2 rounded-lg border border-border bg-card hover:bg-background transition-colors relative"
+            aria-label={showAdvancedFilters ? "Hide filters" : "Show filters"}
+          >
+            <Filter size={20} className="text-text-light" />
+            {hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full border-2 border-card"></span>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Sort Dropdown */}
-      {showSort && (
-        <div className="relative min-w-[150px]">
-          <Input
-            type="select"
-            label="Sort By"
-            value={selectedSort}
-            onChange={handleSortChange}
-            selectOptions={[
-              { label: "Select sort...", value: "" },
-              ...sortOptions,
-            ]}
-          />
+      {/* Advanced Filters - Collapsible on mobile */}
+      {showAdvancedFilters && hasAdvancedFilters && (
+        <div className="flex flex-col gap-3 p-3 bg-background rounded-lg border border-border">
+          {/* Header with filter count */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-text">
+              Filters {hasActiveFilters && `(${[
+                selectedSort && 'Sort',
+                selectedFilter && 'Filter',
+                (dateRangeValue.start || dateRangeValue.end) && 'Date'
+              ].filter(Boolean).length} active)`}
+            </span>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <button
+                  onClick={handleResetAllFilters}
+                  className="text-xs text-danger hover:text-danger/80 transition-colors"
+                >
+                  Reset all
+                </button>
+              )}
+              <button
+                onClick={() => setShowAdvancedFilters(false)}
+                className="p-1 rounded hover:bg-card transition-colors"
+              >
+                <X size={16} className="text-text-light" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Grid - Responsive */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Sort Dropdown */}
+            {showSort && (
+              <div className="w-full">
+                <Input
+                  type="select"
+                  label="Sort By"
+                  value={selectedSort}
+                  onChange={handleSortChange}
+                  selectOptions={[
+                    { label: "Select sort...", value: "" },
+                    ...sortOptions,
+                  ]}
+                  placeholder="Sort by"
+                />
+              </div>
+            )}
+
+            {/* Filter Dropdown */}
+            {showFilters && (
+              <div className="w-full">
+                <Input
+                  type="select"
+                  label="Filter By"
+                  value={selectedFilter}
+                  onChange={handleFilterChange}
+                  selectOptions={[
+                    { label: "Select filter...", value: "" },
+                    ...filterOptions,
+                  ]}
+                  placeholder="Filter by"
+                />
+              </div>
+            )}
+            
+            {/* Date Range Filter */}
+            {showDateRange && (
+              <div className="w-full">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Input
+                      type="date-range"
+                      label="Date Range"
+                      placeholder="Select date range"
+                      value={dateRangeValue}
+                      onChange={handleDateRangeChange}
+                      autoApply={false}
+                      showQuickSelect={false}
+                    />
+                  </div>
+                  
+                  {/* Reset date button */}
+                  {(dateRangeValue.start || dateRangeValue.end) && (
+                    <button
+                      onClick={handleResetDateRange}
+                      className="flex-shrink-0 p-2 text-xs text-danger hover:text-danger/80 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Apply button for manual mode */}
+          {!autoApply && (selectedSort || selectedFilter || dateRangeValue.start || dateRangeValue.end) && (
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={() => {
+                  // Apply all filters
+                  if (dateRangeValue.start && dateRangeValue.end) {
+                    onDateRangeChange({
+                      start_date: dateRangeValue.start.toISOString().split('T')[0],
+                      end_date: dateRangeValue.end.toISOString().split('T')[0],
+                    });
+                  }
+                  setShowAdvancedFilters(false);
+                }}
+                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                Apply Filters
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Filter Dropdown */}
-      {showFilters && (
-        <div className="relative min-w-[150px]">
-          <Input
-            type="select"
-            label="Filter By"
-            value={selectedFilter}
-            onChange={handleFilterChange}
-            selectOptions={[
-              { label: "Select filter...", value: "" },
-              ...filterOptions,
-            ]}
-          />
-        </div>
-      )}
-      
-      {/* Date Range Filter */}
-      {showDateRange && (
-        <div className="flex items-end">
-          <div className="min-w-[280px] -mb-5">
-            <Input
-              type="date-range"
-              label="Date Range"
-              placeholder="Select date range"
-              value={dateRangeValue}
-              onChange={handleDateRangeChange}
-              autoApply={false}
-              showQuickSelect={false}
-              variant="outline"
-              size="md"
-              radius="sm"
-            />
-          </div>
-          
-          {/* Optional reset button */}
-          {(dateRangeValue.start || dateRangeValue.end) && (
-            <button
-              onClick={handleResetDateRange}
-              className="px-4 -mb-5 py-2.5 text-sm font-medium rounded-md transition-colors"
-              style={{
-                backgroundColor: 'transparent',
-                color: 'var(--color-danger, #ef4444)',
-                border: '1px solid var(--color-border, #e5e7eb)',
-              }}
-            >
-              Reset
-            </button>
+      {/* Mobile: Active filters summary */}
+      {hasActiveFilters && !showAdvancedFilters && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-text-light">Active filters:</span>
+          {selectedSort && (
+            <span className="text-xs bg-primary-10 text-primary px-2 py-0.5 rounded-full">
+              {sortOptions.find(opt => opt.value === selectedSort)?.label || selectedSort}
+            </span>
           )}
+          {selectedFilter && (
+            <span className="text-xs bg-primary-10 text-primary px-2 py-0.5 rounded-full">
+              {filterOptions.find(opt => opt.value === selectedFilter)?.label || selectedFilter}
+            </span>
+          )}
+          {(dateRangeValue.start || dateRangeValue.end) && (
+            <span className="text-xs bg-primary-10 text-primary px-2 py-0.5 rounded-full">
+              {dateRangeValue.start?.toLocaleDateString()} - {dateRangeValue.end?.toLocaleDateString()}
+            </span>
+          )}
+          <button
+            onClick={handleResetAllFilters}
+            className="text-xs text-danger hover:text-danger/80 transition-colors"
+          >
+            Clear all
+          </button>
         </div>
       )}
     </div>

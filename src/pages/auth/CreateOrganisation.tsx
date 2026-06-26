@@ -364,17 +364,7 @@ const saveOrganisationProfile = async (organisationData: any): Promise<void> => 
               fullWidth
               className={loading ? "opacity-60 cursor-not-allowed" : "hover:opacity-90"}
             >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4l-3 3 3 3h-4a8 8 0 01-8-8z" />
-                  </svg>
-                  Processing…
-                </>
-              ) : (
-                "Create Organisation Account"
-              )}
+            
             </Button>
           </div>
         </form>
