@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Entity, IResponse, IUser } from '../types';
 import { getStoredItem, USER_KEY, ENTITY_KEY } from '../hooks/useStore';
 
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = 'https://miva-server.vercel.app/api/';
 
 class DashboardService {
   private readonly baseURL = API_BASE_URL;

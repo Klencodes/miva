@@ -4,7 +4,7 @@ import axios from "axios";
 import { getStoredItem, USER_KEY, ENTITY_KEY } from "../hooks/useStore";
 import { IUser, Entity, IResponse, ExpenseFilters, ExpenseFormData } from "../types";
 
-const API_BASE_URL = "http://localhost:4000/api";
+const API_BASE_URL = "https://miva-server.vercel.app/api/";
 
 // ─── Default Categories ──────────────────────────────────────────────────────
 export const DEFAULT_CATEGORIES = [

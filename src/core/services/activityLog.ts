@@ -3,7 +3,7 @@ import axios from 'axios';
 import { IResponse, Entity, IUser } from '../types';
 import { getStoredItem, USER_KEY, ENTITY_KEY } from '../hooks/useStore';
 
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = 'https://miva-server.vercel.app/api/';
 
 export interface IActivityLogFilterParams {
   page?: number;

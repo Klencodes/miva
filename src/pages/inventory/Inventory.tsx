@@ -9,6 +9,7 @@ import { eventService } from "../../core/services/events";
 import InventoryService from "../../core/services/inventory";
 import { InventoryItem } from "../../core/types";
 import AddEditInventory from "./AddEditInventory";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 
 const Inventory = () => {
   const { user } = useStore();
@@ -28,7 +29,7 @@ const Inventory = () => {
   const searchRef = useRef(searchQuery);
   const filterRef = useRef(filterType);
   const pageRef = useRef(page);
-
+  usePageTitle("Inventory")
   useEffect(() => { searchRef.current = searchQuery; }, [searchQuery]);
   useEffect(() => { filterRef.current = filterType; }, [filterType]);
   useEffect(() => { pageRef.current = page; }, [page]);

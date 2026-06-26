@@ -3,7 +3,7 @@ import axios from 'axios';
 import { IResponse, IUser, IUserQueryParams, ICreateUserData, IUpdateUserData, IUserEntityAssignment } from '../types';
 import { getStoredItem, USER_KEY } from '../hooks/useStore';
 
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = 'https://miva-server.vercel.app/api/';
 
 class UserService {
   private readonly baseURL = API_BASE_URL;
