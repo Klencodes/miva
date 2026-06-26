@@ -2,7 +2,7 @@ import axios from 'axios';
 import { IResponse, InventoryItem, InventoryFilterParams, IUser, Entity } from '../types';
 import { getStoredItem, USER_KEY, ENTITY_KEY } from '../hooks/useStore';
 
-const API_BASE_URL = 'https://miva-server.vercel.app/api/';
+const API_BASE_URL = 'https://miva-server.vercel.app/api';
 
 class InventoryService {
   private readonly baseURL = API_BASE_URL;
