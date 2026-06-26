@@ -229,7 +229,7 @@ const ListSuppliers: React.FC = () => {
       )
     ) {
       try {
-        const response = await SupplierService.deleteSupplier(supplierId);
+        const response = await SupplierService.delete(supplierId);
         if (response.success) {
           toast.success("Success", {
             description: "Supplier deleted successfully",
@@ -247,7 +247,7 @@ const ListSuppliers: React.FC = () => {
   const handleToggleStatus = async (supplier: Supplier) => {
     try {
       const newStatus = supplier.status === "active" ? "inactive" : "active";
-      const response = await SupplierService.updateSupplier(supplier.uuid, {
+      const response = await SupplierService.update(supplier.uuid, {
         status: newStatus,
       });
 

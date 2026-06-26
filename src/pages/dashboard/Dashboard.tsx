@@ -256,7 +256,7 @@ const Dashboard: React.FC = () => {
 
       console.log("📊 Fetching dashboard with params:", params); // Debug log
 
-      const response = await DashboardService.getDashboardStats(
+      const response = await DashboardService.getStats(
         params.date_from,
         params.date_to,
         params.entity_id,

@@ -200,7 +200,7 @@ const Users = () => {
     })
     if (res?.confirmed) {
       try {
-        const response = await UserService.deleteUser(user.uuid);
+        const response = await UserService.delete(user.uuid);
         if (response.success) {
           toast.success("Success", {
             description: "User deleted successfully",
@@ -219,7 +219,7 @@ const Users = () => {
     try {
       const user = users.find(u => u.uuid === userId);
       if (user) {
-        const response = await UserService.toggleUserActive(userId, !user.is_active);
+        const response = await UserService.toggleActive(userId, !user.is_active);
         if (response.success) {
           toast.success("Success", {
             description: `User ${user.is_active !== false ? "deactivated" : "activated"} successfully`,

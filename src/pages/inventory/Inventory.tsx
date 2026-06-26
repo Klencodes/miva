@@ -139,7 +139,7 @@ const handleFilter = (filter: string) => {
 
   const deleteInventoryItem = async (id: string) => {
     try {
-      const response = await InventoryService.deleteItem(id);
+      const response = await InventoryService.delete(id);
 
       if (response.success) {
         toast.success('Success', { description: 'Item deleted successfully' });

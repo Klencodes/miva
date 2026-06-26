@@ -41,7 +41,7 @@ const CustomerDetail = () => {
 
     try {
       setRefreshing(true);
-      const response = await CustomerService.getCustomerByUuid(customer.uuid);
+      const response = await CustomerService.getByUuid(customer.uuid);
       
       if (response.success && response.results?.customer) {
         setCustomer(response.results.customer);

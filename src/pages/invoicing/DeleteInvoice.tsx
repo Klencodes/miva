@@ -25,7 +25,7 @@ const DeleteModal: React.FC = () => {
     try {
       // Dynamic import to avoid circular dependencies
       const { default: InvoiceService } = await import('../../core/services/invoice');
-      const response = await InvoiceService.deleteInvoice(invoice.uuid);
+      const response = await InvoiceService.delete(invoice.uuid);
 
       if (response.success) {
         toast.success('Success', {

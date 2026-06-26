@@ -75,10 +75,10 @@ const AddEditCustomer = () => {
         const saveData = { ...customer, ...formData };
 
         // Update existing entity
-        response = await CustomerService.updateCustomer(customer?.uuid, saveData );
+        response = await CustomerService.update(customer?.uuid, saveData );
       } else {
         // Create new entity
-        response = await CustomerService.createCustomer(formData);
+        response = await CustomerService.create(formData);
       }
     
       

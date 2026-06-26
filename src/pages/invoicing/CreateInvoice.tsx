@@ -342,7 +342,7 @@ const CreateInvoice = () => {
       if (id) {
         try {
           setLoading(true);
-          const response = await InvoiceService.getInvoiceByUuid(id);
+          const response = await InvoiceService.getByUuid(id);
 
           if (response.success && response.results?.invoice) {
             const invoice = response.results.invoice;
@@ -632,9 +632,9 @@ const CreateInvoice = () => {
 
       let response;
       if (isEditing && invoiceUuid) {
-        response = await InvoiceService.updateInvoice(invoiceUuid, invoiceData);
+        response = await InvoiceService.update(invoiceUuid, invoiceData);
       } else {
-        response = await InvoiceService.createInvoice(invoiceData);
+        response = await InvoiceService.create(invoiceData);
       }
 
       if (response.success) {

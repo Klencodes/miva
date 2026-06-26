@@ -77,7 +77,7 @@ const InvoiceDetails = () => {
 
       if (id) {
         try {
-          const response = await InvoiceService.getInvoiceByUuid(id);
+          const response = await InvoiceService.getByUuid(id);
 
           if (response.success && response.results?.invoice) {
             const invoiceData = response.results.invoice;
@@ -218,7 +218,7 @@ const InvoiceDetails = () => {
     if (!invoice) return;
 
     try {
-      await InvoiceService.downloadInvoice(
+      await InvoiceService.download(
         invoice.uuid,
         `invoice-${invoice.number}.pdf`,
       );
@@ -276,7 +276,7 @@ const InvoiceDetails = () => {
         amount_paid: 0,
       };
 
-      const response = await InvoiceService.createInvoice(copyData);
+      const response = await InvoiceService.create(copyData);
 
       if (response.success) {
         toast.success("Success", {
@@ -328,7 +328,7 @@ const InvoiceDetails = () => {
       });
 
       if (result?.success) {
-        const response = await InvoiceService.getInvoiceByUuid(invoice.uuid);
+        const response = await InvoiceService.getByUuid(invoice.uuid);
         if (response.success && response.results?.invoice) {
           setInvoice(response.results.invoice);
           toast.success("Success", {

@@ -178,10 +178,10 @@ const AddEntityModal: React.FC<AddEntityModalProps> = () => {
       
       if (isEditMode && modalData?.id) {
         // Update existing entity
-        response = await EntityService.updateEntity(modalData?.uuid, businessData );
+        response = await EntityService.update(modalData?.uuid, businessData );
       } else {
         // Create new entity
-        response = await EntityService.createEntity(businessData);
+        response = await EntityService.create(businessData);
       }
       
       if (!response.success) {

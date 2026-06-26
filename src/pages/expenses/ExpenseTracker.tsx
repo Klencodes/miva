@@ -157,7 +157,7 @@ const ExpenseTracker: React.FC = () => {
   // ── Fetch Categories ──────────────────────────────────────────────────────
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await expenseService.getExpenseOptions();
+      const response = await expenseService.getOptions();
       if (response.success && response.results?.categories?.length) {
         setCategories(buildCategoryList(response.results.categories));
       } else {
@@ -182,9 +182,9 @@ const ExpenseTracker: React.FC = () => {
 
       // Fetch all stats in parallel
       const [statsResponse, categoryResponse, statusResponse] = await Promise.all([
-        expenseService.getExpenseStats(params),
-        expenseService.getExpenseCategoryBreakdown(params),
-        expenseService.getExpenseStatusBreakdown(params),
+        expenseService.getStats(params),
+        expenseService.getCategoryBreakdown(params),
+        expenseService.getStatusBreakdown(params),
       ]);
 
       // Set stats
@@ -378,7 +378,7 @@ const ExpenseTracker: React.FC = () => {
       });
 
       if (result?.success && result?.data) {
-        const response = await expenseService.createExpense({
+        const response = await expenseService.create({
           ...result.data,
           entity_id: entity?.uuid,
         });
@@ -404,7 +404,7 @@ const ExpenseTracker: React.FC = () => {
       });
 
       if (result?.success && result?.data) {
-        const response = await expenseService.updateExpense(expense.uuid, result.data);
+        const response = await expenseService.update(expense.uuid, result.data);
         if (response.success) {
           toast.success("Success", { description: "Expense updated successfully" });
           setRefreshKey(prev => prev + 1);
@@ -425,7 +425,7 @@ const ExpenseTracker: React.FC = () => {
       } });
 
       if (result?.confirmed) {
-        const response = await expenseService.deleteExpense(expense.uuid);
+        const response = await expenseService.delete(expense.uuid);
         if (response.success) {
           toast.success("Success", { description: "Expense deleted successfully" });
           setRefreshKey(prev => prev + 1);
@@ -440,7 +440,7 @@ const ExpenseTracker: React.FC = () => {
 
   const handleMarkExpenseAsPaid = async (expense: Expense) => {
     try {
-      const response = await expenseService.markExpenseAsPaid(expense.uuid);
+      const response = await expenseService.markAsPaid(expense.uuid);
       if (response.success) {
         toast.success("Success", { description: "Expense paid successfully" });
         setRefreshKey(prev => prev + 1);

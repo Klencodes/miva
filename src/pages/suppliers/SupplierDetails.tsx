@@ -164,8 +164,8 @@ const SupplierDetails = () => {
     setOrderLoading(true);
     try {
       const [ordersResponse, statsResponse] = await Promise.all([
-        SupplierService.getSupplierOrders(supplier.uuid, { limit: 50 }),
-        SupplierService.getSupplierStats(supplier.uuid),
+        SupplierService.getOrders(supplier.uuid, { limit: 50 }),
+        SupplierService.getStats(supplier.uuid),
       ]);
       if (ordersResponse.success)
         setOrders(ordersResponse.results?.orders || []);
@@ -195,7 +195,7 @@ const SupplierDetails = () => {
       });
       if (result?.confirmed) {
         setLoading(true);
-        const response = await SupplierService.deleteSupplier(supplier.uuid);
+        const response = await SupplierService.delete(supplier.uuid);
         if (response.success) {
           toast.success("Deleted", {
             description: "Supplier removed successfully.",
@@ -215,7 +215,7 @@ const SupplierDetails = () => {
   const handleExportOrders = async () => {
     if (!supplier?.uuid) return;
     try {
-      const blob = await SupplierService.exportSuppliers({
+      const blob = await SupplierService.export({
         format: "excel",
         date_from: new Date(
           new Date().setMonth(new Date().getMonth() - 6),

@@ -223,7 +223,7 @@ const AddEditInventory: React.FC = () => {
   // ── Fetch supplier name when editing ──────────────────────────────────────
   const fetchSupplierName = async (supplierId: string) => {
     try {
-      const response = await SupplierService.getSupplierByUuid(supplierId);
+      const response = await SupplierService.getByUuid(supplierId);
       if (response.success) {
         const supplier = response.results?.supplier;
         if (supplier) {
@@ -409,7 +409,7 @@ const AddEditInventory: React.FC = () => {
 
     setBulkLoading(true);
     try {
-      const response = await InventoryService.bulkCreateItems(bulkItems);
+      const response = await InventoryService.bulkCreate(bulkItems);
 
       if (response.success) {
         toast.success("Bulk import successful", {
@@ -466,9 +466,9 @@ const AddEditInventory: React.FC = () => {
 
       let response;
       if (isEditMode && itemUuid) {
-        response = await InventoryService.updateItem(itemUuid, formData);
+        response = await InventoryService.update(itemUuid, formData);
       } else {
-        response = await InventoryService.createItem(formData);
+        response = await InventoryService.create(formData);
       }
 
       if (response.success) {

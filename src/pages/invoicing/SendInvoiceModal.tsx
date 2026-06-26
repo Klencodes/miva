@@ -24,7 +24,7 @@ const SendInvoiceModal = () => {
 
     setSending(true);
     try {
-      const response = await InvoiceService.sendInvoice(invoice.uuid, email, message);
+      const response = await InvoiceService.send(invoice.uuid, email, message);
 
       if (response.success) {
         toast.success("Success", {

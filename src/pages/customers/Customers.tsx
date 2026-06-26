@@ -162,7 +162,7 @@ const Customers = () => {
       })
     if (res?.confirmed) {
       try {
-        const response = await CustomerService.deleteCustomer(customerId);
+        const response = await CustomerService.delete(customerId);
         if (response.success) {
           toast.success('Success', { description: response.message || 'Customer deleted successfully' });
           fetchCustomers();
@@ -181,7 +181,7 @@ const Customers = () => {
 
     try {
       const newStatus = customer.is_active === false ? true : false;
-      const response = await CustomerService.toggleCustomerActive(customerId, newStatus);
+      const response = await CustomerService.toggleActive(customerId, newStatus);
       
       if (response.success) {
         toast.success('Success', { 

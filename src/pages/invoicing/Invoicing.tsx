@@ -277,7 +277,7 @@ const Invoicing = () => {
         amount_paid: 0,
       };
 
-      const response = await InvoiceService.createInvoice(copyData);
+      const response = await InvoiceService.create(copyData);
 
       if (response.success) {
         toast.success("Success", {
@@ -323,7 +323,7 @@ const Invoicing = () => {
       });
 
       if (result?.confirmed) {
-        const response = await InvoiceService.cancelInvoice(invoiceId);
+        const response = await InvoiceService.cancel(invoiceId);
 
         if (response.success) {
           toast.success('Success', {
@@ -352,7 +352,7 @@ const Invoicing = () => {
       });
 
       if (result?.confirmed) {
-        const response = await InvoiceService.deleteInvoice(invoiceId);
+        const response = await InvoiceService.delete(invoiceId);
 
         if (response.success) {
           toast.success('Success', {

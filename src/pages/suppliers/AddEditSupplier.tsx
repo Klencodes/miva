@@ -322,10 +322,10 @@ const AddEditSupplier = () => {
       let response;
       if (isAdd) {
         // Create new supplier
-        response = await SupplierService.createSupplier(submitData);
+        response = await SupplierService.create(submitData);
       } else {
         // Update existing supplier
-        response = await SupplierService.updateSupplier(
+        response = await SupplierService.update(
           modalData.supplier.uuid,
           submitData,
         );

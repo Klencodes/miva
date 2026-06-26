@@ -140,7 +140,7 @@ const AddEditUser = () => {
         };
 
         if (editing) {
-          const result = await UserService.updateUser(user?.uuid, apiData);
+          const result = await UserService.update(user?.uuid, apiData);
           if (result.success) {
             modalData?.close({ action: "edit" });
           }
@@ -158,7 +158,7 @@ const AddEditUser = () => {
             is_active: formData.is_active ?? true,
             verified: formData.verified ?? false,
           };
-          const response = await UserService.createUser(createData);
+          const response = await UserService.create(createData);
           if (response.success) {
             modalData?.close({ action: "add" });
           }

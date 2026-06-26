@@ -95,7 +95,7 @@ const CreateOrganisation: React.FC = () => {
   };
 const saveOrganisationProfile = async (organisationData: any): Promise<void> => {
   try {
-    const response = await entity.createEntity(organisationData);
+    const response = await entity.create(organisationData);
     
     if (!response.success) {
       throw new Error(response.message || "Failed to create organisation profile.");

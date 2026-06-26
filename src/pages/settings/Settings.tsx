@@ -411,7 +411,7 @@ const prepareDataForExcel = (data: any[]): any[] => {
         },
       };
 
-      const response = await EntityService.updateEntity(
+      const response = await EntityService.update(
         entity.uuid,
         updateData,
       );
