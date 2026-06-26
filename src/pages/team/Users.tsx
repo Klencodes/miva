@@ -117,7 +117,7 @@ const Users = () => {
     searchRef.current = query;
     pageRef.current = 1;
     setSearchQuery(query);
-    setPage(1);
+    // setPage(1);
   };
 
   const handleFilter = (filter: string) => {

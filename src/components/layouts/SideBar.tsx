@@ -528,6 +528,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isMobile }) => {
     (selected: Entity) => {
       if (selected.uuid === entity?.uuid) return;
       setEntity(selected);
+      // setStoredItem(ENTITY_KEY, selected)
       eventService.triggerRefresh();
     },
     [entity, setEntity],

@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
         // Layout
         "flex items-center pr-4 gap-3",
         "bg-card",
-        `${!online ? 'border-b-3 border-b border-danger' : ''}`
+        `${!online ? 'border-danger' : 'border-success'}`
 
       ].join(" ")}
     >

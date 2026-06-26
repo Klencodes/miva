@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import {
   Plus,
@@ -33,6 +33,8 @@ import { eventService } from "../../core/services/events";
 import { useStore } from "../../core/contexts/StoreProvider";
 import CustomerService from "../../core/services/customer";
 import { generateCode } from "../../core/utils/id-generator";
+import { useDebounce } from "../../core/hooks/useDebounce";
+import { usePageTitle } from "../../core/hooks/usePageTitle";
 
 interface FormInvoiceItem {
   id: string;
@@ -70,6 +72,10 @@ const CreateInvoice = () => {
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+
+  // 🔥 Debounced customer search
+  const debouncedCustomerSearch = useDebounce(customerSearch, 500);
 
   // Item search state
   const [itemSearch, setItemSearch] = useState("");
@@ -111,25 +117,27 @@ const CreateInvoice = () => {
 
   const { isDark } = useTheme();
   const { entity } = useStore();
+  usePageTitle("Create Invoice");
+  // Abort controller for canceling requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Get tax rates from entity metadata with defaults
   const taxRates = useMemo(() => {
     const metadata = entity?.metadata || {};
-
     // Check if metadata is a Map and convert if needed
     let metadataObj = metadata;
     if (metadata instanceof Map) {
       metadataObj = Object.fromEntries(metadata);
     }
     return {
-      tax_rate: metadataObj.tax_rate || 0,
-      nhil_rate: metadataObj.nhil_rate || 0,
-      getfund_rate: metadataObj.getfund_rate || 0,
-      covid_levy_rate: metadataObj.covid_levy_rate || 0,
-      vat_enabled: metadataObj.vat_enabled ?? true,
-      nhil_enabled: metadataObj.nhil_enabled ?? true,
-      getfund_enabled: metadataObj.getfund_enabled ?? true,
-      covid_levy_enabled: metadataObj.covid_levy_enabled ?? true,
+      vat: metadataObj.vat || 0,
+      nhil: metadataObj.nhil || 0,
+      getfund: metadataObj.getfund || 0,
+      covid_levy: metadataObj.covid_levy || 0,
+      vat_enabled: metadataObj.vat_enabled ?? false,
+      nhil_enabled: metadataObj.nhil_enabled ?? false,
+      getfund_enabled: metadataObj.getfund_enabled ?? false,
+      covid_levy_enabled: metadataObj.covid_levy_enabled ?? false,
     };
   }, [entity?.metadata]);
 
@@ -137,18 +145,14 @@ const CreateInvoice = () => {
   const fetchInventoryItem = useCallback(async () => {
     setLoadingInventory(true);
     try {
-      console.log("🔄 Fetching inventory items...");
       const res = await InventoryService.getItems({ page: 1, limit: 20000 });
       if (res.success) {
-        const items = res.results?.items || [];
-        console.log(`✅ Fetched ${items.length} inventory items`);
+        const items = res.results || [];
         setInventoryItems(items);
       } else {
-        console.warn("⚠️ Failed to fetch inventory:", res.message);
         setInventoryItems([]);
       }
     } catch (error) {
-      console.error("❌ Error fetching inventory:", error);
       setInventoryItems([]);
       toast.error("Error", {
         description: "Failed to load inventory items. Please try again.",
@@ -156,7 +160,8 @@ const CreateInvoice = () => {
     } finally {
       setLoadingInventory(false);
     }
-  }, []);
+    //eslint-disable-next-line
+  }, [entity?.uuid]);
 
   // 1. Initial load
   useEffect(() => {
@@ -166,7 +171,6 @@ const CreateInvoice = () => {
   // 3. Refresh on events
   useEffect(() => {
     const handleRefresh = () => {
-      console.log("📨 Refresh event received - fetching inventory");
       fetchInventoryItem();
     };
 
@@ -179,11 +183,18 @@ const CreateInvoice = () => {
     };
   }, [fetchInventoryItem]);
 
-  // Generate invoice number
-  // Fetch customers from API
+  // 🔥 Fetch customers with debounced search
   const fetchCustomers = useCallback(async () => {
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+
     try {
-      setLoading(true);
+      setIsSearchingCustomers(true);
 
       // Build query params
       const params: any = {
@@ -191,14 +202,18 @@ const CreateInvoice = () => {
         limit: 10,
       };
 
-      if (customerSearch) {
-        params.search = customerSearch;
+      if (debouncedCustomerSearch) {
+        params.search = debouncedCustomerSearch;
       }
 
-      const response = await CustomerService.getCustomers(params);
+      // Some implementations accept a single options object; include signal there
+      const response = await CustomerService.getCustomers({
+        ...params,
+        signal: abortControllerRef.current.signal,
+      });
 
       if (response.success) {
-        const customerData = response.results?.customers || [];
+        const customerData = response.results || [];
         setCustomers(customerData);
       } else {
         toast.error("Error", {
@@ -206,25 +221,41 @@ const CreateInvoice = () => {
         });
       }
     } catch (error: any) {
+      // Ignore aborted requests
+      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+        console.log('Request cancelled');
+        return;
+      }
+      
+      console.error("Error fetching customers:", error);
       toast.error("Error", {
         description: error.message || "Failed to load customers",
       });
     } finally {
-      setLoading(false);
+      setIsSearchingCustomers(false);
     }
-  }, [customerSearch]);
+  }, [debouncedCustomerSearch]);
 
+  // 🔥 Fetch customers when debounced search changes
   useEffect(() => {
     fetchCustomers();
-    //eslint-disable-next-line
+  }, [fetchCustomers]);
+
+  // 🔥 Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
-  // Set invoice number on load
-
+  // Generate invoice number
   useEffect(() => {
     if (!isEditing && !invoiceNumber) {
       setInvoiceNumber(generateCode(entity?.metadata?.invoice_prefix));
     }
+    //eslint-disable-next-line
   }, [isEditing, generateCode, invoiceNumber]);
 
   // Auto-set due date based on terms
@@ -383,32 +414,32 @@ const CreateInvoice = () => {
 
   // Calculate each tax only if enabled
   const vat = useMemo(() => {
-    if (taxRates.vat_enabled && taxRates.tax_rate > 0) {
-      return netSubtotal * (taxRates.tax_rate / 100);
+    if (taxRates.vat_enabled && taxRates.vat > 0) {
+      return netSubtotal * (taxRates.vat / 100);
     }
     return 0;
-  }, [netSubtotal, taxRates.vat_enabled, taxRates.tax_rate]);
+  }, [netSubtotal, taxRates.vat_enabled, taxRates.vat]);
 
   const nhil = useMemo(() => {
-    if (taxRates.nhil_enabled && taxRates.nhil_rate > 0) {
-      return netSubtotal * (taxRates.nhil_rate / 100);
+    if (taxRates.nhil_enabled && taxRates.nhil > 0) {
+      return netSubtotal * (taxRates.nhil / 100);
     }
     return 0;
-  }, [netSubtotal, taxRates.nhil_enabled, taxRates.nhil_rate]);
+  }, [netSubtotal, taxRates.nhil_enabled, taxRates.nhil]);
 
   const getfund = useMemo(() => {
-    if (taxRates.getfund_enabled && taxRates.getfund_rate > 0) {
-      return netSubtotal * (taxRates.getfund_rate / 100);
+    if (taxRates.getfund_enabled && taxRates.getfund > 0) {
+      return netSubtotal * (taxRates.getfund / 100);
     }
     return 0;
-  }, [netSubtotal, taxRates.getfund_enabled, taxRates.getfund_rate]);
+  }, [netSubtotal, taxRates.getfund_enabled, taxRates.getfund]);
 
   const covidLevy = useMemo(() => {
-    if (taxRates.covid_levy_enabled && taxRates.covid_levy_rate > 0) {
-      return netSubtotal * (taxRates.covid_levy_rate / 100);
+    if (taxRates.covid_levy_enabled && taxRates.covid_levy > 0) {
+      return netSubtotal * (taxRates.covid_levy / 100);
     }
     return 0;
-  }, [netSubtotal, taxRates.covid_levy_enabled, taxRates.covid_levy_rate]);
+  }, [netSubtotal, taxRates.covid_levy_enabled, taxRates.covid_levy]);
 
   const total = netSubtotal + vat + nhil + getfund + covidLevy;
   const remainingBalance = total - paymentAmount;
@@ -435,7 +466,7 @@ const CreateInvoice = () => {
     { value: "Net 60", label: "Net 60" },
   ];
 
-  // Customer filtering
+  // Customer filtering (client-side filtering for immediate feedback)
   const filteredCustomers = useMemo(() => {
     if (!customerSearch) return customers;
     const search = customerSearch.toLowerCase();
@@ -473,6 +504,10 @@ const CreateInvoice = () => {
     if (!selectedItemId) return;
     const inventoryItem = inventoryItems.find((i) => i.uuid === selectedItemId);
     if (!inventoryItem) return;
+    if(inventoryItem?.quantity < itemQuantity){
+      toast.error("Insuficient stock", { description: `Not enough ${inventoryItem?.name} stock (${inventoryItem?.quantity} available, ${itemQuantity} requested)`})
+      return;
+    }
 
     const existingItem = items.find((i) => i.id === selectedItemId);
     if (existingItem) {
@@ -575,11 +610,11 @@ const CreateInvoice = () => {
         })),
         discount_type: discountType,
         discount_rate: discountRate,
-        vat_rate: taxRates.vat_enabled ? taxRates.tax_rate : 0,
-        nhil_rate: taxRates.nhil_enabled ? taxRates.nhil_rate : 0,
-        getfund_rate: taxRates.getfund_enabled ? taxRates.getfund_rate : 0,
-        covid_levy_rate: taxRates.covid_levy_enabled
-          ? taxRates.covid_levy_rate
+        vat_rate: taxRates.vat_enabled ? taxRates.vat : 0,
+        nhil: taxRates.nhil_enabled ? taxRates.nhil : 0,
+        getfund: taxRates.getfund_enabled ? taxRates.getfund : 0,
+        covid_levy: taxRates.covid_levy_enabled
+          ? taxRates.covid_levy
           : 0,
         notes: notes || undefined,
         terms: terms || "Due on Receipt",
@@ -603,12 +638,12 @@ const CreateInvoice = () => {
       }
 
       if (response.success) {
-        const invoice = response.results.invoice;
+        const invoice = response.results;
         toast.success("Success", {
           description:
             status === "draft"
               ? `Draft invoice ${invoice.number} saved!`
-              : `Invoice ${invoice.number} ${isEditing ? "updated" : "created"} successfully!`,
+              : `Invoice ${invoice?.number} ${isEditing ? "updated" : "created"} successfully!`,
         });
 
         navigate(`/invoices/${invoice.uuid}`, {
@@ -682,9 +717,14 @@ const CreateInvoice = () => {
                       onFocus={() => setShowCustomerDropdown(true)}
                       prefixIcon={<Search size={15} />}
                     />
-                    {showCustomerDropdown && customerSearch && (
+                    {showCustomerDropdown && (
                       <div className="absolute z-10 w-full bg-background border border-border shadow-lg mt-1 max-h-48 overflow-y-auto rounded-lg">
-                        {filteredCustomers.length > 0 ? (
+                        {isSearchingCustomers ? (
+                          <div className="p-3 text-sm text-text-light flex items-center justify-center">
+                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                            Searching...
+                          </div>
+                        ) : filteredCustomers.length > 0 ? (
                           filteredCustomers.map((c) => (
                             <div
                               key={c.id}
@@ -699,12 +739,14 @@ const CreateInvoice = () => {
                                 {c.name}
                               </div>
                               {c.email && (
-                                <div className="text-xs text-text-light">
+                                <div className="text-xs text-text-light flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
                                   {c.email}
                                 </div>
                               )}
                               {c.phone && (
-                                <div className="text-xs text-text-light">
+                                <div className="text-xs text-text-light flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
                                   {c.phone}
                                 </div>
                               )}
@@ -712,7 +754,7 @@ const CreateInvoice = () => {
                           ))
                         ) : (
                           <div className="p-3 text-sm text-text-light">
-                            No customers found
+                            {customerSearch ? "No customers found" : "Type to search customers"}
                           </div>
                         )}
                       </div>
@@ -817,7 +859,12 @@ const CreateInvoice = () => {
                   />
                   {showItemDropdown && itemSearch && (
                     <div className="absolute z-10 w-full bg-background border border-border shadow-lg mt-1 max-h-48 overflow-y-auto rounded-lg">
-                      {filteredItems.length > 0 ? (
+                      {LoadingInventory ? (
+                        <div className="p-3 text-sm text-text-light flex items-center justify-center">
+                          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                          Loading items...
+                        </div>
+                      ) : filteredItems.length > 0 ? (
                         filteredItems.map((item) => (
                           <div
                             key={item.uuid}
@@ -1049,35 +1096,35 @@ const CreateInvoice = () => {
                     </span>
                   </div>
                 )}
-                {taxRates.vat_enabled && taxRates.tax_rate > 0 && (
+                {taxRates.vat_enabled && taxRates.vat > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-text-light">
-                      {`VAT (${taxRates.tax_rate}%)`}
+                      {`VAT (${taxRates.vat}%)`}
                     </span>
                     <span className="text-text">GHS {vat.toFixed(2)}</span>
                   </div>
-                )}
-                {taxRates.nhil_enabled && taxRates.nhil_rate > 0 && (
+                )} 
+                {taxRates.nhil_enabled && taxRates.nhil > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-text-light">
-                      {`NHIL (${taxRates.nhil_rate}%)`}
+                      {`NHIL (${taxRates.nhil}%)`}
                     </span>
                     <span className="text-text">GHS {nhil.toFixed(2)}</span>
                   </div>
                 )}
-                {taxRates.getfund_enabled && taxRates.getfund_rate > 0 && (
+                {taxRates.getfund_enabled && taxRates.getfund > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-text-light">
-                      {`GETFund (${taxRates.getfund_rate}%):`}
+                      {`GETFund (${taxRates.getfund}%):`}
                     </span>
                     <span className="text-text">GHS {getfund.toFixed(2)}</span>
                   </div>
                 )}
                 {taxRates.covid_levy_enabled &&
-                  taxRates.covid_levy_rate > 0 && (
+                  taxRates.covid_levy > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-text-light">
-                        {`COVID-19 Levy (${taxRates.covid_levy_rate}%):`}
+                        {`COVID-19 Levy (${taxRates.covid_levy}%):`}
                       </span>
                       <span className="text-text">
                         GHS {covidLevy.toFixed(2)}
@@ -1151,9 +1198,9 @@ const CreateInvoice = () => {
                       <div>
                         <Input
                           type="text"
-                          label="Branch"
+                          label="Bank Name & Branch"
                           labelType="default"
-                          placeholder="Bank Branch..."
+                          placeholder="Bank Name & Branch..."
                           value={bankBranch}
                           onChange={(value: string) => setbankBranch(value)}
                         />

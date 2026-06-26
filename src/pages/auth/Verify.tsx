@@ -28,7 +28,6 @@ const Verify = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
-  
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const user = getStoredItem<IUser | null>(USER_KEY, null);
   
@@ -144,14 +143,14 @@ const Verify = () => {
 
     try {
       // FIXED: Pass email and code as separate parameters
-      const response = await AuthService.verifyOTP(email, code);
+      const response = await AuthService.verifyOTP(email, code, verificationType);
 
       if (response.success) {
         setSuccess(response.message);
 
         if (verificationType === 'password_reset') {
           setTimeout(() => {
-            navigate('/create-new-password', {
+            navigate('/account/create-password', {
               state: { 
                 email: email, 
                 otp: code
@@ -210,7 +209,7 @@ const Verify = () => {
 
     try {
       // FIXED: Pass email as parameter
-      const response = await AuthService.resendOTP(email);
+      const response = await AuthService.resendOTP(email, verificationType);
 
       if (response.success) {
         setSuccess("New verification code sent to your email");
@@ -335,12 +334,7 @@ const Verify = () => {
               />
             ))}
           </div>
-          <p className="text-xs text-text-light text-center mt-2">
-            {verificationType === 'password_reset' 
-              ? "Enter the 6-digit code sent to your email to reset your password"
-              : "Enter the 6-digit code sent to your email"
-            }
-          </p>
+          
         </div>
 
         <Button

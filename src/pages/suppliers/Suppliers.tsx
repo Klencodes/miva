@@ -127,7 +127,7 @@ const ListSuppliers: React.FC = () => {
     searchRef.current = query;
     pageRef.current = 1;
     setSearchQuery(query);
-    setPage(1);
+    // setPage(1);
   };
 
   const handleFilter = (filter: string) => {
@@ -209,7 +209,7 @@ const ListSuppliers: React.FC = () => {
   const handleViewSupplier = async (supplier: Supplier) => {
     const result = await openModal(SupplierDetails, {
       data: { supplier },
-      size: "xl",
+      size: "2xl",
       side: "right",
     });
 

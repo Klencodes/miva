@@ -328,7 +328,7 @@ const ExpenseTracker: React.FC = () => {
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setPage(1);
+    // setPage(1);
   };
 
   const handleFilter = (filter: string) => {

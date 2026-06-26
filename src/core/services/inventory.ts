@@ -27,7 +27,6 @@ class InventoryService {
   private getHeaders() {
     const token = this.getAuthToken();
     const entityId = this.getEntityId();
-    
     const headers: Record<string, string> = {};
     
     if (token) {

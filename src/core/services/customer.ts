@@ -36,7 +36,7 @@ class CustomerService {
   /**
    * Get all customers with pagination and filtering
    */
-  async getCustomers(params: ICustomerFilterParams = {}): Promise<IResponse> {
+  async getCustomers(params: ICustomerFilterParams = {},): Promise<IResponse> {
     try {
       const queryParams = new URLSearchParams();
       

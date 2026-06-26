@@ -172,7 +172,8 @@ const Customers = () => {
         toast.error('Error', { description: error.message || 'Failed to delete customer' });
       }
     }
-  }, [fetchCustomers]);
+    //esline-disable-next-line
+  }, [fetchCustomers, openModal]);
 
   const handleToggleActive = useCallback(async (customerId: string) => {
     const customer = customers.find(c => c.uuid === customerId);
@@ -196,7 +197,7 @@ const Customers = () => {
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
-    setPage(1);
+    // setPage(1);
   }, []);
 
   const handleFilter = useCallback((filter: string) => {

@@ -1,7 +1,7 @@
 // pages/auth/CreateNewPassword.tsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ArrowLeft, Lock, Shield, Key } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ArrowLeft, Lock, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Input } from '../../components/common';
 import AuthService from '../../core/services/auth';
@@ -208,16 +208,6 @@ const CreateNewPassword: React.FC = () => {
           ) : (
             <form onSubmit={handleSubmit} noValidate>
               {/* Verification Code - Readonly */}
-              <div className="mb-4">
-                <Input
-                  type="text"
-                  label="Verification Code"
-                  placeholder="Enter verification code"
-                  value={otp}
-                  disabled
-                  prefixIcon={<Key size={16} />}
-                />
-              </div>
 
               {/* New Password */}
               <div className="mb-4">
@@ -253,7 +243,7 @@ const CreateNewPassword: React.FC = () => {
                 {passwordStrength && new_password && (
                   <div className="mt-2">
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-background rounded-full overflow-hidden">
                         <div
                           className={`h-full transition-all duration-300 ${
                             passwordStrength.score <= 1
@@ -359,7 +349,7 @@ const CreateNewPassword: React.FC = () => {
                 className="flex items-center gap-2 mx-auto mt-4 text-sm text-text-light hover:text-primary transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Verification
+                Back
               </button>
             </form>
           )}

@@ -138,11 +138,11 @@ class AuthService {
   /**
    * Change password
    */
-  async changePassword(currentPassword: string, new_password: string, confirm_password: string): Promise<IResponse> {
+  async changePassword(payload: {current_password: string, new_password: string, confirm_password: string}): Promise<IResponse> {
     try {
       const token = getStoredItem<IUser | null>(USER_KEY, null)?.auth_token;
       const response = await axios.post(`${this.baseURL}/auth/change-password`,
-        { currentPassword, new_password, confirm_password },
+        { payload},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data;
